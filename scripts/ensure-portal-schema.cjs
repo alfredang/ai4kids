@@ -75,6 +75,18 @@ const STATEMENTS = [
   // Security: never let a user inserted without an explicit role default to
   // 'admin'. Idempotent — safe to re-run on every boot. Mirrors schema.ts.
   `ALTER TABLE users ALTER COLUMN role SET DEFAULT 'parent'`,
+  // Ensure the program_category enum has every value the app uses. Enum
+  // additions never reached prod (migrations aren't run on deploy), so seeding
+  // an activity with category 'art' failed with "invalid input value for enum
+  // program_category". ADD VALUE IF NOT EXISTS is idempotent; each runs in its
+  // own autocommit statement so the new value is usable by later inserts.
+  `ALTER TYPE program_category ADD VALUE IF NOT EXISTS 'storytelling'`,
+  `ALTER TYPE program_category ADD VALUE IF NOT EXISTS 'art'`,
+  `ALTER TYPE program_category ADD VALUE IF NOT EXISTS 'coding'`,
+  `ALTER TYPE program_category ADD VALUE IF NOT EXISTS 'game-dev'`,
+  `ALTER TYPE program_category ADD VALUE IF NOT EXISTS 'phonics'`,
+  `ALTER TYPE program_category ADD VALUE IF NOT EXISTS 'escape-room'`,
+  `ALTER TYPE program_category ADD VALUE IF NOT EXISTS 'free-games'`,
 ];
 
 // Activity catalogue rows that aren't synced from elsewhere. Idempotent: new
