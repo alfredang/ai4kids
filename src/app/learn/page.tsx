@@ -15,6 +15,7 @@ const LIVE_ROUTES: Record<string, string> = {
   "ai-storytelling": "/learn/storytelling",
   "ai-art": "/learn/art",
   "ai-phonics": "/learn/phonics",
+  "ai-buddy": "/learn/buddy",
   // Each sample escape room is its own activity, routed by room slug.
   ...Object.fromEntries(
     ESCAPE_ROOMS.map((r) => [r.activitySlug, `/learn/escape-room/${r.slug}`]),

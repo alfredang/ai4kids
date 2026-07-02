@@ -159,7 +159,8 @@ async function main() {
     { slug: "ai-coding", title: "AI Code Quest", category: "coding", emoji: "💻", live: false, desc: "Build with code blocks (coming soon)." },
     { slug: "ai-game-dev", title: "AI Game Maker", category: "game-dev", emoji: "🎮", live: false, desc: "Make your own game (coming soon)." },
     { slug: "ai-jigsaw", title: "AI Jigsaw", category: "art", emoji: "🧩", live: true, desc: "Turn your art into a puzzle!" },
-    
+    { slug: "ai-buddy", title:"Talking Buddy", category: "storytelling", emoji: "🤖", live: true, desc: "Chat with an AI friend!" },
+
     // Sample AI Escape Rooms — one activity per playable room (see src/lib/escape-rooms.ts).
     ...ESCAPE_ROOMS.map((r) => ({
       slug: r.activitySlug,
@@ -186,7 +187,7 @@ async function main() {
     await db.insert(activities).values({
       slug: a.slug,
       title: a.title,
-      category: a.category,
+      category: a.category as (typeof activities.$inferInsert)["category"],
       emoji: a.emoji,
       description: a.desc,
       live: a.live,
