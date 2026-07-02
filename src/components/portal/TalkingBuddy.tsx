@@ -1,6 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import { stripForSpeech } from "@/lib/strip-emoji";
 
 export function TalkingBuddy({ audioUrl, fallbackText }: { audioUrl: string | null; fallbackText?: string }) {
   const [mouth, setMouth] = useState(0.1); // 0..1 openness
@@ -50,7 +51,7 @@ export function TalkingBuddy({ audioUrl, fallbackText }: { audioUrl: string | nu
       // No server audio → on-device voice + simple mouth flap.
       // Pin the chosen voice + kid-friendly rate/pitch so it stays consistent.
       speechSynthesis.cancel(); // stop any overlapping utterance
-      const u = new SpeechSynthesisUtterance(fallbackText);
+      const u = new SpeechSynthesisUtterance(stripForSpeech(fallbackText));
       if (voiceRef.current) u.voice = voiceRef.current;
       u.rate = 0.95;
       u.pitch = 1.15;
@@ -87,9 +88,9 @@ export function TalkingBuddy({ audioUrl, fallbackText }: { audioUrl: string | nu
         <motion.circle cx="136" cy="13" r="7" fill="#ff6b6b"
           animate={{ scale: talking ? [1, 1.35, 1] : 1 }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.3 }} />
 
-        {/* Head */}
-        <rect x="24" y="36" width="152" height="150" rx="48" fill="#38bdf8" />
-        <rect x="24" y="36" width="152" height="72" rx="40" fill="#fff" opacity="0.12" />
+        {/* Head — soft baby blue */}
+        <rect x="24" y="36" width="152" height="150" rx="48" fill="#bae6fd" />
+        <rect x="24" y="36" width="152" height="72" rx="40" fill="#fff" opacity="0.35" />
         {/* Side bolts / ears */}
         <circle cx="22" cy="112" r="10" fill="#7dd3fc" />
         <circle cx="178" cy="112" r="10" fill="#7dd3fc" />

@@ -1,30 +1,46 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { TalkingBuddy } from "@/components/portal/TalkingBuddy";
 
 type Turn = { role: "user" | "buddy"; content: string };
 
 export default function BuddyPage() {
-  const [listening, setListening] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [text, setText] = useState("");
   const [messages, setMessages] = useState<Turn[]>([]);
   const [audio, setAudio] = useState<string | null>(null);
+  const [speakText, setSpeakText] = useState<string | null>(null);
   const [micSupported, setMicSupported] = useState(false);
+
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const chatRef = useRef<HTMLDivElement>(null);
 
   // Detect mic support after mount to avoid a hydration mismatch.
   useEffect(() => {
-    setMicSupported(!!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition));
+    setMicSupported(typeof MediaRecorder !== "undefined" && !!navigator.mediaDevices?.getUserMedia);
   }, []);
+
+  // Keep the chat scrolled to the newest message.
+  useEffect(() => {
+    chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages]);
 
   async function ask(message: string) {
     const m = message.trim();
     if (!m || busy) return;
     setBusy(true);
     setText("");
+    setAudio(null);
+    setSpeakText(null);
     const history = messages; // prior turns (before this one)
     setMessages((prev) => [...prev, { role: "user", content: m }]);
+
+    // 1. Get the reply text (fast) and show it immediately.
+    let reply = "Oops, my ears aren't working right now — try again in a moment!";
     try {
       const res = await fetch("/api/learn/buddy", {
         method: "POST",
@@ -32,97 +48,177 @@ export default function BuddyPage() {
         body: JSON.stringify({ message: m, history }),
       });
       const data = await res.json();
-      setMessages((prev) => [...prev, { role: "buddy", content: data.reply ?? "Hmm, let's try that again!" }]);
-      setAudio(data.audio ?? null);
+      reply = data.reply ?? "Hmm, let's try that again!";
+    } catch { /* keep the fallback line */ }
+    setMessages((prev) => [...prev, { role: "buddy", content: reply }]);
+    setBusy(false); // text is in — re-enable input right away
+
+    // 2. Fetch the spoken audio separately; buddy speaks when it arrives.
+    try {
+      const sres = await fetch("/api/learn/buddy/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: reply }),
+      });
+      const sdata = await sres.json();
+      if (sdata.audio) setAudio(sdata.audio);
+      else setSpeakText(reply); // server TTS unavailable → browser voice
     } catch {
-      setMessages((prev) => [...prev, { role: "buddy", content: "Oops, my ears aren't working right now — try again in a moment!" }]);
-      setAudio(null);
-    } finally {
-      setBusy(false);
+      setSpeakText(reply);
     }
   }
 
-  function talk() {
-    const Rec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!Rec) return; // no mic support — the text box below is always available
-    const rec = new Rec();
-    rec.lang = "en-US";
-    rec.interimResults = false;
-    rec.onstart = () => setListening(true);
-    rec.onend = () => setListening(false);
-    rec.onresult = (e: any) => ask(e.results[0][0].transcript);
-    rec.start();
+  // Tap-to-talk: record mic audio, then transcribe via Cloudflare Whisper.
+  async function startRec() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const rec = new MediaRecorder(stream);
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
+      rec.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
+        await transcribeAndAsk(blob);
+      };
+      recorderRef.current = rec;
+      rec.start();
+      setRecording(true);
+    } catch {
+      setRecording(false); // mic permission denied — the text box still works
+    }
+  }
+
+  function stopRec() {
+    recorderRef.current?.stop();
+    setRecording(false);
+  }
+
+  async function transcribeAndAsk(blob: Blob) {
+    setTranscribing(true);
+    let said = "";
+    try {
+      const res = await fetch("/api/learn/buddy/listen", {
+        method: "POST",
+        headers: { "Content-Type": blob.type || "application/octet-stream" },
+        body: blob,
+      });
+      const data = await res.json();
+      said = (data.text ?? "").trim();
+    } catch { /* ignore — no transcript */ }
+    setTranscribing(false);
+    if (said) ask(said);
   }
 
   function clearChat() {
     setMessages([]);
     setAudio(null);
+    setSpeakText(null);
     if (typeof window !== "undefined" && "speechSynthesis" in window) speechSynthesis.cancel();
   }
 
-  // The most recent buddy line drives the avatar's voice/lip-sync.
-  const lastBuddy = [...messages].reverse().find((m) => m.role === "buddy")?.content;
+  const status = busy
+    ? "Thinking… 💭"
+    : transcribing
+      ? "Listening… 👂"
+      : recording
+        ? "I'm listening — tap Stop when you're done! 🎤"
+        : messages.length === 0
+          ? "Tap the mic and say hi, or type below! 👋"
+          : "";
 
   return (
-    <div className="mx-auto max-w-md text-center">
+    <div className="mx-auto max-w-4xl">
+      {/* Top nav */}
       <div className="flex items-center justify-between">
         <Link href="/learn" className="font-fun text-sm font-600 text-slate-400 hover:text-coral">← Back to activities</Link>
         {messages.length > 0 && (
-          <button onClick={clearChat} className="font-fun text-sm font-600 text-slate-400 hover:text-coral">
+          <button
+            onClick={clearChat}
+            className="rounded-full bg-slate-100 px-3 py-1 font-fun text-xs font-700 text-slate-500 transition hover:bg-slate-200"
+          >
             New chat 🧹
           </button>
         )}
       </div>
-      <h1 className="mt-3 font-fun text-3xl font-700 text-slate-900">🤖 Talking Buddy</h1>
 
-      <TalkingBuddy audioUrl={audio} fallbackText={audio ? undefined : lastBuddy} />
+      <div className="mt-3 grid items-start gap-4 md:grid-cols-2">
+        {/* Left: buddy + controls */}
+        <div className="space-y-4">
+          {/* Buddy stage */}
+          <div className="rounded-[2rem] bg-gradient-to-b from-sky-100 to-white p-6 text-center shadow-sm ring-1 ring-sky-100">
+            <h1 className="font-fun text-2xl font-700 text-slate-900">🤖 Talking Buddy</h1>
+            <p className="font-round text-sm text-slate-500">Your friendly AI pal — talk or type!</p>
+            <div className="mt-2">
+              <TalkingBuddy audioUrl={audio} fallbackText={speakText ?? undefined} />
+              {/* soft platform so the buddy feels grounded, not floating */}
+              <div className="mx-auto -mt-2 h-3 w-28 rounded-full bg-slate-900/10 blur-md" />
+            </div>
+            {status && <p className="mt-3 font-round text-sm font-600 text-slate-500">{status}</p>}
+          </div>
 
-      {/* Conversation transcript */}
-      {messages.length > 0 && (
-        <div className="mt-4 space-y-2 text-left">
-          {messages.map((m, i) => (
-            <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
-              <span
-                className={`inline-block max-w-[80%] rounded-2xl px-4 py-2 font-round ${
-                  m.role === "user" ? "bg-coral text-white" : "bg-sky/15 text-slate-700"
+          {/* Controls */}
+          <div className="rounded-[2rem] bg-white p-4 shadow-sm ring-1 ring-slate-100">
+            {/* Talk out loud — record → Whisper transcription (works in all browsers) */}
+            {micSupported && (
+              <button
+                onClick={recording ? stopRec : startRec}
+                disabled={busy || transcribing}
+                className={`w-full rounded-full px-8 py-4 font-fun text-lg font-700 text-white shadow-lg transition hover:scale-[1.02] disabled:opacity-60 ${
+                  recording ? "bg-coral animate-pulse" : "bg-sky-500"
                 }`}
               >
-                {m.content}
-              </span>
-            </div>
-          ))}
+                {recording ? "Stop 🔴" : transcribing ? "Listening… 👂" : "Tap to talk 🎤"}
+              </button>
+            )}
+
+            <form onSubmit={(e) => { e.preventDefault(); ask(text); }} className={`flex items-center gap-2 ${micSupported ? "mt-3" : ""}`}>
+              <input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                maxLength={500}
+                placeholder={micSupported ? "…or type a message" : "Type a message…"}
+                className="min-w-0 flex-1 rounded-full border-2 border-sky/30 bg-sky/5 px-5 py-3 font-round outline-none focus:border-sky-500"
+              />
+              <button
+                type="submit"
+                disabled={busy || !text.trim()}
+                className="rounded-full bg-coral px-5 py-3 font-fun font-700 text-white shadow transition hover:scale-105 disabled:opacity-50"
+              >
+                Send
+              </button>
+            </form>
+          </div>
         </div>
-      )}
-      {busy && <p className="mt-2 font-round text-slate-400">Thinking… 💭</p>}
 
-      {/* Type to your buddy */}
-      <form onSubmit={(e) => { e.preventDefault(); ask(text); }} className="mt-5 flex items-center gap-2">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          maxLength={500}
-          placeholder="Type a message…"
-          className="min-w-0 flex-1 rounded-full border-2 border-sky/40 bg-white px-5 py-3 font-round text-lg outline-none focus:border-sky-500"
-        />
-        <button
-          type="submit"
-          disabled={busy || !text.trim()}
-          className="rounded-full bg-coral px-5 py-3 font-fun font-700 text-white shadow transition hover:scale-105 disabled:opacity-50"
+        {/* Right: scrollable chat */}
+        <div
+          ref={chatRef}
+          className="max-h-[70vh] min-h-[16rem] space-y-3 overflow-y-auto rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-slate-100"
         >
-          Send
-        </button>
-      </form>
-
-      {/* Or talk out loud (when the browser supports it) */}
-      {micSupported && (
-        <button
-          onClick={talk}
-          disabled={listening || busy}
-          className="mt-3 rounded-full bg-sky-500 px-8 py-3 font-fun text-lg font-700 text-white shadow-lg transition hover:scale-105 disabled:opacity-60"
-        >
-          {listening ? "Listening… 🎤" : "Tap to talk 🎤"}
-        </button>
-      )}
+          {messages.length === 0 ? (
+            <div className="flex h-full min-h-[14rem] items-center justify-center text-center font-round text-slate-400">
+              Your chat will show up here 💬
+            </div>
+          ) : (
+            messages.map((m, i) =>
+              m.role === "user" ? (
+                <div key={i} className="flex justify-end">
+                  <span className="max-w-[85%] rounded-2xl rounded-br-md bg-coral px-4 py-2 font-round text-white shadow-sm">
+                    {m.content}
+                  </span>
+                </div>
+              ) : (
+                <div key={i} className="flex items-end justify-start gap-2">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky/15 text-lg">🤖</span>
+                  <span className="max-w-[85%] rounded-2xl rounded-bl-md bg-sky/10 px-4 py-2 font-round text-slate-700 ring-1 ring-sky/20">
+                    {m.content}
+                  </span>
+                </div>
+              ),
+            )
+          )}
+        </div>
+      </div>
     </div>
   );
 }

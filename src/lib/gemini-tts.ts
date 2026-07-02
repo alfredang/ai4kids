@@ -4,6 +4,7 @@
  * (free-tier / dev). Returns { base64, mime } playable in an <audio>, or null.
  */
 import { getCredential } from "@/lib/secrets";
+import { stripForSpeech } from "@/lib/strip-emoji";
 
 const GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts";
 // Deepgram Aura on Workers AI — supports named voices via `speaker` and returns
@@ -13,17 +14,6 @@ const CF_TTS_VOICE = "thalia";
 
 export type Speech = { base64: string; mime: string };
 type Attempt = { audio: Speech | null; note: string };
-
-/** Remove emoji / pictographs so TTS doesn't read them aloud. Display text keeps them. */
-function stripForSpeech(text: string): string {
-  return text
-    .replace(/\p{Extended_Pictographic}/gu, "") // emoji & pictographs
-    .replace(/[\u{1F1E6}-\u{1F1FF}]/gu, "") // flag regional indicators
-    .replace(/[\u{1F3FB}-\u{1F3FF}]/gu, "") // skin-tone modifiers
-    .replace(/[‍️︎⃣]/gu, "") // ZWJ, variation selectors, keycap combiner
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
 
 /** Wrap raw 16-bit PCM (Gemini returns audio/L16) in a WAV header so browsers can play it. */
 function pcmToWav(pcm: Buffer, rate = 24000, ch = 1, bits = 16): Buffer {

@@ -52,6 +52,16 @@ export default async function LearnHome() {
   const cardGames = all.filter((a) => a.category === "free-games");
   const cardPlayed = cardGames.filter((a) => bestById.get(a.id) != null).length;
 
+  // "Coming soon" (sneak-peek) tiles sink to the bottom of the grid. Hubs
+  // (escape-room/free-games) and jigsaw aren't sneak-peeks. Stable sort keeps
+  // each group's original sortOrder.
+  const isComingSoon = (a: (typeof all)[number]) =>
+    a.category !== "escape-room" &&
+    a.category !== "free-games" &&
+    a.slug !== "ai-jigsaw" &&
+    !(a.live && LIVE_ROUTES[a.slug]);
+  const ordered = [...all].sort((x, y) => Number(isComingSoon(x)) - Number(isComingSoon(y)));
+
   return (
     <div>
       {/* Stat banner */}
@@ -81,7 +91,7 @@ export default async function LearnHome() {
       {/* Activity cards */}
       <h2 className="mt-8 font-fun text-2xl font-700 text-slate-900">Activities</h2>
       <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {all.flatMap((a) => {
+        {ordered.flatMap((a) => {
           // Bunch all escape rooms into one tile, emitted at the first one.
           if (a.category === "escape-room") {
             return a.id === escapeRooms[0]?.id ? [<EscapeRoomsTile key="escape-hub" count={escapeRooms.length} played={escapePlayed} />] : [];

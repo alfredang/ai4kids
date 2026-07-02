@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { getPortalSession } from "@/lib/portal-session"
-import { askClaude } from "@/lib/ai"
-import { generateKidSpeech } from "@/lib/gemini-tts"
+import { generateKidReply } from "@/lib/gemini-chat"
 
 export const maxDuration = 60;
 const schema = z.object({
@@ -31,12 +30,9 @@ export async function POST(req: Request) {
     .map((m) => `${m.role === "user" ? "Child" : "Buddy"}: ${m.content.trim()}`)
     .join("\n\n");
 
-  const reply = (await askClaude(conversation, { system: KID_SYSTEM, model: "haiku" }))
+  const reply = (await generateKidReply(conversation, KID_SYSTEM))
     ?? "Hmm, my ears are sleepy! Can you say that again?";
 
-  const speech = await generateKidSpeech(reply); // null → client falls back to browser voice
-  return NextResponse.json({
-    reply,
-    audio: speech ? `data:${speech.mime};base64,${speech.base64}` : null,
-  });
+  // Text returns fast; audio is fetched separately via /api/learn/buddy/speak.
+  return NextResponse.json({ reply });
 }
