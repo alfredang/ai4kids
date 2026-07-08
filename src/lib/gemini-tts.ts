@@ -10,7 +10,7 @@ const GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts";
 // Deepgram Aura on Workers AI — supports named voices via `speaker` and returns
 // binary MP3. `luna` is a warm, gentle voice suited to a kids buddy.
 const CF_TTS_MODEL = "@cf/deepgram/aura-1";
-const CF_TTS_VOICE = "thalia";
+const CF_TTS_VOICE = "luna";
 
 export type Speech = { base64: string; mime: string };
 type Attempt = { audio: Speech | null; note: string };
