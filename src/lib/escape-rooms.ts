@@ -328,22 +328,6 @@ export type Station = {
   puzzle: EscapeRoomPuzzle;
 };
 
-/** A non-interactive piece of scenery painted into the room background. */
-export type Decor = {
-  emoji: string;
-  /** Position, 0–100 (% from left / top). */
-  x: number;
-  y: number;
-  /** Font size in rem (default 2.5). */
-  size?: number;
-  /** 0–1 opacity (default 1). */
-  opacity?: number;
-  /** Slowly rotate (gears, fans). */
-  spin?: boolean;
-  /** Gently bob up and down (clouds, balloons). */
-  float?: boolean;
-};
-
 /* ------------------------------------------------------------------ */
 /* Navigable room-grid layout (top-down rooms + walls + free movement) */
 /* ------------------------------------------------------------------ */
@@ -358,6 +342,9 @@ export type GridCell = {
   gh?: number; // grid height in cells (default 1)
   /** Station whose puzzle "machine" stands in this room. */
   stationId?: string;
+  /** Where the machine stands, as 0–1 fractions of the room (default centred). */
+  mx?: number;
+  my?: number;
   role?: "spawn" | "puzzle" | "exit";
   /** Lock this room's machine until this station id is solved. */
   requires?: string;
@@ -412,6 +399,25 @@ export type RoomNote = {
   art?: "crossing" | "coremap";
 };
 
+/** A purely cosmetic prop placed in a room — no interaction, no collision. */
+export type RoomDecor = {
+  /** Cell id the prop stands in. */
+  room: string;
+  /** Art key into the map's prop SVG set (e.g. "crate", "barrel", "serverRack"). */
+  art: string;
+  /** Position within the room, as 0..1 fractions of its width / height. */
+  x: number;
+  y: number;
+  /** Size multiplier (default 1). Ignored when w/h are set. */
+  scale?: number;
+  /** Mirror horizontally for variety. */
+  flip?: boolean;
+  /** Explicit size as fractions of the room's width / height → drawn stretched
+   *  (e.g. a cable conduit running across the room). Both must be set. */
+  w?: number;
+  h?: number;
+};
+
 /** The grid of rooms, walls and world objects for a navigable escape room. */
 export type RoomLayout = {
   cols: number;
@@ -426,6 +432,8 @@ export type RoomLayout = {
   /** Optional pick-up-and-carry mechanic (cores / artefacts / bottles). */
   carry?: CarryConfig;
   notes?: RoomNote[];
+  /** Purely cosmetic props scattered in rooms (drawn behind machines). */
+  decor?: RoomDecor[];
 };
 
 export type EscapeRoom = {
@@ -450,8 +458,6 @@ export type EscapeRoom = {
   floorKind: "metal" | "tile" | "wood";
   /** Hand-drawn SVG backdrop illustration for the room (no emojis). */
   scene: SceneKind;
-  /** Legacy emoji scenery (no longer painted; kept for back-compat). */
-  decor: Decor[];
   /** Emoji avatar that explores the room. */
   character: string;
   /** Story setup shown before entering. */
@@ -462,11 +468,10 @@ export type EscapeRoom = {
   /** Optional special exit mechanism (otherwise: solve all, walk out). */
   exit?: RoomCipherExit | RoomUnscrambleExit;
   /**
-   * Optional navigable room-grid layout. When present, the room is played as a
-   * top-down map of rooms + walls with free movement (see RoomMap); when absent
-   * it falls back to the legacy single-scene side view.
+   * Navigable room-grid layout — the room is played as a top-down map of rooms +
+   * walls with free movement (see RoomMap).
    */
-  layout?: RoomLayout;
+  layout: RoomLayout;
 };
 
 export const ESCAPE_ROOMS: EscapeRoom[] = [
@@ -484,15 +489,6 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
     pattern: "circuit",
     floorKind: "metal",
     scene: "lab",
-    decor: [
-      { emoji: "🪐", x: 84, y: 15, size: 3.2, float: true },
-      { emoji: "🛰️", x: 22, y: 13, size: 2.2, float: true },
-      { emoji: "⚙️", x: 9, y: 47, size: 2.6, opacity: 0.85, spin: true },
-      { emoji: "⚙️", x: 92, y: 58, size: 1.8, opacity: 0.8, spin: true },
-      { emoji: "📡", x: 60, y: 12, size: 1.8, opacity: 0.85 },
-      { emoji: "✨", x: 36, y: 10, size: 1.1, opacity: 0.8 },
-      { emoji: "✨", x: 74, y: 40, size: 0.9, opacity: 0.7 },
-    ],
     character: "🧑‍🚀",
     intro:
       "Beep boop! You're exploring Professor Pixel's Robot Lab when the door clicks shut. Fix the three machines to light up three secret words on the display — where they all cross is the code that opens the door!",
@@ -599,10 +595,10 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
         { id: "entrance", label: "Entrance", gx: 0, gy: 0, role: "spawn" },
         { id: "atrium", label: "Main Lab", gx: 1, gy: 0, gw: 2 },
         { id: "exit", label: "Exit Keypad", gx: 3, gy: 0, role: "exit" },
-        { id: "decoder", label: "Symbol Decoder", gx: 0, gy: 1, stationId: "decoder", role: "puzzle" },
-        { id: "robot", label: "Robot Helper", gx: 1, gy: 1, stationId: "robot", role: "puzzle" },
-        { id: "panel", label: "Control Panel", gx: 2, gy: 1, stationId: "panel", role: "puzzle" },
-        { id: "poster", label: "Word Display", gx: 3, gy: 1, stationId: "poster", role: "puzzle" },
+        { id: "decoder", label: "Symbol Decoder", gx: 0, gy: 1, stationId: "decoder", role: "puzzle", mx: 0.34, my: 0.42 },
+        { id: "robot", label: "Robot Helper", gx: 1, gy: 1, stationId: "robot", role: "puzzle", mx: 0.66, my: 0.46 },
+        { id: "panel", label: "Control Panel", gx: 2, gy: 1, stationId: "panel", role: "puzzle", mx: 0.68, my: 0.36 },
+        { id: "poster", label: "Word Display", gx: 3, gy: 1, stationId: "poster", role: "puzzle", mx: 0.38, my: 0.66 },
       ],
       doors: [
         ["entrance", "atrium"],
@@ -623,6 +619,32 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
           art: "crossing",
         },
       ],
+      decor: [
+        // Main Lab — a row of server racks along the top wall...
+        { room: "atrium", art: "serverRack", x: 0.09, y: 0.22, scale: 1.5 },
+        { room: "atrium", art: "serverRack", x: 0.2, y: 0.22, scale: 1.5 },
+        { room: "atrium", art: "serverRack", x: 0.31, y: 0.22, scale: 1.5 },
+        // ...with cables drooping from them across to the far wall...
+        { room: "atrium", art: "cable", x: 0.67, y: 0.19, w: 0.65, h: 0.2 },
+        // ...and a build area on the floor below (kept off the bottom-wall doors).
+        { room: "atrium", art: "halfRobot", x: 0.1, y: 0.8, scale: 1.2 },
+        { room: "atrium", art: "crate", x: 0.94, y: 0.85, scale: 0.8 },
+        // A storage shelf in the upper-right corner.
+        { room: "atrium", art: "shelf", x: 0.9, y: 0.24, scale: 1.3 },
+      
+        // A rack against the Word Display wall, cabled to the wall beside it.
+        { room: "poster", art: "serverRack", x: 0.8, y: 0.26, scale: 1.35 },
+        { room: "poster", art: "cable", x: 0.38, y: 0.24, w: 0.7, h: 0.18 },
+        // Half-built robots being assembled around the lab (hugging corners).
+        { room: "robot", art: "halfRobot", x: 0.24, y: 0.76, scale: 1.4 },
+        { room: "decoder", art: "halfRobot", x: 0.76, y: 0.74, scale: 1.4, flip: true },
+        { room: "entrance", art: "halfRobot", x: 0.87, y: 0.2, scale: 1.25 },
+        { room: "entrance", art: "crate", x: 0.13, y: 0.82, scale: 1.1 },
+        // Dummy control monitors (non-interactive) in the Control Panel & Exit rooms.
+        { room: "panel", art: "screen", x: 0.28, y: 0.76, scale: 1.15 },
+        { room: "exit", art: "screen", x: 0.26, y: 0.3, scale: 1.2 },
+        { room: "exit", art: "screen", x: 0.74, y: 0.3, scale: 1.2 },
+      ],
     },
   },
   {
@@ -639,15 +661,6 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
     pattern: "dots",
     floorKind: "tile",
     scene: "hero",
-    decor: [
-      { emoji: "🦸", x: 84, y: 16, size: 3.2 },
-      { emoji: "⚡", x: 50, y: 8, size: 2, float: true },
-      { emoji: "💥", x: 20, y: 16, size: 2, opacity: 0.9, float: true },
-      { emoji: "🦾", x: 13, y: 50, size: 2.2, opacity: 0.95 },
-      { emoji: "⭐", x: 74, y: 40, size: 1.4, opacity: 0.85 },
-      { emoji: "✨", x: 92, y: 46, size: 2, opacity: 0.9, float: true },
-      { emoji: "🛡️", x: 60, y: 12, size: 1.8, opacity: 0.85 },
-    ],
     character: "🦸",
     intro:
       "The hero suit is out of power! It needs three cores — Kindness, Honesty and Fairness. Charge up each core, then use them to reveal the suit's secret passwords and power the door open!",
@@ -787,15 +800,6 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
     pattern: "leaves",
     floorKind: "wood",
     scene: "eco",
-    decor: [
-      { emoji: "☀️", x: 86, y: 13, size: 3, float: true },
-      { emoji: "♻️", x: 16, y: 15, size: 2.4, spin: true },
-      { emoji: "🌳", x: 11, y: 52, size: 2.6, opacity: 0.95 },
-      { emoji: "🌬️", x: 60, y: 12, size: 2, opacity: 0.85, float: true },
-      { emoji: "🦋", x: 72, y: 26, size: 1.6, opacity: 0.9, float: true },
-      { emoji: "🌻", x: 92, y: 48, size: 2, opacity: 0.9 },
-      { emoji: "🔋", x: 50, y: 8, size: 1.8, opacity: 0.9 },
-    ],
     character: "🧑‍🔬",
     intro:
       "Welcome to the recycling plant! A power cut has shut the doors and powered down the exit decoder. Fix the three machines to power the plant back up — then crack the decoder code to get out!",
@@ -946,15 +950,6 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
     pattern: "dots",
     floorKind: "tile",
     scene: "history",
-    decor: [
-      { emoji: "🦁", x: 84, y: 16, size: 3.2 },
-      { emoji: "🏛️", x: 16, y: 15, size: 2.4, opacity: 0.9 },
-      { emoji: "🛺", x: 12, y: 52, size: 2.6, opacity: 0.95 },
-      { emoji: "🕰️", x: 60, y: 12, size: 2, opacity: 0.85, float: true },
-      { emoji: "📜", x: 92, y: 48, size: 2, opacity: 0.9 },
-      { emoji: "🇸🇬", x: 50, y: 8, size: 1.8, opacity: 0.9 },
-      { emoji: "⚓", x: 74, y: 40, size: 1.4, opacity: 0.8 },
-    ],
     character: "🧑‍🎓",
     intro:
       "The History Vault is locked! Explore old Singapore — answer the Merlion, trace the river lanes and sort the old days from today. Each gallery hides a national treasure — carry all three to the Time Capsule to open the vault!",
@@ -1075,15 +1070,6 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
     pattern: "dots",
     floorKind: "wood",
     scene: "festival",
-    decor: [
-      { emoji: "🏮", x: 84, y: 14, size: 2.8, float: true },
-      { emoji: "🧧", x: 20, y: 16, size: 2, opacity: 0.9, float: true },
-      { emoji: "🥮", x: 13, y: 50, size: 2.2, opacity: 0.95 },
-      { emoji: "🍜", x: 92, y: 46, size: 2.2, opacity: 0.95 },
-      { emoji: "🎶", x: 60, y: 12, size: 1.8, opacity: 0.85, float: true },
-      { emoji: "🪔", x: 50, y: 8, size: 1.8, opacity: 0.9 },
-      { emoji: "🥁", x: 74, y: 40, size: 1.6, opacity: 0.85 },
-    ],
     character: "👧",
     intro:
       "Welcome to the Lion City Carnival! Visit the four festival stalls around the Grand Hall, then drag their words into the crossword. A secret animal reads down the gold column — spell it at the exit panel to open the gate!",
@@ -1239,15 +1225,6 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
     pattern: "leaves",
     floorKind: "wood",
     scene: "nature",
-    decor: [
-      { emoji: "🦦", x: 16, y: 15, size: 2.4, opacity: 0.95, float: true },
-      { emoji: "🌳", x: 12, y: 52, size: 2.6, opacity: 0.95 },
-      { emoji: "🦜", x: 72, y: 26, size: 1.8, opacity: 0.9, float: true },
-      { emoji: "🌺", x: 92, y: 48, size: 2, opacity: 0.9 },
-      { emoji: "☀️", x: 86, y: 13, size: 3, float: true },
-      { emoji: "🦋", x: 60, y: 12, size: 1.6, opacity: 0.85, float: true },
-      { emoji: "🌿", x: 50, y: 8, size: 1.8, opacity: 0.9 },
-    ],
     character: "👦",
     intro:
       "You're on the Garden City Trail when the park gate clicks shut! Explore the Lazy River and crack the ranger's code to light up the trail words — then read the ranger's note to work out the hidden one. Once you've read the whole map, walk the trail it shows to find the lost gate key — then carry it to the gate to unlock it and escape!",

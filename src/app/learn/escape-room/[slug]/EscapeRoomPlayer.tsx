@@ -10,31 +10,14 @@ import {
   type RoomCipherExit,
   type RoomNote,
   type RoomUnscrambleExit,
-  type SceneKind,
   type Station,
 } from "@/lib/escape-rooms";
 import type { SessionStateDTO, PlayerDTO } from "@/lib/escape-session";
-import { buildGeometry, roomAt, centerOf, moveWithCollision, type Point } from "@/lib/escape-geometry";
+import { buildGeometry, roomAt, centerOf, moveWithCollision, type Point, type Rect } from "@/lib/escape-geometry";
 
 const POINTS_FIRST_TRY = 10;
 const POINTS_WITH_HELP = 6;
-const WALK_MS = 600;
 const POLL_MS = 1300;
-
-/** Where the character idles (x/y as % of the scene), bottom-left of the room. */
-const IDLE_POS = { x: 10, y: 78 };
-
-/**
- * The floor (ground plane) starts at this % from the top; scenery sits above it.
- * Stations' authored y (~22 back … ~56 front) is remapped onto the floor band
- * below the horizon so every station's base lands clearly on the floor, not at
- * the horizon seam. Applied to the marker, walk target, and co-op presence so
- * everything stays aligned.
- */
-const FLOOR_TOP = 44;
-const groundedY = (y: number) => 48 + (y - 22) * 0.65;
-
-const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
 type Mode = null | "solo" | "coop";
 
@@ -149,11 +132,7 @@ function SoloRoom({ room }: { room: EscapeRoom }) {
     );
   }
 
-  return room.layout ? (
-    <RoomMap room={room} solvedIds={solvedIds} onSolve={onSolve} onEscape={() => setEscaped(true)} />
-  ) : (
-    <RoomScene room={room} solvedIds={solvedIds} onSolve={onSolve} onEscape={() => setEscaped(true)} />
-  );
+  return <RoomMap room={room} solvedIds={solvedIds} onSolve={onSolve} onEscape={() => setEscaped(true)} />;
 }
 
 /* ------------------------------------------------------------------ */
@@ -399,7 +378,7 @@ function CoopRoom({ room, onLeave }: { room: EscapeRoom; onLeave: () => void }) 
     others: st.players.filter((p) => p.learnerId !== st.you),
     onPresence,
   };
-  return room.layout ? <RoomMap {...sceneProps} /> : <RoomScene {...sceneProps} />;
+  return <RoomMap {...sceneProps} />;
 }
 
 /** A horizontal row of player avatars (lobby + results). */
@@ -427,457 +406,15 @@ function PlayerStrip({ room, players, youId }: { room: EscapeRoom; players: Play
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Shared room scene (used by both solo and co-op)                     */
-/* ------------------------------------------------------------------ */
-
 type ScenePlayer = Pick<PlayerDTO, "learnerId" | "name" | "atStation">;
-
-function RoomScene({
-  room,
-  solvedIds,
-  onSolve,
-  onEscape,
-  isCoop = false,
-  others = [],
-  onPresence,
-}: {
-  room: EscapeRoom;
-  solvedIds: string[];
-  onSolve: (stationId: string, firstTry: boolean) => void;
-  onEscape: () => void;
-  /** True in co-op — shows a "You" tag on the player's character. */
-  isCoop?: boolean;
-  others?: ScenePlayer[];
-  onPresence?: (atStation: string | null) => void;
-}) {
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [walkingTo, setWalkingTo] = useState<string | null>(null);
-  const [charPos, setCharPos] = useState(IDLE_POS);
-  const [facingLeft, setFacingLeft] = useState(false);
-  const [doorMsg, setDoorMsg] = useState(false);
-  const [doorOpen, setDoorOpen] = useState(false);
-  // Suit-console progress, lifted here so unscrambled cores stay solved even if
-  // the player closes the console and walks away (the keypad itself unmounts).
-  const [coresDone, setCoresDone] = useState<number[]>([]);
-  const [wrongCount, setWrongCount] = useState(0);
-  const [hintShown, setHintShown] = useState(false);
-  const [justSolved, setJustSolved] = useState(false);
-
-  const total = room.stations.length;
-  const allSolved = solvedIds.length >= total;
-  const openStation = room.stations.find((s) => s.id === openId) ?? null;
-  // Already solved (by me earlier, or by a teammate) → show a read-only recap.
-  const reviewing = !!openStation && solvedIds.includes(openStation.id) && !justSolved;
-  const lockPuzzle = justSolved || reviewing;
-
-  // Trail maze: its route order stays hidden until the prerequisite "map" station
-  // (`unlockedBy`) is solved — read the map to learn which way to walk.
-  const orderUnlocked =
-    openStation?.puzzle.kind !== "trailmaze" ||
-    !openStation.puzzle.unlockedBy ||
-    solvedIds.includes(openStation.puzzle.unlockedBy);
-
-  // Exit code: the 1-indexed Column & Row where the word-search words all
-  // cross. The player reads it off the labelled grid and keys it into the door.
-  const codeSlots = useMemo(() => {
-    for (const s of room.stations) {
-      if (s.puzzle.kind === "wordsearch" && s.puzzle.intersection) {
-        const [row, col] = s.puzzle.intersection;
-        return [
-          { value: String(row + 1) },
-          { value: String(col + 1) },
-        ];
-      }
-    }
-    return [];
-  }, [room.stations]);
-  const usesCodeExit = codeSlots.length > 0;
-  const exitCode = codeSlots.map((d) => d.value).join("");
-
-  // Special doors: a console that fills in as you solve stations and opens any
-  // time (the escape itself stays gated on completing the puzzle inside).
-  const cipherExit = room.exit?.kind === "cipher" ? room.exit : null;
-  const unscrambleExit = room.exit?.kind === "unscramble" ? room.exit : null;
-  const specialExit = !!room.exit;
-
-  // For the open word-search station: which target words are still hidden
-  // because the machine that lights them up isn't solved yet, plus the picture
-  // (emoji) clue to show in place of each revealed word. The grid stays fully
-  // tappable the whole time — it's chained, never locked out.
-  const norm = (w: string) => w.toUpperCase().replace(/[^A-Z]/g, "");
-  const { hiddenWords, wordHints } = useMemo(() => {
-    const hidden = new Set<string>();
-    const hints = new Map<string, string>();
-    if (openStation?.puzzle.kind !== "wordsearch") return { hiddenWords: hidden, wordHints: hints };
-    const providerOf = new Map<string, { id: string; emoji: string }>();
-    for (const s of room.stations) {
-      for (const clue of s.provides ?? []) {
-        if (clue.kind === "word" && clue.to === openStation.id) {
-          providerOf.set(norm(clue.word), { id: s.id, emoji: clue.emoji });
-        }
-      }
-    }
-    for (const w of openStation.puzzle.words) {
-      const provider = providerOf.get(norm(w));
-      if (!provider) continue;
-      hints.set(norm(w), provider.emoji);
-      if (!solvedIds.includes(provider.id)) hidden.add(norm(w));
-    }
-    return { hiddenWords: hidden, wordHints: hints };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openStation, room.stations, solvedIds]);
-
-  useEffect(() => {
-    setWrongCount(0);
-    setHintShown(false);
-    setJustSolved(false);
-  }, [openId]);
-
-  function walkTo(x: number, y: number) {
-    setFacingLeft(x < charPos.x);
-    setCharPos({ x: clamp(x, 4, 92), y: clamp(y, 20, 82) });
-  }
-
-  function visit(station: Station) {
-    // Solved stations stay clickable so you can walk back and review the puzzle
-    // (and re-check the number it gave you for the door).
-    if (openId || walkingTo) return;
-    setWalkingTo(station.id);
-    walkTo(station.x, groundedY(station.y) + 12);
-    onPresence?.(station.id);
-    window.setTimeout(() => {
-      setOpenId(station.id);
-      setWalkingTo(null);
-    }, WALK_MS);
-  }
-
-  function closeModal() {
-    setOpenId(null);
-    onPresence?.(null);
-  }
-
-  function handleSolved() {
-    if (justSolved || !openStation) return;
-    setJustSolved(true);
-    onSolve(openStation.id, wrongCount === 0 && !hintShown);
-  }
-
-  function tryDoor() {
-    if (openId || walkingTo || doorOpen) return;
-    // Special door: the console is viewable any time (it fills in as you solve
-    // the stations); the input only unlocks once every piece is in.
-    if (specialExit) {
-      setWalkingTo("__door__");
-      walkTo(82, 52);
-      window.setTimeout(() => {
-        setWalkingTo(null);
-        setDoorOpen(true);
-      }, WALK_MS + 150);
-      return;
-    }
-    if (!allSolved) {
-      setDoorMsg(true);
-      window.setTimeout(() => setDoorMsg(false), 1800);
-      return;
-    }
-    setWalkingTo("__door__");
-    walkTo(82, 52);
-    window.setTimeout(() => {
-      setWalkingTo(null);
-      // Code-exit rooms: key in the code you collected. Otherwise, just leave.
-      if (usesCodeExit) setDoorOpen(true);
-      else onEscape();
-    }, WALK_MS + 150);
-  }
-
-  return (
-    <>
-      <div className={`relative mt-4 h-[460px] overflow-hidden rounded-[2rem] shadow-sm ring-1 ${room.ring} sm:h-[520px]`}>
-        <SceneBackdrop room={room} />
-
-        {/* Hint / progress banner */}
-        <div className="absolute inset-x-0 top-0 flex justify-center p-3">
-          <div className="rounded-full bg-white/85 px-4 py-1.5 font-fun text-xs font-700 text-slate-600 shadow-sm backdrop-blur">
-            {allSolved
-              ? usesCodeExit
-                ? "🔢 All solved — open the door and key in the crossing's Column & Row!"
-                : cipherExit
-                  ? cipherExit.readyHint ?? "🔣 All set — open the door and crack the code!"
-                  : unscrambleExit
-                    ? unscrambleExit.readyHint ?? "🔤 All revealed — open the door and unscramble the words!"
-                    : "🔓 All done — head to the door!"
-              : cipherExit
-                ? `${cipherExit.progressHint ?? "🔣 Solve the puzzles to power up the lock"}  ·  ${solvedIds.length}/${total}`
-                : unscrambleExit
-                  ? `${unscrambleExit.progressHint ?? "🔤 Solve the puzzles to reveal the words"}  ·  ${solvedIds.length}/${total}`
-                  : `Tap an object to solve its puzzle 🔍  ·  ${solvedIds.length}/${total}`}
-          </div>
-        </div>
-
-        {/* Stations — each rendered as an object standing in the room, themed to
-            the scene (holder + stand + ground shadow) so it reads as part of it. */}
-        {room.stations.map((s) => {
-          const done = solvedIds.includes(s.id);
-          const th = STATION_THEME[room.scene];
-          const icon = STATION_ICON[`${room.slug}:${s.id}`];
-          return (
-            <button
-              key={s.id}
-              onClick={() => visit(s)}
-              disabled={!!openId || !!walkingTo}
-              aria-label={`${s.label}${done ? " (solved — tap to review)" : ""}`}
-              className="group absolute -translate-x-1/2 -translate-y-1/2 disabled:cursor-default"
-              style={{ left: `${s.x}%`, top: `${groundedY(s.y)}%` }}
-            >
-              <span className="relative flex flex-col items-center">
-                {/* hover-only glow — a resting station stays grounded, not floaty */}
-                <span
-                  aria-hidden
-                  className={`pointer-events-none absolute top-1 left-1/2 h-14 w-14 -translate-x-1/2 rounded-full opacity-0 blur-md transition group-hover:opacity-60 ${
-                    done ? "bg-emerald-300/40" : th.glow
-                  }`}
-                />
-                {/* device holder */}
-                <span className="relative z-10">
-                  <span
-                    className={`flex h-16 w-16 items-center justify-center rounded-2xl rounded-b-lg text-4xl shadow-md ring-2 backdrop-blur-sm transition ${
-                      done ? "bg-mint/50 text-emerald-600 ring-emerald-300" : `${th.holder} ${th.ring} group-hover:scale-105`
-                    }`}
-                  >
-                    {done ? (
-                      <StationIcon name="check" className="h-9 w-9" />
-                    ) : icon ? (
-                      <StationIcon name={icon} className="h-9 w-9" />
-                    ) : (
-                      s.emoji
-                    )}
-                  </span>
-                  {!done && (
-                    <span className="absolute -right-1 -top-1 flex h-4 w-4 animate-ping rounded-full bg-coral/60" aria-hidden />
-                  )}
-                </span>
-                {/* pedestal post + foot, planting the object on the floor */}
-                <span aria-hidden className={`relative z-10 -mt-1 h-3 w-7 rounded-b-md ${done ? "bg-emerald-400/70" : th.stand}`} />
-                <span aria-hidden className={`relative z-10 -mt-px h-2 w-11 rounded-[50%] ${done ? "bg-emerald-500/60" : th.stand}`} />
-                {/* contact shadow cast on the floor (no gap → reads as grounded) */}
-                <span aria-hidden className="-mt-1.5 h-3 w-14 rounded-[50%] bg-black/40 blur-[4px]" />
-                {/* label */}
-                <span className="mt-1 block whitespace-nowrap rounded-full bg-white/85 px-2 py-0.5 text-center font-fun text-[11px] font-700 text-slate-600 shadow-sm">
-                  {s.label}
-                </span>
-              </span>
-            </button>
-          );
-        })}
-
-        {/* Exit — a transparent hit-area over the carved doorway niche (the
-            visual door is the SVG alcove behind it; no emoji door slab). */}
-        <button
-          onClick={tryDoor}
-          disabled={!!openId || !!walkingTo}
-          aria-label={allSolved ? "Open the exit door" : specialExit ? "Open the door console" : "Exit door (locked)"}
-          className="absolute bottom-[56%] right-[6%] h-24 w-14 disabled:cursor-default"
-        >
-          {/* label on the floor under the threshold */}
-          <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/80 px-2 py-0.5 font-fun text-[11px] font-700 text-slate-700 shadow-sm">
-            Exit
-          </span>
-        </button>
-
-        {doorMsg && (
-          <div className="absolute bottom-[49%] right-[5%] rounded-2xl bg-coral px-3 py-1.5 font-fun text-xs font-700 text-white shadow-lg">
-            Solve every object first! 🔒
-          </div>
-        )}
-
-        {/* Other players (co-op) */}
-        {others.map((p, i) => {
-          const pos = otherPos(room, p.atStation, i);
-          return (
-            <div
-              key={p.learnerId}
-              className="pointer-events-none absolute z-[9] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center transition-all ease-in-out"
-              style={{ left: `${pos.x}%`, top: `${pos.y}%`, transitionDuration: `${WALK_MS}ms` }}
-            >
-              <span className="text-5xl opacity-90 drop-shadow-md sm:text-6xl">{room.character}</span>
-              <span className="-mt-1 rounded-full bg-white/80 px-2 py-0.5 font-fun text-[10px] font-700 text-slate-600 shadow-sm">
-                {p.name.split(" ")[0]}
-              </span>
-            </div>
-          );
-        })}
-
-        {/* Character — "me", moves diagonally to its target. */}
-        <div
-          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2 text-5xl transition-all ease-in-out sm:text-6xl"
-          style={{ left: `${charPos.x}%`, top: `${charPos.y}%`, transitionDuration: `${WALK_MS}ms` }}
-        >
-          <span
-            className="inline-block drop-shadow-lg transition-transform"
-            style={{ transform: `scaleX(${facingLeft ? -1 : 1}) rotate(${walkingTo ? "-6deg" : "0deg"})` }}
-          >
-            {room.character}
-          </span>
-          <span
-            className={`mx-auto mt-0.5 block h-1.5 w-8 rounded-full bg-slate-900/20 blur-[2px] transition-opacity ${
-              walkingTo ? "opacity-40" : "opacity-70"
-            }`}
-            aria-hidden
-          />
-          {/* "You" tag — only in co-op */}
-          {isCoop && (
-            <span className="mx-auto mt-0.5 block w-fit whitespace-nowrap rounded-full bg-coral px-2 py-0.5 font-fun text-[10px] font-700 text-white shadow">
-              You
-            </span>
-          )}
-        </div>
-      </div>
-
-      <p className="mt-3 text-center font-round text-sm text-slate-400">
-        {others.length > 0
-          ? "Solve the objects together — anything a teammate unlocks unlocks for everyone!"
-          : "Walk up to each object and solve its puzzle, then open the exit door to escape."}
-      </p>
-
-      {/* Puzzle modal */}
-      {openStation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <button
-            aria-label="Close puzzle"
-            onClick={closeModal}
-            className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
-          />
-          <div className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl ring-1 ring-amber-100">
-            <div className="flex items-center gap-2 font-fun font-700 text-slate-700">
-              <StationIcon
-                name={STATION_ICON[`${room.slug}:${openStation.id}`] ?? "panel"}
-                className="h-6 w-6 text-slate-500"
-              />
-              {openStation.label}
-              <button
-                onClick={closeModal}
-                aria-label="Close"
-                className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-500 transition hover:bg-slate-200 hover:text-slate-700"
-              >
-                ✕
-              </button>
-            </div>
-
-            {reviewing ? (
-              <div className="mt-4">
-                <div className="rounded-2xl bg-sky/10 py-2 text-center font-fun text-sm font-700 text-sky-700 ring-1 ring-sky/20">
-                  ✅ Already solved — here&apos;s a recap.
-                </div>
-                <PuzzleReview puzzle={openStation.puzzle} wordHints={wordHints} />
-                <div className="mt-4 rounded-2xl bg-mint/15 p-4 text-center ring-1 ring-mint/30">
-                  <p className="font-round text-sm text-slate-600">{openStation.puzzle.learn}</p>
-                </div>
-                <div className="mt-4 text-center">
-                  <button
-                    onClick={closeModal}
-                    className="rounded-full bg-coral px-7 py-2.5 font-fun font-700 text-white shadow transition hover:scale-105"
-                  >
-                    Got it 👍
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <PuzzleView
-                  key={openStation.id}
-                  puzzle={openStation.puzzle}
-                  solved={lockPuzzle}
-                  hiddenWords={hiddenWords}
-                  wordHints={wordHints}
-                  showCoords
-                  orderUnlocked={orderUnlocked}
-                  onSolved={handleSolved}
-                  onWrong={() => setWrongCount((c) => c + 1)}
-                />
-
-                {!justSolved && (
-                  <div className="mt-5 text-center">
-                    {hintShown ? (
-                      <p className="font-round text-sm text-amber-600">💡 {openStation.puzzle.hint}</p>
-                    ) : (
-                      <button
-                        onClick={() => setHintShown(true)}
-                        className="font-fun text-sm font-600 text-slate-400 underline-offset-2 hover:text-amber-600 hover:underline"
-                      >
-                        Need a hint? 💡
-                      </button>
-                    )}
-                    {wrongCount > 0 && (
-                      <p className="mt-2 font-fun text-sm font-600 text-coral">Not quite — give it another go! 🔁</p>
-                    )}
-                  </div>
-                )}
-
-                {justSolved && (
-                  <div className="mt-6 rounded-2xl bg-mint/15 p-5 text-center ring-1 ring-mint/30">
-                    <div className="font-fun text-lg font-700 text-emerald-700">🔓 Solved!</div>
-                    <p className="mt-1 font-round text-sm text-slate-600">{openStation.puzzle.learn}</p>
-                    <button
-                      onClick={closeModal}
-                      className="mt-4 rounded-full bg-coral px-7 py-2.5 font-fun font-700 text-white shadow transition hover:scale-105"
-                    >
-                      {allSolved ? "Back to the room 🚪" : "Keep exploring 🔍"}
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Exit keypad — type the crossing's Column & Row */}
-      {doorOpen && usesCodeExit && (
-        <ExitKeypad
-          slots={codeSlots}
-          code={exitCode}
-          outro={room.outro}
-          onClose={() => setDoorOpen(false)}
-          onEscape={onEscape}
-        />
-      )}
-
-      {/* Door decoder — decrypt the cipher the machines powered up */}
-      {doorOpen && cipherExit && (
-        <CipherExitKeypad
-          exit={cipherExit}
-          solvedIds={solvedIds}
-          outro={room.outro}
-          onClose={() => setDoorOpen(false)}
-          onEscape={onEscape}
-        />
-      )}
-
-      {/* Suit console — unscramble the words each core unlocked */}
-      {doorOpen && unscrambleExit && (
-        <UnscrambleExitKeypad
-          exit={unscrambleExit}
-          solvedIds={solvedIds}
-          outro={room.outro}
-          done={coresDone}
-          onWordSolved={(i) =>
-            setCoresDone((d) => (d.includes(i) ? d : [...d, i]))
-          }
-          onClose={() => setDoorOpen(false)}
-          onEscape={onEscape}
-        />
-      )}
-    </>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /* RoomMap — navigable top-down rooms: walls, free movement, take/drop  */
 /* ------------------------------------------------------------------ */
 
 const MAP_CELL = 100; // units per grid cell
-const CHAR_R = 15; // character collision radius (units) — small enough to clear doorways
+const CHAR_R = 11; // character collision radius (units) — ~matches the sprite so it
+// sits close to walls (bigger = a visible gap; must stay well under a doorway's width)
 const MAP_SPEED = 150; // units / second (a cell is 100 units → ~0.7s to cross)
 const REACH = 58; // interaction range (units)
 
@@ -908,13 +445,13 @@ function RoomMap({
   others?: ScenePlayer[];
   onPresence?: (atStation: string | null) => void;
 }) {
-  const layout = room.layout!;
+  const layout = room.layout;
   const geo = useMemo(
     () =>
       buildGeometry(
         layout,
         { w: layout.cols * MAP_CELL, h: layout.rows * MAP_CELL },
-        { wall: 8, doorFrac: 0.62 },
+        { wall: 8, doorFrac: 0.6 },
       ),
     [layout],
   );
@@ -922,7 +459,39 @@ function RoomMap({
   const H = geo.area.h;
   const pct = (v: number, total: number) => `${(v / total) * 100}%`;
 
-  // ---- puzzle modal + progress (mirrors RoomScene) ----
+  // Solid decor (every prop except the ceiling cables, which use w/h) gets a
+  // collision box so the player bumps into racks / robots / crates instead of
+  // walking through them. Boxes are a touch smaller than the sprite so edges
+  // feel forgiving; merged with the room walls for the movement loop.
+  const collisionWalls = useMemo<Rect[]>(() => {
+    const rects: Rect[] = [...geo.walls];
+    const sp = geo.spawn;
+    for (const d of layout.decor ?? []) {
+      if (d.w != null && d.h != null) continue; // ceiling cables — walk under
+      const r = geo.floors[d.room];
+      if (!r) continue;
+      const s = d.scale ?? 1;
+      // Small base-footprint box (much smaller than the sprite) so the ~15-unit
+      // player radius doesn't create a big stand-off; you bump the prop's base,
+      // and can brush past its taller upper half.
+      const hw = 5 * s;
+      const hh = 4 * s;
+      const box = { x: r.x + r.w * d.x - hw, y: r.y + r.h * d.y - hh, w: hw * 2, h: hh * 2 };
+      // Never box in the spawn point: if the player would start inside this box
+      // (grown by its radius), skip it so they can't be trapped on entry.
+      if (
+        sp.x > box.x - CHAR_R &&
+        sp.x < box.x + box.w + CHAR_R &&
+        sp.y > box.y - CHAR_R &&
+        sp.y < box.y + box.h + CHAR_R
+      )
+        continue;
+      rects.push(box);
+    }
+    return rects;
+  }, [geo, layout.decor]);
+
+  // ---- puzzle modal + progress ----
   const [openId, setOpenId] = useState<string | null>(null);
   const [openNote, setOpenNote] = useState<string | null>(null);
   const [doorOpen, setDoorOpen] = useState(false);
@@ -948,6 +517,12 @@ function RoomMap({
   // Fog of war — only the room you're currently in is lit; every other room
   // stays fully dark + opaque, whether or not you've been there before.
   const [curRoom, setCurRoom] = useState(layout.spawn);
+  // Touch devices have no keyboard — show an on-screen D-pad instead. Detected
+  // once on mount (coarse pointer = finger/stylus as the primary input).
+  const [touch, setTouch] = useState(false);
+  useEffect(() => {
+    setTouch(typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches);
+  }, []);
 
   const total = room.stations.length;
   const allSolved = solvedIds.length >= total;
@@ -978,9 +553,16 @@ function RoomMap({
 
   // --- carry-mechanic anchors (suit/sink/recycler/station positions) ---
   const cellForStation = (sid: string) => layout.cells.find((c) => c.stationId === sid);
+  // Where a room's machine stands — its authored mx/my offset (0–1 of the room),
+  // defaulting to the centre. Used by the render, proximity list and carry anchors
+  // alike so the machine, its hit target and its charge point all stay aligned.
+  const machineAt = (cell: (typeof layout.cells)[number]): Point => {
+    const r = geo.floors[cell.id];
+    return { x: r.x + r.w * (cell.mx ?? 0.5), y: r.y + r.h * (cell.my ?? 0.5) };
+  };
   const machinePos = (sid: string): Point | null => {
     const cell = cellForStation(sid);
-    return cell && geo.floors[cell.id] ? centerOf(geo.floors[cell.id]) : null;
+    return cell && geo.floors[cell.id] ? machineAt(cell) : null;
   };
   const suitRoomId = carry && carry.mode !== "recycle" ? carry.suitRoom : null;
   const suitFloor = suitRoomId ? geo.floors[suitRoomId] : null;
@@ -1040,7 +622,7 @@ function RoomMap({
       ? "Locked — recycle all the bottles first"
       : "Locked — solve the other rooms first";
 
-  // exit mechanism — identical derivations to RoomScene
+  // exit mechanism
   const codeSlots = useMemo(() => {
     for (const s of room.stations) {
       if (s.puzzle.kind === "wordsearch" && s.puzzle.intersection) {
@@ -1116,7 +698,7 @@ function RoomMap({
     // Empty-handed — machines, notes, loose items, exit.
     for (const cell of layout.cells) {
       if (!cell.stationId) continue;
-      const c = centerOf(geo.floors[cell.id]);
+      const c = machineAt(cell);
       const gated = cellLocked(cell);
       list.push({
         key: `m-${cell.id}`,
@@ -1156,9 +738,11 @@ function RoomMap({
   const interRef = useRef(interactables);
   const modalRef = useRef(false);
   const actionRef = useRef<(n: MapInteractable | null) => void>(() => {});
+  const wallsRef = useRef<Rect[]>(collisionWalls);
   onPresenceRef.current = onPresence;
   interRef.current = interactables;
   modalRef.current = !!(openId || openNote || doorOpen);
+  wallsRef.current = collisionWalls;
 
   // movement + proximity loop
   useEffect(() => {
@@ -1172,7 +756,7 @@ function RoomMap({
         if (v.x || v.y) {
           const mag = Math.hypot(v.x, v.y) || 1;
           const sp = Math.min(mag, 1) * MAP_SPEED * dt;
-          const np = moveWithCollision(posRef.current, (v.x / mag) * sp, (v.y / mag) * sp, CHAR_R, geo.walls, geo.area);
+          const np = moveWithCollision(posRef.current, (v.x / mag) * sp, (v.y / mag) * sp, CHAR_R, wallsRef.current, geo.area);
           posRef.current = np;
           if (charRef.current) {
             charRef.current.style.left = pct(np.x, W);
@@ -1350,6 +934,26 @@ function RoomMap({
   const heldItem = carryItems.find((i) => i.id === carrying) ?? null;
   const spawnCenter = geo.spawn;
 
+  // Hold-to-move for the on-screen D-pad: writes the same velocity ref the
+  // keyboard loop reads, so touch walking runs through the identical movement +
+  // collision path. Pointer capture keeps the press alive if the finger slides
+  // off the button; up/cancel/leave all stop the character.
+  const worldDpad =
+    "flex h-12 w-12 touch-none items-center justify-center rounded-xl bg-white/85 text-2xl shadow-md ring-1 ring-slate-200 backdrop-blur transition active:scale-95 active:bg-coral/20";
+  const holdDir = (vx: number, vy: number) => ({
+    onPointerDown: (e: React.PointerEvent) => {
+      e.preventDefault();
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      velRef.current = { x: vx, y: vy };
+    },
+    onPointerUp: () => {
+      velRef.current = { x: 0, y: 0 };
+    },
+    onPointerCancel: () => {
+      velRef.current = { x: 0, y: 0 };
+    },
+  });
+
   return (
     <>
       <div
@@ -1370,6 +974,54 @@ function RoomMap({
               className={`absolute z-0 rounded-lg bg-gradient-to-br ${room.wall} opacity-90`}
               style={{ left: pct(r.x, W), top: pct(r.y, H), width: pct(r.w, W), height: pct(r.h, H) }}
             />
+          );
+        })}
+
+        {/* Cosmetic decor — drawn above the floor but below machines (z-20) and
+            below fog (z-25), so it only shows in the lit room and never blocks
+            interaction (pointer-events-none, not in `interactables`). */}
+        {(layout.decor ?? []).map((d, i) => {
+          const r = geo.floors[d.room];
+          if (!r) return null;
+          const left = pct(r.x + r.w * d.x, W);
+          const top = pct(r.y + r.h * d.y, H);
+          // Explicit w/h → a stretched run (e.g. a cable). Treated as a ceiling
+          // fixture: in the room you're in it hangs ABOVE the player (z-45 >
+          // player z-40); in other rooms it drops below the fog (z-25) so the
+          // fog-of-war still hides it.
+          if (d.w != null && d.h != null) {
+            return (
+              <svg
+                key={`decor-${i}`}
+                aria-hidden
+                viewBox="0 0 40 40"
+                preserveAspectRatio="none"
+                className={`pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 ${
+                  d.room === curRoom ? "z-[45]" : "z-10"
+                }`}
+                style={{ left, top, width: pct(r.w * d.w, W), height: pct(r.h * d.h, H) }}
+              >
+                {PROP_ART[d.art]}
+              </svg>
+            );
+          }
+          const s = d.scale ?? 1;
+          return (
+            <div
+              key={`decor-${i}`}
+              aria-hidden
+              className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2"
+              style={{ left, top }}
+            >
+              <Prop
+                art={d.art}
+                className="h-12 w-12 sm:h-14 sm:w-14"
+                style={{
+                  transform: `scale(${d.flip ? -s : s}, ${s})`,
+                  filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.4))",
+                }}
+              />
+            </div>
           );
         })}
 
@@ -1521,7 +1173,7 @@ function RoomMap({
           if (!cell.stationId) return null;
           const station = room.stations.find((s) => s.id === cell.stationId);
           if (!station) return null;
-          const c = centerOf(geo.floors[cell.id]);
+          const c = machineAt(cell);
           const solved = solvedIds.includes(cell.stationId);
           const gated = cellLocked(cell);
           const ringed = near?.key === `m-${cell.id}`;
@@ -1635,6 +1287,29 @@ function RoomMap({
             {near?.label ?? `Set down ${labelOf(carrying)}`}
           </button>
         )}
+
+        {/* On-screen D-pad — touch devices only (no keyboard to walk with). */}
+        {touch && (
+          <div className="absolute bottom-4 left-4 z-50 grid select-none grid-cols-3 gap-1">
+            <span />
+            <button {...holdDir(0, -1)} aria-label="Move up" className={worldDpad}>
+              ⬆️
+            </button>
+            <span />
+            <button {...holdDir(-1, 0)} aria-label="Move left" className={worldDpad}>
+              ⬅️
+            </button>
+            <span />
+            <button {...holdDir(1, 0)} aria-label="Move right" className={worldDpad}>
+              ➡️
+            </button>
+            <span />
+            <button {...holdDir(0, 1)} aria-label="Move down" className={worldDpad}>
+              ⬇️
+            </button>
+            <span />
+          </div>
+        )}
       </div>
 
       {/* Status bar */}
@@ -1655,115 +1330,226 @@ function RoomMap({
           </span>
         )}
         <span className="rounded-full bg-white px-3 py-1 text-slate-400 shadow-sm ring-1 ring-slate-100">
-          Move with the arrow keys or WASD · Space to interact
+          {touch
+            ? "Use the arrows to move · tap an object or the button to interact"
+            : "Move with the arrow keys or WASD · Space to interact"}
         </span>
       </div>
 
-      {/* Puzzle modal (same as RoomScene) */}
+      {/* Puzzle modal (see PuzzleModal). */}
       {openStation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <button aria-label="Close puzzle" onClick={closeModal} className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" />
-          <div className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl ring-1 ring-amber-100">
-            <div className="flex items-center gap-2 font-fun font-700 text-slate-700">
-              <StationIcon
-                name={STATION_ICON[`${room.slug}:${openStation.id}`] ?? "panel"}
-                className="h-6 w-6 text-slate-500"
-              />
-              {openStation.label}
-              <button
-                onClick={closeModal}
-                aria-label="Close"
-                className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-500 transition hover:bg-slate-200 hover:text-slate-700"
-              >
-                ✕
-              </button>
-            </div>
-            {reviewing ? (
-              <div className="mt-4">
-                <div className="rounded-2xl bg-sky/10 py-2 text-center font-fun text-sm font-700 text-sky-700 ring-1 ring-sky/20">
-                  ✅ Already solved — here&apos;s a recap.
-                </div>
-                <PuzzleReview puzzle={openStation.puzzle} wordHints={wordHints} />
-                <div className="mt-4 rounded-2xl bg-mint/15 p-4 text-center ring-1 ring-mint/30">
-                  <p className="font-round text-sm text-slate-600">{openStation.puzzle.learn}</p>
-                </div>
-                <div className="mt-4 text-center">
-                  <button onClick={closeModal} className="rounded-full bg-coral px-7 py-2.5 font-fun font-700 text-white shadow transition hover:scale-105">
-                    Got it 👍
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <PuzzleView
-                  key={openStation.id}
-                  puzzle={openStation.puzzle}
-                  solved={lockPuzzle}
-                  hiddenWords={hiddenWords}
-                  wordHints={wordHints}
-                  showCoords
-                  orderUnlocked={orderUnlocked}
-                  onSolved={handleSolved}
-                  onWrong={() => setWrongCount((c) => c + 1)}
-                />
-                {!justSolved && (
-                  <div className="mt-5 text-center">
-                    {hintShown ? (
-                      <p className="font-round text-sm text-amber-600">💡 {openStation.puzzle.hint}</p>
-                    ) : (
-                      <button
-                        onClick={() => setHintShown(true)}
-                        className="font-fun text-sm font-600 text-slate-400 underline-offset-2 hover:text-amber-600 hover:underline"
-                      >
-                        Need a hint? 💡
-                      </button>
-                    )}
-                    {wrongCount > 0 && <p className="mt-2 font-fun text-sm font-600 text-coral">Not quite — give it another go! 🔁</p>}
-                  </div>
-                )}
-                {justSolved && (
-                  <div className="mt-6 rounded-2xl bg-mint/15 p-5 text-center ring-1 ring-mint/30">
-                    <div className="font-fun text-lg font-700 text-emerald-700">🔓 Solved!</div>
-                    <p className="mt-1 font-round text-sm text-slate-600">{openStation.puzzle.learn}</p>
-                    <button onClick={closeModal} className="mt-4 rounded-full bg-coral px-7 py-2.5 font-fun font-700 text-white shadow transition hover:scale-105">
-                      Keep exploring 🔍
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
+        <PuzzleModal
+          station={openStation}
+          roomSlug={room.slug}
+          reviewing={reviewing}
+          lockPuzzle={lockPuzzle}
+          hiddenWords={hiddenWords}
+          wordHints={wordHints}
+          orderUnlocked={orderUnlocked}
+          justSolved={justSolved}
+          hintShown={hintShown}
+          wrongCount={wrongCount}
+          allSolved={allSolved}
+          onClose={closeModal}
+          onSolved={handleSolved}
+          onWrong={() => setWrongCount((c) => c + 1)}
+          onShowHint={() => setHintShown(true)}
+        />
       )}
 
       {/* Clue note */}
       {noteData && <NoteCard note={noteData} room={room} onClose={() => setOpenNote(null)} />}
 
-      {/* Exit locks (reused) */}
-      {doorOpen && usesCodeExit && (
-        <ExitKeypad slots={codeSlots} code={exitCode} outro={room.outro} onClose={() => setDoorOpen(false)} onEscape={onEscape} />
-      )}
-      {doorOpen && cipherExit && (
-        <CipherExitKeypad exit={cipherExit} solvedIds={solvedIds} outro={room.outro} onClose={() => setDoorOpen(false)} onEscape={onEscape} />
-      )}
-      {doorOpen && unscrambleExit && (
-        <UnscrambleExitKeypad
-          exit={unscrambleExit}
-          solvedIds={solvedIds}
-          outro={room.outro}
-          done={coresDone}
-          onWordSolved={(i) => setCoresDone((d) => (d.includes(i) ? d : [...d, i]))}
-          onClose={() => setDoorOpen(false)}
-          onEscape={onEscape}
-        />
-      )}
+      <ExitLocks
+        open={doorOpen}
+        codeSlots={codeSlots}
+        exitCode={exitCode}
+        cipherExit={cipherExit}
+        unscrambleExit={unscrambleExit}
+        solvedIds={solvedIds}
+        outro={room.outro}
+        coresDone={coresDone}
+        onWordSolved={(i) => setCoresDone((d) => (d.includes(i) ? d : [...d, i]))}
+        onClose={() => setDoorOpen(false)}
+        onEscape={onEscape}
+      />
     </>
   );
 }
 
+/**
+ * The puzzle pop-up: the puzzle to solve, a read-only recap once it's already
+ * solved, the hint reveal, the wrong-answer nudge, and the "Solved!" card. The
+ * room engine feeds it the current station's progress.
+ */
+function PuzzleModal({
+  station,
+  roomSlug,
+  reviewing,
+  lockPuzzle,
+  hiddenWords,
+  wordHints,
+  orderUnlocked,
+  justSolved,
+  hintShown,
+  wrongCount,
+  allSolved,
+  onClose,
+  onSolved,
+  onWrong,
+  onShowHint,
+}: {
+  station: Station;
+  roomSlug: string;
+  reviewing: boolean;
+  lockPuzzle: boolean;
+  hiddenWords: Set<string>;
+  wordHints: Map<string, string>;
+  orderUnlocked: boolean;
+  justSolved: boolean;
+  hintShown: boolean;
+  wrongCount: number;
+  allSolved: boolean;
+  onClose: () => void;
+  onSolved: () => void;
+  onWrong: () => void;
+  onShowHint: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button aria-label="Close puzzle" onClick={onClose} className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" />
+      <div className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl ring-1 ring-amber-100">
+        <div className="flex items-center gap-2 font-fun font-700 text-slate-700">
+          <StationIcon name={STATION_ICON[`${roomSlug}:${station.id}`] ?? "panel"} className="h-6 w-6 text-slate-500" />
+          {station.label}
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-500 transition hover:bg-slate-200 hover:text-slate-700"
+          >
+            ✕
+          </button>
+        </div>
+
+        {reviewing ? (
+          <div className="mt-4">
+            <div className="rounded-2xl bg-sky/10 py-2 text-center font-fun text-sm font-700 text-sky-700 ring-1 ring-sky/20">
+              ✅ Already solved — here&apos;s a recap.
+            </div>
+            <PuzzleReview puzzle={station.puzzle} wordHints={wordHints} />
+            <div className="mt-4 rounded-2xl bg-mint/15 p-4 text-center ring-1 ring-mint/30">
+              <p className="font-round text-sm text-slate-600">{station.puzzle.learn}</p>
+            </div>
+            <div className="mt-4 text-center">
+              <button onClick={onClose} className="rounded-full bg-coral px-7 py-2.5 font-fun font-700 text-white shadow transition hover:scale-105">
+                Got it 👍
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <PuzzleView
+              key={station.id}
+              puzzle={station.puzzle}
+              solved={lockPuzzle}
+              hiddenWords={hiddenWords}
+              wordHints={wordHints}
+              showCoords
+              orderUnlocked={orderUnlocked}
+              onSolved={onSolved}
+              onWrong={onWrong}
+            />
+
+            {!justSolved && (
+              <div className="mt-5 text-center">
+                {hintShown ? (
+                  <p className="font-round text-sm text-amber-600">💡 {station.puzzle.hint}</p>
+                ) : (
+                  <button
+                    onClick={onShowHint}
+                    className="font-fun text-sm font-600 text-slate-400 underline-offset-2 hover:text-amber-600 hover:underline"
+                  >
+                    Need a hint? 💡
+                  </button>
+                )}
+                {wrongCount > 0 && (
+                  <p className="mt-2 font-fun text-sm font-600 text-coral">Not quite — give it another go! 🔁</p>
+                )}
+              </div>
+            )}
+
+            {justSolved && (
+              <div className="mt-6 rounded-2xl bg-mint/15 p-5 text-center ring-1 ring-mint/30">
+                <div className="font-fun text-lg font-700 text-emerald-700">🔓 Solved!</div>
+                <p className="mt-1 font-round text-sm text-slate-600">{station.puzzle.learn}</p>
+                <button
+                  onClick={onClose}
+                  className="mt-4 rounded-full bg-coral px-7 py-2.5 font-fun font-700 text-white shadow transition hover:scale-105"
+                >
+                  {allSolved ? "Back to the room 🚪" : "Keep exploring 🔍"}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The exit locks. A room's exit is exactly one of a coordinate keypad, a cipher
+ * decoder, or an unscramble console; this renders whichever the room uses, once
+ * the door is open.
+ */
+function ExitLocks({
+  open,
+  codeSlots,
+  exitCode,
+  cipherExit,
+  unscrambleExit,
+  solvedIds,
+  outro,
+  coresDone,
+  onWordSolved,
+  onClose,
+  onEscape,
+}: {
+  open: boolean;
+  codeSlots: { value: string }[];
+  exitCode: string;
+  cipherExit: RoomCipherExit | null;
+  unscrambleExit: RoomUnscrambleExit | null;
+  solvedIds: string[];
+  outro: string;
+  coresDone: number[];
+  onWordSolved: (i: number) => void;
+  onClose: () => void;
+  onEscape: () => void;
+}) {
+  if (!open) return null;
+  if (codeSlots.length > 0)
+    return <ExitKeypad slots={codeSlots} code={exitCode} outro={outro} onClose={onClose} onEscape={onEscape} />;
+  if (cipherExit)
+    return <CipherExitKeypad exit={cipherExit} solvedIds={solvedIds} outro={outro} onClose={onClose} onEscape={onEscape} />;
+  if (unscrambleExit)
+    return (
+      <UnscrambleExitKeypad
+        exit={unscrambleExit}
+        solvedIds={solvedIds}
+        outro={outro}
+        done={coresDone}
+        onWordSolved={onWordSolved}
+        onClose={onClose}
+        onEscape={onEscape}
+      />
+    );
+  return null;
+}
+
 /** Read-only clue / "lab note" card (never "solved"). */
 function NoteCard({ note, room, onClose }: { note: RoomNote; room: EscapeRoom; onClose: () => void }) {
-  const carry = room.layout?.carry;
+  const carry = room.layout.carry;
   const chargeCarry = carry?.mode === "charge" ? carry : null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1789,8 +1575,8 @@ function NoteCard({ note, room, onClose }: { note: RoomNote; room: EscapeRoom; o
             <div className="mt-2 text-xs text-slate-400">Read the ⭐&apos;s Column &amp; Row.</div>
           </div>
         )}
-        {note.art === "coremap" && chargeCarry && room.layout && (() => {
-          const L = room.layout!;
+        {note.art === "coremap" && chargeCarry && (() => {
+          const L = room.layout;
           const stationNo = (sid?: string) => {
             const i = chargeCarry.items.findIndex((it) => it.station === sid);
             return i >= 0 ? i + 1 : null;
@@ -1856,13 +1642,6 @@ function NoteCard({ note, room, onClose }: { note: RoomNote; room: EscapeRoom; o
   );
 }
 
-/** Where to draw another player: near the object they're at, else idling. */
-function otherPos(room: EscapeRoom, atStation: string | null, idx: number) {
-  const st = room.stations.find((s) => s.id === atStation);
-  if (st) return { x: clamp(st.x + (idx % 2 ? 8 : -8), 4, 92), y: clamp(groundedY(st.y) + 15, 20, 82) };
-  return { x: clamp(20 + ((idx * 15) % 60), 4, 92), y: 80 };
-}
-
 /** Shared "you escaped" card for solo play. */
 function EscapedCard({
   room,
@@ -1902,274 +1681,6 @@ function EscapedCard({
 /* Scenery + puzzles (unchanged)                                       */
 /* ------------------------------------------------------------------ */
 
-/** Painted-in scenery for a room: textured wall, themed floor, and mood decor. */
-function SceneBackdrop({ room }: { room: EscapeRoom }) {
-  return (
-    <>
-      <div className={`absolute inset-0 bg-gradient-to-b ${room.wall}`} />
-      <div className="absolute inset-0" style={wallPattern(room.pattern)} />
-
-      {/* Background scenery — lightly scaled (keeps natural proportions) so its
-          base tucks just under the floor, which hides the overlap; the floor is
-          drawn next and occludes anything below the horizon. */}
-      <svg
-        aria-hidden
-        className="pointer-events-none absolute inset-0 h-full w-full"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-      >
-        <g transform={`scale(1, ${(FLOOR_TOP + 12) / 76})`}>
-          <SceneArt scene={room.scene} />
-        </g>
-      </svg>
-
-      {/* Round focal bodies (sun/planet/moon) as HTML circles so they stay round
-          — the stretched SVG above would squash them into ellipses. */}
-      <SceneOrbs scene={room.scene} />
-
-      <div className={`absolute inset-x-0 bottom-0 h-[56%] bg-gradient-to-b ${room.floor}`}>
-        <div className="absolute inset-0" style={floorPattern(room.floorKind)} />
-        <div className="absolute inset-x-0 top-0 h-0.5 bg-white/30" />
-      </div>
-
-      {/* Exit doorway — a floor object, drawn on top of the floor (not under it). */}
-      <svg
-        aria-hidden
-        className="pointer-events-none absolute inset-0 h-full w-full"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-      >
-        <Doorway scene={room.scene} />
-      </svg>
-    </>
-  );
-}
-
-/**
- * Hand-drawn vector scenery for each room — layered silhouettes, no emojis.
- * Drawn in a 0–100 box stretched to fill; the floor strip overlays y≈75–100,
- * so scenery sits with its base around y≈74.
- */
-function SceneArt({ scene }: { scene: SceneKind }) {
-  switch (scene) {
-    case "lab":
-      return (
-        <>
-          {/* starfield around the planet (the planet itself is an HTML orb) */}
-          {[[8, 16], [33, 14], [12, 36], [34, 34], [6, 26], [30, 24], [38, 20]].map(([x, y], i) => (
-            <circle key={i} cx={x} cy={y} r="0.7" fill="#e0f2fe" opacity="0.85" />
-          ))}
-          {/* gear rings */}
-          <circle cx="52" cy="20" r="7" fill="none" stroke="#38bdf8" strokeOpacity="0.22" strokeWidth="2.5" strokeDasharray="2 2.6" />
-          <circle cx="61" cy="33" r="4.5" fill="none" stroke="#7dd3fc" strokeOpacity="0.2" strokeWidth="2" strokeDasharray="1.6 2" />
-          {/* server racks */}
-          {[[70, 16], [83, 24], [92, 20]].map(([x, y], r) => (
-            <g key={r}>
-              <rect x={x} y={y} width="9" height={74 - y} rx="1.5" fill="#111c30" stroke="#1e3a5f" strokeWidth="0.5" />
-              {Array.from({ length: Math.floor((74 - y) / 6) }).map((_, k) => (
-                <rect key={k} x={x + 1.5} y={y + 3 + k * 6} width="6" height="3" rx="0.6" fill="#0f1828" />
-              ))}
-              {Array.from({ length: Math.floor((74 - y) / 6) }).map((_, k) => (
-                <circle key={`l${k}`} cx={x + 7} cy={y + 4.5 + k * 6} r="0.6" fill={k % 3 === 0 ? "#34d399" : k % 3 === 1 ? "#fbbf24" : "#38bdf8"} />
-              ))}
-            </g>
-          ))}
-        </>
-      );
-    case "hero":
-      return (
-        <>
-          {/* moon is an HTML orb so it stays round */}
-          {[[40, 12], [55, 20], [70, 10], [82, 24], [48, 30], [90, 16], [33, 34]].map(([x, y], i) => (
-            <circle key={i} cx={x} cy={y} r={i % 2 ? 0.9 : 0.6} fill="#fff" opacity="0.8" />
-          ))}
-          {/* city skyline */}
-          {[[0, 50], [10, 42], [20, 55], [30, 46], [40, 58], [50, 40], [60, 52], [70, 44], [80, 56], [90, 48]].map(
-            ([x, y], i) => (
-              <g key={i}>
-                <rect x={x} y={y} width="10" height={74 - y} fill="#4c1d95" opacity="0.75" />
-                {Array.from({ length: 3 }).map((_, c) =>
-                  Array.from({ length: Math.floor((74 - y) / 8) }).map((_, r) => (
-                    <rect key={`${c}-${r}`} x={x + 1.6 + c * 2.6} y={y + 3 + r * 8} width="1.4" height="2.4" fill="#fcd34d" opacity="0.7" />
-                  )),
-                )}
-              </g>
-            ),
-          )}
-          {/* energy bolts */}
-          <polyline points="64,8 60,20 66,20 60,34" fill="none" stroke="#a855f7" strokeWidth="1.4" strokeLinejoin="round" opacity="0.8" />
-          <polyline points="78,6 75,16 80,16 76,28" fill="none" stroke="#38bdf8" strokeWidth="1.2" strokeLinejoin="round" opacity="0.7" />
-        </>
-      );
-    case "eco":
-      return (
-        <>
-          {/* sun is an HTML orb so it stays round */}
-          
-          {/* wind turbine */}
-          <line x1="50" y1="74" x2="50" y2="25" stroke="#e2e8f0" strokeWidth="1.2" />
-          <circle cx="50" cy="25" r="1.6" fill="#475569" />
-          {[0, 120, 240].map((deg) => (
-            <line key={deg} x1="50" y1="25" x2={50 + Math.cos((deg * Math.PI) / 180) * 11} y2={25 + Math.sin((deg * Math.PI) / 180) * 11} stroke="#e2e8f0" strokeWidth="1.8" strokeLinecap="round" />
-          ))}
-          {/* solar panels */}
-          <g opacity="0.9">
-            {[6, 19].map((x) => (
-              <g key={x}>
-                <line x1={x + 5} y1="60" x2={x + 5} y2="52" stroke="#64748b" strokeWidth="1" />
-                <polygon points={`${x},50 ${x + 10},46 ${x + 12},52 ${x + 2},56`} fill="#1e3a8a" stroke="#3b82f6" strokeWidth="0.4" />
-                <line x1={x + 3.5} y1="48.5" x2={x + 5.5} y2="54" stroke="#3b82f6" strokeWidth="0.4" />
-                <line x1={x + 7} y1="47" x2={x + 9} y2="52.5" stroke="#3b82f6" strokeWidth="0.4" />
-              </g>
-            ))}
-          </g>
-          {/* recycling tanks */}
-          {[[60, 9], [70, 7]].map(([x, w], i) => (
-            <g key={i}>
-              <rect x={x} y={42} width={w} height="22" rx="3" fill="#0d9488" opacity="0.8" />
-              <rect x={x} y={48} width={w} height="2" fill="#5eead4" opacity="0.6" />
-              <rect x={x} y={55} width={w} height="2" fill="#5eead4" opacity="0.6" />
-            </g>
-          ))}
-        </>
-      );
-    case "history":
-      return (
-        <>
-          {/* sun is an HTML orb so it stays round */}
-          {/* shophouse row — bases sit on the riverbank line (y54), above the stream */}
-          {[6, 20, 34, 48, 62, 76].map((x, i) => {
-            const h = [26, 30, 24, 28, 32, 26][i];
-            const top = 54 - h;
-            const col = ["#c2410c", "#b45309", "#a16207", "#9a3412", "#92400e", "#b45309"][i];
-            return (
-              <g key={x} opacity="0.82">
-                <polygon points={`${x},${top} ${x + 6},${top - 4} ${x + 12},${top}`} fill={col} />
-                <rect x={x} y={top} width="12" height={h} fill={col} />
-                {[0, 1].map((r) =>
-                  [0, 1].map((c) => (
-                    <rect key={`${r}-${c}`} x={x + 2 + c * 5} y={top + 4 + r * 8} width="3" height="5" rx="0.5" fill="#fef3c7" opacity="0.7" />
-                  )),
-                )}
-              </g>
-            );
-          })}
-          {/* riverbank line the town stands on, right above the stream */}
-          <line x1="0" y1="54" x2="100" y2="54" stroke="#92400e" strokeWidth="0.8" opacity="0.55" />
-          {/* river — a thin waterfront band just above the floor line */}
-          <rect x="0" y="55" width="100" height="4" fill="#0ea5e9" opacity="0.35" />
-          {[8, 28, 48, 68, 88].map((x) => (
-            <path key={x} d={`M${x} 57.5 q 4 -1.2 8 0 t 8 0`} fill="none" stroke="#bae6fd" strokeWidth="0.6" opacity="0.6" />
-          ))}
-          {/* hanging lanterns */}
-          {[88, 94].map((x, i) => (
-            <g key={x}>
-              <line x1={x} y1="10" x2={x} y2={18 + i * 6} stroke="#7c2d12" strokeWidth="0.4" />
-              <rect x={x - 2.2} y={18 + i * 6} width="4.4" height="6" rx="2.2" fill="#ef4444" opacity="0.85" />
-              <line x1={x - 2.2} y1={19.5 + i * 6} x2={x + 2.2} y2={19.5 + i * 6} stroke="#fca5a5" strokeWidth="0.4" />
-            </g>
-          ))}
-        </>
-      );
-    case "festival":
-      return (
-        <>
-          {/* bunting */}
-          <path d="M0 8 Q 50 18 100 8" fill="none" stroke="#fff" strokeOpacity="0.5" strokeWidth="0.5" />
-          {Array.from({ length: 12 }).map((_, i) => {
-            const x = 4 + i * 8;
-            const y = 8 + Math.sin((i / 12) * Math.PI) * 9;
-            const col = ["#fb7185", "#fbbf24", "#a78bfa", "#34d399"][i % 4];
-            return <polygon key={i} points={`${x - 3},${y} ${x + 3},${y} ${x},${y + 5}`} fill={col} opacity="0.85" />;
-          })}
-          {/* hanging lanterns */}
-          {[14, 30, 50, 70, 86].map((x, i) => (
-            <g key={x}>
-              <line x1={x} y1={12 + Math.sin((i / 5) * Math.PI) * 6} x2={x} y2={22 + i * 2} stroke="#fff" strokeOpacity="0.3" strokeWidth="0.4" />
-              <ellipse cx={x} cy={27 + i * 2} rx="3" ry="3.8" fill={["#f472b6", "#fbbf24", "#a78bfa", "#fb7185", "#fcd34d"][i]} opacity="0.85" />
-              <rect x={x - 1} y={23 + i * 2} width="2" height="1.2" fill="#fff" opacity="0.5" />
-            </g>
-          ))}
-          {/* sparkles */}
-          {[[40, 16], [60, 22], [78, 14], [24, 24], [92, 28]].map(([x, y], i) => (
-            <path key={i} d={`M${x} ${y - 2} L${x + 0.7} ${y} L${x + 2} ${y} L${x + 0.7} ${y + 0.7} L${x} ${y + 2} L${x - 0.7} ${y + 0.7} L${x - 2} ${y} L${x - 0.7} ${y} Z`} fill="#fff7ed" opacity="0.8" />
-          ))}
-          {/* stage with spotlights — kept above the horizon so it isn't hidden
-              under the floor */}
-          <polygon points="20,54 30,22 36,22 30,54" fill="#fde68a" opacity="0.18" />
-          <polygon points="80,54 70,22 64,22 70,54" fill="#f9a8d4" opacity="0.18" />
-          <rect x="22" y="56" width="56" height="4" rx="1" fill="#7c3aed" opacity="0.4" />
-        </>
-      );
-    case "nature":
-      return (
-        <>
-          {/* sun is an HTML orb so it stays round */}
-          {/* birds */}
-          {[[30, 18], [37, 15], [44, 19]].map(([x, y], i) => (
-            <path key={i} d={`M${x} ${y} q 2 -2 4 0 q 2 -2 4 0`} fill="none" stroke="#475569" strokeWidth="0.6" opacity="0.6" />
-          ))}
-          {/* hills */}
-          <path d="M0 74 Q 28 54 56 68 T 100 62 L100 74 Z" fill="#86efac" opacity="0.6" />
-          <path d="M0 74 Q 32 62 64 71 T 100 68 L100 74 Z" fill="#22c55e" opacity="0.5" />
-          {/* supertrees */}
-          {[[14, 30], [24, 40], [90, 34]].map(([x, baseY], i) => (
-            <g key={i} opacity="0.8">
-              <path d={`M${x - 1.4} 74 L${x - 0.7} ${baseY} L${x + 0.7} ${baseY} L${x + 1.4} 74 Z`} fill="#3f6212" />
-              <path d={`M${x} ${baseY - 2} Q ${x - 9} ${baseY + 2} ${x - 7} ${baseY + 9} Q ${x} ${baseY + 4} ${x + 7} ${baseY + 9} Q ${x + 9} ${baseY + 2} ${x} ${baseY - 2} Z`} fill="#15803d" />
-            </g>
-          ))}
-          {/* round trees */}
-          {[[44, 46], [54, 48], [70, 44]].map(([x, y], i) => (
-            <g key={i} opacity="0.8">
-              <rect x={x - 0.8} y={y} width="1.6" height={62 - y} fill="#854d0e" />
-              <circle cx={x} cy={y - 2} r="5" fill="#16a34a" />
-              <circle cx={x - 3} cy={y} r="3.5" fill="#22c55e" />
-              <circle cx={x + 3} cy={y} r="3.5" fill="#15803d" />
-            </g>
-          ))}
-        </>
-      );
-  }
-}
-
-/**
- * The big round body in each scene's sky (sun / planet / moon). Rendered as an
- * HTML circle (`aspect-square` + `rounded-full`) so it stays perfectly round —
- * the scenery SVG is stretched (`preserveAspectRatio="none"`) and would turn a
- * `<circle>` into an ellipse. `cx`/`cy` are % of the scene, `size` is % of width.
- */
-type SceneOrb = { cx: number; cy: number; size: number; gradient: string; ring?: boolean };
-const SCENE_ORB: Partial<Record<SceneKind, SceneOrb>> = {
-  lab: { cx: 20, cy: 23, size: 17, gradient: "radial-gradient(circle at 38% 35%, #c4b5fd, #7c3aed 55%, #4c1d95 100%)", ring: true },
-  hero: { cx: 18, cy: 17, size: 13, gradient: "radial-gradient(circle, #fef9c3 55%, #fde68a 66%, rgba(253,230,138,0) 70%)" },
-  eco: { cx: 85, cy: 14, size: 12, gradient: "radial-gradient(circle, #fde047 42%, rgba(253,224,71,0) 68%)" },
-  history: { cx: 50, cy: 13, size: 13, gradient: "radial-gradient(circle, #fdba74 42%, rgba(253,186,116,0) 68%)" },
-  nature: { cx: 83, cy: 13, size: 11, gradient: "radial-gradient(circle, #fde047 42%, rgba(254,249,195,0) 70%)" },
-};
-
-function SceneOrbs({ scene }: { scene: SceneKind }) {
-  const orb = SCENE_ORB[scene];
-  if (!orb) return null;
-  return (
-    <div
-      aria-hidden
-      className="pointer-events-none absolute aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full"
-      style={{ left: `${orb.cx}%`, top: `${orb.cy}%`, width: `${orb.size}%`, background: orb.gradient }}
-    >
-      {orb.ring && (
-        <span className="absolute left-1/2 top-1/2 h-[34%] w-[175%] -translate-x-1/2 -translate-y-1/2 -rotate-12 rounded-[50%] border-2 border-sky-300/50" />
-      )}
-    </div>
-  );
-}
-
-/**
- * A recessed doorway niche carved into the back wall on the right, where the
- * HTML exit-door button stands. Drawn behind the door so the exit reads as
- * built into the scene rather than floating on top of it. Coords match the
- * door's footprint (~x82–98, rising from the floor line at y≈75).
- */
 /**
  * A standing "machine" object on the map, drawn bespoke per puzzle kind so each
  * station reads as its own interactable gadget (keypad, decoder, bins, scale,
@@ -2746,6 +2257,86 @@ const PROP_ART: Record<string, React.ReactNode> = {
       <circle cx="20" cy="23" r="1.3" fill="#1e293b" />
     </>
   ),
+  // --- purely cosmetic decor props (non-interactable) ---
+  crate: (
+    <>
+      <rect x="9" y="15" width="22" height="18" rx="2" fill="#334155" stroke="#0f172a" strokeWidth="1.4" />
+      <rect x="12" y="18" width="16" height="12" rx="1" fill="#475569" />
+      <path d="M12 18l16 12M28 18L12 30" stroke="#64748b" strokeWidth="1.2" />
+      <circle cx="20" cy="24" r="2.2" fill="#38bdf8" />
+    </>
+  ),
+  serverRack: (
+    <>
+      <rect x="11" y="8" width="18" height="25" rx="1.5" fill="#111c30" stroke="#1e3a5f" strokeWidth="1.2" />
+      {[0, 1, 2, 3].map((i) => (
+        <rect key={i} x="13.5" y={11 + i * 5.5} width="13" height="3.4" rx="0.8" fill="#0f1828" />
+      ))}
+      {[0, 1, 2, 3].map((i) => (
+        <circle key={`l${i}`} cx="25" cy={12.7 + i * 5.5} r="0.9" fill={i % 2 ? "#34d399" : "#fbbf24"} />
+      ))}
+    </>
+  ),
+  halfRobot: (
+    <>
+      {/* workbench the robot is being assembled on */}
+      <rect x="8" y="30" width="24" height="3" rx="1" fill="#475569" />
+      <rect x="10" y="33" width="2.5" height="4" fill="#334155" />
+      <rect x="27.5" y="33" width="2.5" height="4" fill="#334155" />
+      {/* torso with an open chest panel + exposed wiring */}
+      <rect x="15" y="16" width="12" height="14" rx="2" fill="#94a3b8" stroke="#475569" strokeWidth="1.2" />
+      <rect x="17.5" y="19" width="7" height="6" rx="1" fill="#1e293b" />
+      <path d="M18.5 22h1.5M21 20.5v3M23 21.5l1 1.5" stroke="#f59e0b" strokeWidth="0.8" fill="none" />
+      <circle cx="19" cy="21" r="0.7" fill="#ef4444" />
+      <circle cx="23.5" cy="24" r="0.7" fill="#22d3ee" />
+      {/* one arm on, one missing; neck stub; detached head resting on the bench */}
+      <rect x="11" y="18" width="3.5" height="9" rx="1.5" fill="#cbd5e1" stroke="#475569" strokeWidth="1" />
+      <rect x="19.5" y="13.5" width="3" height="3" fill="#64748b" />
+      <rect x="29.5" y="25.5" width="6.5" height="5" rx="1.5" fill="#cbd5e1" stroke="#475569" strokeWidth="1" />
+      <circle cx="31.4" cy="28" r="0.8" fill="#38bdf8" />
+      <circle cx="34" cy="28" r="0.8" fill="#38bdf8" />
+    </>
+  ),
+  // Stretched conduit — three strands drooping between the endpoints (a catenary
+  // sag reads as hanging cables, not a floating line). Non-scaling strokes keep
+  // the cable thickness crisp when the box is scaled wide.
+  cable: (
+    <>
+      <path d="M1 11 q 19 21 38 0" stroke="#1e293b" strokeWidth="3.4" fill="none" vectorEffect="non-scaling-stroke" />
+      <path d="M1 11 q 19 16 38 0" stroke="#0891b2" strokeWidth="2.2" fill="none" opacity="0.9" vectorEffect="non-scaling-stroke" />
+      <path d="M1 12 q 19 25 38 0" stroke="#f59e0b" strokeWidth="2" fill="none" opacity="0.8" vectorEffect="non-scaling-stroke" />
+    </>
+  ),
+  // A dummy control monitor on a stand — screen with a little waveform + status LEDs.
+  screen: (
+    <>
+      <rect x="7" y="9" width="26" height="18" rx="2" fill="#0f172a" stroke="#334155" strokeWidth="1.5" />
+      <rect x="9.5" y="11.5" width="21" height="13" rx="1" fill="#0b2a3a" />
+      <path d="M11 19l3-3 3 4 3-5 3 3 3-2" fill="none" stroke="#38bdf8" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="11" y1="22.5" x2="29" y2="22.5" stroke="#155e75" strokeWidth="0.8" />
+      <circle cx="12" cy="13.5" r="0.8" fill="#34d399" />
+      <circle cx="14.5" cy="13.5" r="0.8" fill="#fbbf24" />
+      <rect x="18.5" y="27" width="3" height="4" fill="#334155" />
+      <rect x="13" y="31" width="14" height="2.5" rx="1" fill="#475569" />
+    </>
+  ),
+  // A wall storage shelf with a few parts boxes / canisters on two boards.
+  shelf: (
+    <>
+      <rect x="7" y="15" width="1.6" height="16" fill="#57534e" />
+      <rect x="31.4" y="15" width="1.6" height="16" fill="#57534e" />
+      <rect x="6" y="15.5" width="28" height="2.4" rx="0.5" fill="#8a7a63" stroke="#57534e" strokeWidth="0.6" />
+      <rect x="6" y="26.5" width="28" height="2.4" rx="0.5" fill="#8a7a63" stroke="#57534e" strokeWidth="0.6" />
+      {/* items on the top board */}
+      <rect x="10" y="9.5" width="5" height="6" rx="0.8" fill="#38bdf8" />
+      <rect x="17" y="8.5" width="4" height="7" rx="0.8" fill="#f59e0b" />
+      <circle cx="26" cy="12.5" r="3" fill="#34d399" />
+      {/* items on the bottom board */}
+      <rect x="11" y="20.5" width="6" height="6" rx="0.8" fill="#a855f7" />
+      <rect x="22" y="21.5" width="4" height="5" rx="0.8" fill="#ef4444" />
+      <circle cx="29" cy="24" r="2.5" fill="#facc15" />
+    </>
+  ),
 };
 
 /** Maps a carry item's `icon` to its themed prop art (direct-delivery items). */
@@ -2759,20 +2350,6 @@ function Prop({ art, className, style }: { art: string; className?: string; styl
     </svg>
   );
 }
-
-/**
- * Per-scene styling for the station objects so they read as themed equipment
- * standing in the room rather than identical white stickers.
- * `holder` = the icon panel, `ring` = its border, `glow` = halo, `stand` = base.
- */
-const STATION_THEME: Record<SceneKind, { holder: string; ring: string; glow: string; stand: string }> = {
-  lab: { holder: "bg-slate-900/70 text-cyan-100", ring: "ring-cyan-400/60", glow: "bg-cyan-400/40", stand: "bg-cyan-400/50" },
-  hero: { holder: "bg-white/85 text-grape", ring: "ring-grape/50", glow: "bg-fuchsia-400/40", stand: "bg-grape/50" },
-  eco: { holder: "bg-white/85 text-emerald-600", ring: "ring-emerald-400/60", glow: "bg-emerald-400/35", stand: "bg-emerald-600/50" },
-  history: { holder: "bg-amber-50/90 text-amber-700", ring: "ring-amber-500/60", glow: "bg-amber-400/40", stand: "bg-amber-700/50" },
-  festival: { holder: "bg-white/85 text-pink-500", ring: "ring-pink-400/60", glow: "bg-pink-400/40", stand: "bg-pink-500/50" },
-  nature: { holder: "bg-white/85 text-emerald-600", ring: "ring-emerald-400/60", glow: "bg-emerald-400/35", stand: "bg-emerald-700/50" },
-};
 
 /** Which line-art icon each station shows, keyed by `${roomSlug}:${stationId}`. */
 const STATION_ICON: Record<string, string> = {
@@ -3069,86 +2646,6 @@ function StationIcon({ name, className }: { name: string; className?: string }) 
       {inner[name] ?? null}
     </svg>
   );
-}
-
-const DOORWAY_COLORS: Record<SceneKind, { recess: string; frame: string }> = {
-  lab: { recess: "#0b1220", frame: "#38bdf8" },
-  hero: { recess: "#2e1065", frame: "#a855f7" },
-  eco: { recess: "#064e3b", frame: "#34d399" },
-  history: { recess: "#431407", frame: "#f59e0b" },
-  festival: { recess: "#4a044e", frame: "#f472b6" },
-  nature: { recess: "#14532d", frame: "#4ade80" },
-};
-
-function Doorway({ scene }: { scene: SceneKind }) {
-  const { recess, frame } = DOORWAY_COLORS[scene];
-  return (
-    <g>
-      {/* recessed arched niche set into the back wall, base at the horizon (y44) */}
-      <path d="M84 44 L84 32 Q84 24 90 24 Q96 24 96 32 L96 44 Z" fill={recess} opacity="0.92" />
-      {/* outer frame */}
-      <path d="M84 44 L84 32 Q84 24 90 24 Q96 24 96 32 L96 44" fill="none" stroke={frame} strokeWidth="1" strokeOpacity="0.75" />
-      {/* inner glow line */}
-      <path d="M85.5 44 L85.5 33 Q85.5 27 90 27 Q94.5 27 94.5 33 L94.5 44" fill="none" stroke={frame} strokeWidth="0.5" strokeOpacity="0.4" />
-      {/* keystone */}
-      <rect x="89" y="22.8" width="2" height="2.2" rx="0.4" fill={frame} opacity="0.7" />
-      {/* threshold step on the floor line */}
-      <rect x="82.5" y="43.2" width="15" height="1.5" rx="0.6" fill={frame} opacity="0.5" />
-    </g>
-  );
-}
-
-function wallPattern(kind: EscapeRoom["pattern"]): React.CSSProperties {
-  switch (kind) {
-    case "circuit":
-      return {
-        backgroundImage:
-          "linear-gradient(rgba(125,211,252,.10) 1px, transparent 1px)," +
-          "linear-gradient(90deg, rgba(125,211,252,.10) 1px, transparent 1px)," +
-          "radial-gradient(rgba(125,211,252,.5) 1.5px, transparent 2px)",
-        backgroundSize: "34px 34px, 34px 34px, 34px 34px",
-      };
-    case "dots":
-      return {
-        backgroundImage: "radial-gradient(rgba(255,255,255,.5) 2px, transparent 2.5px)",
-        backgroundSize: "24px 24px",
-      };
-    case "leaves":
-      return {
-        backgroundImage:
-          "radial-gradient(circle at 30% 30%, rgba(16,185,129,.12) 6px, transparent 7px)," +
-          "radial-gradient(circle at 70% 60%, rgba(16,185,129,.09) 8px, transparent 9px)",
-        backgroundSize: "70px 70px, 96px 96px",
-      };
-    default:
-      return {};
-  }
-}
-
-function floorPattern(kind: EscapeRoom["floorKind"]): React.CSSProperties {
-  switch (kind) {
-    case "metal":
-      return {
-        backgroundImage:
-          "repeating-linear-gradient(90deg, rgba(255,255,255,.10) 0 1px, transparent 1px 56px)," +
-          "repeating-linear-gradient(0deg, rgba(0,0,0,.14) 0 1px, transparent 1px 22px)",
-      };
-    case "wood":
-      return {
-        backgroundImage:
-          "repeating-linear-gradient(90deg, rgba(0,0,0,.18) 0 2px, transparent 2px 48px)," +
-          "repeating-linear-gradient(0deg, rgba(255,255,255,.06) 0 1px, transparent 1px 14px)",
-      };
-    case "tile":
-      return {
-        backgroundImage:
-          "linear-gradient(rgba(255,255,255,.18) 1px, transparent 1px)," +
-          "linear-gradient(90deg, rgba(255,255,255,.18) 1px, transparent 1px)",
-        backgroundSize: "38px 38px, 38px 38px",
-      };
-    default:
-      return {};
-  }
 }
 
 /** Fisher–Yates shuffle returning a new array. */
@@ -4989,18 +4486,19 @@ function ExitKeypad({
               Where the three words crossed on the display. ⭐
             </p>
             <div className="mt-5 flex justify-center gap-3">
-              {slots.map((s, i) => (
-                  <input
-                    ref={(el) => {
-                      refs.current[i] = el;
-                    }}
-                    value={digits[i]}
-                    onChange={(e) => setDigit(i, e.target.value)}
-                    inputMode="numeric"
-                    className={`h-16 w-14 rounded-2xl border-2 text-center font-mono text-3xl font-700 text-slate-800 outline-none transition ${
-                      shake ? "animate-pulse border-coral" : "border-amber-200 focus:border-coral"
-                    }`}
-                  />
+              {slots.map((_s, i) => (
+                <input
+                  key={i}
+                  ref={(el) => {
+                    refs.current[i] = el;
+                  }}
+                  value={digits[i]}
+                  onChange={(e) => setDigit(i, e.target.value)}
+                  inputMode="numeric"
+                  className={`h-16 w-14 rounded-2xl border-2 text-center font-mono text-3xl font-700 text-slate-800 outline-none transition ${
+                    shake ? "animate-pulse border-coral" : "border-amber-200 focus:border-coral"
+                  }`}
+                />
               ))}
             </div>
             {shake && (
