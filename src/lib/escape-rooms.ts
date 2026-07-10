@@ -340,6 +340,12 @@ export type GridCell = {
   gy: number;
   gw?: number; // grid width in cells (default 1)
   gh?: number; // grid height in cells (default 1)
+  /** Override this room's floor gradient (Tailwind `from-… to-…`); default uses
+   *  the room's `wall`. Lets a single room read differently, e.g. a green garden. */
+  floor?: string;
+  /** Override the floor texture for this room (else the room's `floorKind`),
+   *  e.g. "grass" for a meadow, "water" by a river. */
+  floorKind?: string;
   /** Station whose puzzle "machine" stands in this room. */
   stationId?: string;
   /** Where the machine stands, as 0–1 fractions of the room (default centred). */
@@ -416,6 +422,13 @@ export type RoomDecor = {
    *  (e.g. a cable conduit running across the room). Both must be set. */
   w?: number;
   h?: number;
+  /** Hang it from the ceiling: no collision, and it draws ABOVE the player when
+   *  you're in the room (e.g. lanterns). Stretched runs (w/h) are ceiling by
+   *  default; this opts a point prop in too. */
+  ceiling?: boolean;
+  /** Flat ground detail (grass, rug, puddle): drawn under the player like a
+   *  normal floor prop, but with no collision so you walk right over it. */
+  flat?: boolean;
 };
 
 /** The grid of rooms, walls and world objects for a navigable escape room. */
@@ -429,6 +442,10 @@ export type RoomLayout = {
   spawn: string;
   /** Room hosting the final lock (the room's `exit` mechanism). */
   exit: string;
+  /** Which wall of the exit room the door graphic + its interaction hotspot pin
+   *  to. Defaults to "bottom"; use another side when the bottom wall holds the
+   *  doorway into the exit room (e.g. the Recycling Plant's top-right exit). */
+  exitDoorSide?: "top" | "bottom" | "left" | "right";
   /** Optional pick-up-and-carry mechanic (cores / artefacts / bottles). */
   carry?: CarryConfig;
   notes?: RoomNote[];
@@ -455,7 +472,7 @@ export type EscapeRoom = {
   /** Themed texture painted over the wall. */
   pattern: "circuit" | "dots" | "leaves" | "none";
   /** Themed look for the floor strip. */
-  floorKind: "metal" | "tile" | "wood";
+  floorKind: "metal" | "tile" | "wood" | "concrete" | "stone";
   /** Hand-drawn SVG backdrop illustration for the room (no emojis). */
   scene: SceneKind;
   /** Emoji avatar that explores the room. */
@@ -484,8 +501,8 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
     ageRange: "7–9",
     accent: "bg-sky/15 text-sky-600",
     ring: "ring-sky/30",
-    wall: "from-slate-800 via-indigo-900 to-indigo-950",
-    floor: "from-slate-500 to-slate-700",
+    wall: "from-slate-400 via-slate-500 to-slate-600",
+    floor: "from-slate-600 to-slate-800",
     pattern: "circuit",
     floorKind: "metal",
     scene: "lab",
@@ -593,8 +610,8 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
       rows: 2,
       cells: [
         { id: "entrance", label: "Entrance", gx: 0, gy: 0, role: "spawn" },
-        { id: "atrium", label: "Main Lab", gx: 1, gy: 0, gw: 2 },
-        { id: "exit", label: "Exit Keypad", gx: 3, gy: 0, role: "exit" },
+        { id: "atrium", label: "Main Lab", gx: 1, gy: 0, gw: 2, floor: "from-slate-300 via-slate-400 to-slate-500" },
+        { id: "exit", label: "Exit Keypad", gx: 3, gy: 0, role: "exit", floor: "from-amber-600 via-slate-500 to-slate-600" },
         { id: "decoder", label: "Symbol Decoder", gx: 0, gy: 1, stationId: "decoder", role: "puzzle", mx: 0.34, my: 0.42 },
         { id: "robot", label: "Robot Helper", gx: 1, gy: 1, stationId: "robot", role: "puzzle", mx: 0.66, my: 0.46 },
         { id: "panel", label: "Control Panel", gx: 2, gy: 1, stationId: "panel", role: "puzzle", mx: 0.68, my: 0.36 },
@@ -744,12 +761,15 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
       cols: 4,
       rows: 2,
       cells: [
-        { id: "foyer", label: "Foyer", gx: 0, gy: 0, gh: 2, role: "spawn" },
-        { id: "honesty", label: "Honesty Charger", gx: 1, gy: 0, stationId: "honesty", role: "puzzle" },
-        { id: "landing", label: "Core Landing", gx: 2, gy: 0, gh: 2 },
-        { id: "attic", label: "The Suit", gx: 3, gy: 0, role: "exit" },
-        { id: "fairness", label: "Fairness Charger", gx: 1, gy: 1, stationId: "fairness", role: "puzzle" },
-        { id: "kindness", label: "Kindness Charger", gx: 3, gy: 1, stationId: "kindness", role: "puzzle" },
+        // Panel floors that flow as one cool gradient across the columns
+        // (purple → indigo → blue → cyan); each cell ends where its neighbour
+        // begins. The per-core colours live on the cores / suit sockets instead.
+        { id: "foyer", label: "Foyer", gx: 0, gy: 0, gh: 2, role: "spawn", floor: "from-purple-300 via-violet-300 to-indigo-300", floorKind: "panel" },
+        { id: "honesty", label: "Honesty Charger", gx: 1, gy: 0, stationId: "honesty", role: "puzzle", floor: "from-indigo-300 via-blue-300 to-blue-400", floorKind: "panel" },
+        { id: "fairness", label: "Fairness Charger", gx: 1, gy: 1, stationId: "fairness", role: "puzzle", floor: "from-indigo-300 via-blue-300 to-blue-400", floorKind: "panel" },
+        { id: "landing", label: "Core Landing", gx: 2, gy: 0, gh: 2, floor: "from-blue-300 via-sky-300 to-sky-400", floorKind: "panel" },
+        { id: "attic", label: "The Suit", gx: 3, gy: 0, role: "exit", floor: "from-sky-300 via-cyan-300 to-cyan-400", floorKind: "panel" },
+        { id: "kindness", label: "Kindness Charger", gx: 3, gy: 1, stationId: "kindness", role: "puzzle", floor: "from-sky-300 via-cyan-300 to-cyan-400", floorKind: "panel" },
       ],
       doors: [
         ["foyer", "fairness"],
@@ -784,6 +804,27 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
           art: "coremap",
         },
       ],
+      decor: [
+        // Foyer — hero-HQ lobby: banners, a hero statue, a console + display cases.
+        { room: "foyer", art: "heroBanner", x: 0.24, y: 0.16, scale: 1.0 },
+        { room: "foyer", art: "heroBanner", x: 0.76, y: 0.16, scale: 1.0, flip: true },
+        { room: "foyer", art: "heroStatue", x: 0.50, y: 0.16, scale: 1.25 },
+        { room: "foyer", art: "weaponCase", x: 0.2, y: 0.9, scale: 1.0 },
+        { room: "foyer", art: "heroConsole", x: 0.50, y: 0.9, scale: 1.0 },
+        { room: "foyer", art: "weaponCase", x: 0.80, y: 0.9, scale: 1.0 },
+        // Chargers — a glowing power cell.
+        { room: "honesty", art: "powerCell", x: 0.22, y: 0.32, scale: 1.0 },
+        { room: "fairness", art: "powerCell", x: 0.78, y: 0.72, scale: 1.0 },
+        { room: "kindness", art: "powerCell", x: 0.76, y: 0.72, scale: 1.0 },
+        // Core Landing — power cells + display cases (cores rest mid-room).
+        { room: "landing", art: "powerCell", x: 0.85, y: 0.14, scale: 0.9 },
+        { room: "landing", art: "powerCell", x: 0.15, y: 0.86, scale: 0.9 },
+        { room: "landing", art: "heroConsole", x: 0.82, y: 0.91, scale: 1.0 },
+        { room: "landing", art: "suitCase", x: 0.60, y: 0.9, scale: 1.0 },
+        // The Suit — hero banners flanking the display.
+        { room: "attic", art: "heroBanner", x: 0.14, y: 0.3, scale: 0.95 },
+        { room: "attic", art: "heroBanner", x: 0.86, y: 0.3, scale: 0.95, flip: true },
+      ],
     },
   },
   {
@@ -796,9 +837,9 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
     accent: "bg-mint/15 text-emerald-600",
     ring: "ring-mint/30",
     wall: "from-teal-100 via-emerald-100 to-lime-100",
-    floor: "from-amber-700 to-amber-900",
+    floor: "from-slate-400 to-slate-600",
     pattern: "leaves",
-    floorKind: "wood",
+    floorKind: "concrete",
     scene: "eco",
     character: "🧑‍🔬",
     intro:
@@ -896,12 +937,14 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
     layout: {
       cols: 4,
       rows: 2,
+      // Industrial concrete throughout; per-room tints flow cool-grey → eco-green
+      // → sunny (solar) so the plant reads as one connected facility.
       cells: [
-        { id: "lobby", label: "Lobby", gx: 0, gy: 0, role: "spawn" },
-        { id: "panel", label: "Solar Panel", gx: 1, gy: 0, gw: 2, stationId: "panel", role: "puzzle" },
-        { id: "exit", label: "Exit Decoder", gx: 3, gy: 0, role: "exit" },
-        { id: "bins", label: "Recycling Plant", gx: 0, gy: 1, gw: 2, stationId: "bins", role: "puzzle" },
-        { id: "circuit", label: "Power Circuit", gx: 2, gy: 1, gw: 2, stationId: "circuit", role: "puzzle" },
+        { id: "lobby", label: "Lobby", gx: 0, gy: 0, role: "spawn", floor: "from-slate-300 via-slate-200 to-emerald-100", floorKind: "concrete" },
+        { id: "panel", label: "Solar Panel", gx: 1, gy: 0, gw: 2, stationId: "panel", role: "puzzle", floor: "from-emerald-100 via-lime-100 to-amber-100", floorKind: "concrete" },
+        { id: "exit", label: "Exit Decoder", gx: 3, gy: 0, role: "exit", floor: "from-amber-100 via-emerald-100 to-teal-100", floorKind: "concrete" },
+        { id: "bins", label: "Recycling Plant", gx: 0, gy: 1, gw: 2, stationId: "bins", role: "puzzle", floor: "from-emerald-200 via-green-100 to-teal-100", floorKind: "concrete" },
+        { id: "circuit", label: "Power Circuit", gx: 2, gy: 1, gw: 2, stationId: "circuit", role: "puzzle", floor: "from-teal-100 via-slate-200 to-slate-300", floorKind: "concrete" },
       ],
       doors: [
         ["lobby", "panel"],
@@ -911,6 +954,9 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
       ],
       spawn: "lobby",
       exit: "exit",
+      // The exit cell (top-right) is entered from its bottom edge (the doorway up
+      // from the Power Circuit), so pin the exit door to the outer top wall.
+      exitDoorSide: "top",
       // Three bottles scatter across the plant. Wash each at the sink in the
       // Recycling Plant, recycle it at the recycler in the opposite corner, then
       // the gated Power Circuit unlocks.
@@ -934,6 +980,30 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
           body: "There are stray bottles around the plant. Recycle them the right way!",
         },
       ],
+      decor: [
+        // Lobby — a recycling station greets you; a sapling + overhead pipes.
+        { room: "lobby", art: "pipeRun", x: 0.5, y: 0.1, w: 0.92, h: 0.13 },
+        { room: "lobby", art: "recycleBins", x: 0.8, y: 0.24, scale: 1.1 },
+        { room: "lobby", art: "sapling", x: 0.16, y: 0.2, scale: 1.0 },
+        { room: "lobby", art: "compactor", x: 0.83, y: 0.8, scale: 0.95 },
+        // Solar Panel bay — renewable-energy storage batteries flank the machine.
+        { room: "panel", art: "pipeRun", x: 0.5, y: 0.09, w: 0.96, h: 0.12 },
+        { room: "panel", art: "batteryBank", x: 0.14, y: 0.82, scale: 1.0 },
+        { room: "panel", art: "batteryBank", x: 0.86, y: 0.82, scale: 1.0},
+        { room: "panel", art: "sapling", x: 0.1, y: 0.22, scale: 0.85 },
+        // Recycling Plant — a sorting conveyor + a baler/compactor, a bin station,
+        // and a painted recycle logo on the floor.
+        { room: "bins", art: "recycleBins", x: 0.13, y: 0.8, scale: 1.0 },
+        { room: "bins", art: "compactor", x: 0.86, y: 0.8, scale: 1.0 },
+        { room: "bins", art: "recycleDecal", x: 0.5, y: 0.5, scale: 1.5, flat: true },
+        // Power Circuit — battery banks + overhead pipes.
+        { room: "circuit", art: "batteryBank", x: 0.15, y: 0.82, scale: 1.0 },
+        { room: "circuit", art: "batteryBank", x: 0.85, y: 0.82, scale: 1.0},
+        { room: "circuit", art: "conveyor", x: 0.2, y: 0.22, scale: 1.2 },
+        // Exit Decoder — a sapling + a painted floor logo (a greener way out).
+        { room: "exit", art: "sapling", x: 0.18, y: 0.82, scale: 0.9 },
+        { room: "exit", art: "recycleDecal", x: 0.5, y: 0.6, scale: 1.4, flat: true },
+      ],
     },
   },
   {
@@ -948,7 +1018,7 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
     wall: "from-amber-100 via-orange-100 to-red-100",
     floor: "from-stone-400 to-stone-600",
     pattern: "dots",
-    floorKind: "tile",
+    floorKind: "stone",
     scene: "history",
     character: "🧑‍🎓",
     intro:
@@ -985,7 +1055,7 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
           kind: "code",
           emoji: "🇸🇬",
           prompt: "Key in the year Singapore became an independent nation.",
-          clue: "🇸🇬 19 _ _",
+          clue: "🇸🇬 _ _ _ _",
           answer: "1965",
           hint: "It became independent in the 1960s — nineteen sixty-five.",
           learn: "Singapore became independent in 1965! 🇸🇬 Independence Hall opens — grab the National Flag for the Time Capsule.",
@@ -1018,12 +1088,14 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
     layout: {
       cols: 4,
       rows: 2,
+      // Warm stone throughout; per-gallery tints — sepia for the colonial founding,
+      // red-earth for the ancient Lion City, cooler for modern Independence Hall.
       cells: [
-        { id: "hall", label: "Vault Entrance", gx: 0, gy: 0, role: "spawn" },
-        { id: "merlion", label: "Founding Gallery", gx: 1, gy: 0, stationId: "merlion", role: "puzzle" },
-        { id: "river", label: "Lion City Room", gx: 2, gy: 0, stationId: "river", role: "puzzle" },
-        { id: "timeline", label: "Independence Hall", gx: 3, gy: 0, stationId: "timeline", role: "puzzle" },
-        { id: "capsule", label: "Time Capsule", gx: 0, gy: 1, gw: 4, role: "exit" },
+        { id: "hall", label: "Vault Entrance", gx: 0, gy: 0, role: "spawn", floor: "from-stone-300 via-stone-200 to-stone-300", floorKind: "stone" },
+        { id: "merlion", label: "Founding Gallery", gx: 1, gy: 0, stationId: "merlion", role: "puzzle", floor: "from-amber-200 via-stone-200 to-amber-100", floorKind: "stone" },
+        { id: "river", label: "Lion City Room", gx: 2, gy: 0, stationId: "river", role: "puzzle", floor: "from-orange-200 via-amber-100 to-red-100", floorKind: "stone" },
+        { id: "timeline", label: "Independence Hall", gx: 3, gy: 0, stationId: "timeline", role: "puzzle", floor: "from-stone-200 via-slate-100 to-stone-200", floorKind: "stone" },
+        { id: "capsule", label: "Time Capsule", gx: 0, gy: 1, gw: 4, role: "exit", floor: "from-stone-400 via-stone-300 to-stone-400", floorKind: "stone" },
       ],
       doors: [
         ["hall", "merlion"],
@@ -1053,6 +1125,32 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
           title: "Vault Notice",
           body: "Each gallery hides a national treasure behind its puzzle. Solve a gallery, pick up its treasure, and carry it here to the Time Capsule. Place all three to open the vault!",
         },
+      ],
+      decor: [
+        // Vault Entrance — a grand museum foyer: a pillar, a heritage banner + torch.
+        { room: "hall", art: "stonePillar", x: 0.15, y: 0.24, scale: 1.0 },
+        { room: "hall", art: "heritageBanner", x: 0.5, y: 0.12, scale: 1.0, ceiling: true },
+        { room: "hall", art: "torchSconce", x: 0.85, y: 0.16, scale: 0.9, ceiling: true },
+        // Founding Gallery (1819) — a colonial cannon + a torch.
+        { room: "merlion", art: "oldCannon", x: 0.2, y: 0.74, scale: 1.0 },
+        { room: "merlion", art: "torchSconce", x: 0.5, y: 0.1, scale: 0.85, ceiling: true },
+        // Lion City Room — a lion-head floor emblem (clear of the centre machine
+        // and the treasure that rests top-left), an ancient urn + a pillar.
+        { room: "river", art: "lionLogo", x: 0.33, y: 0.74, scale: 1.5, flat: true },
+        { room: "river", art: "ancientUrn", x: 0.82, y: 0.74, scale: 0.95 },
+        { room: "river", art: "stonePillar", x: 0.85, y: 0.26, scale: 0.9 },
+        // Independence Hall (1965) — a pillar + a torch.
+        { room: "timeline", art: "stonePillar", x: 0.82, y: 0.24, scale: 0.9 },
+        { room: "timeline", art: "torchSconce", x: 0.5, y: 0.1, scale: 0.85, ceiling: true },
+        // Time Capsule — the grand vault: pillars, banners, torches, urns.
+        { room: "capsule", art: "stonePillar", x: 0.06, y: 0.55, scale: 1.1 },
+        { room: "capsule", art: "stonePillar", x: 0.94, y: 0.55, scale: 1.1 },
+        { room: "capsule", art: "heritageBanner", x: 0.3, y: 0.12, scale: 1.0, ceiling: true },
+        { room: "capsule", art: "heritageBanner", x: 0.7, y: 0.12, scale: 1.0, ceiling: true },
+        { room: "capsule", art: "torchSconce", x: 0.06, y: 0.2, scale: 0.9, ceiling: true },
+        { room: "capsule", art: "torchSconce", x: 0.94, y: 0.2, scale: 0.9, ceiling: true },
+        { room: "capsule", art: "ancientUrn", x: 0.12, y: 0.82, scale: 0.95 },
+        { room: "capsule", art: "ancientUrn", x: 0.88, y: 0.82, scale: 0.95 },
       ],
     },
   },
@@ -1193,12 +1291,15 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
       cols: 3,
       rows: 3,
       cells: [
-        { id: "hall", label: "Grand Hall", gx: 1, gy: 1, stationId: "crossword", role: "spawn", requiresAll: ["food", "festival", "flower", "fruit"] },
-        { id: "food", label: "Hawker Stall", gx: 1, gy: 0, stationId: "food", role: "puzzle" },
-        { id: "festival", label: "Little India", gx: 0, gy: 1, stationId: "festival", role: "puzzle" },
-        { id: "flower", label: "Gardens", gx: 2, gy: 1, stationId: "flower", role: "puzzle" },
-        { id: "fruit", label: "Fruit Stall", gx: 1, gy: 2, stationId: "fruit", role: "puzzle" },
-        { id: "exit", label: "Exit Panel", gx: 2, gy: 2, stationId: "lockpad", role: "exit", requires: "crossword" },
+        // Each room gets its own floor: the carnival hall + hawker/India stalls
+        // are ceramic tile (tinted per theme), the fruit market is wood boards,
+        // the Gardens are grass.
+        { id: "hall", label: "Grand Hall", gx: 1, gy: 1, stationId: "crossword", role: "spawn", requiresAll: ["food", "festival", "flower", "fruit"], mx: 0.5, my: 0.44, floor: "from-rose-200 via-amber-200 to-rose-300", floorKind: "tile" },
+        { id: "food", label: "Hawker Stall", gx: 1, gy: 0, stationId: "food", role: "puzzle", mx: 0.66, my: 0.56, floor: "from-amber-100 via-stone-200 to-amber-200", floorKind: "tile" },
+        { id: "festival", label: "Little India", gx: 0, gy: 1, stationId: "festival", role: "puzzle", mx: 0.62, my: 0.4, floor: "from-orange-300 via-amber-300 to-orange-400", floorKind: "tile" },
+        { id: "flower", label: "Gardens", gx: 2, gy: 1, stationId: "flower", role: "puzzle", mx: 0.42, my: 0.36, floor: "from-green-200 via-emerald-100 to-lime-200", floorKind: "grass" },
+        { id: "fruit", label: "Fruit Stall", gx: 1, gy: 2, stationId: "fruit", role: "puzzle", mx: 0.4, my: 0.48, floor: "from-amber-300 via-amber-400 to-orange-300", floorKind: "wood" },
+        { id: "exit", label: "Exit Panel", gx: 2, gy: 2, stationId: "lockpad", role: "exit", requires: "crossword", mx: 0.5, my: 0.6, floor: "from-rose-200 via-fuchsia-200 to-rose-300", floorKind: "tile" },
       ],
       doors: [
         ["hall", "food"],
@@ -1209,6 +1310,39 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
       ],
       spawn: "hall",
       exit: "exit",
+      decor: [
+        // Grand Hall — bunting strung overhead + hanging lanterns, stools tucked
+        // into the corners (off the four doorways).
+        { room: "hall", art: "bunting", x: 0.5, y: 0.16, w: 0.92, h: 0.3, ceiling: true },
+        { room: "hall", art: "lantern", x: 0.22, y: 0.26, scale: 0.9, ceiling: true },
+        { room: "hall", art: "lantern", x: 0.78, y: 0.26, scale: 0.9, ceiling: true },
+        { room: "hall", art: "stool", x: 0.2, y: 0.78, scale: 0.9 },
+        { room: "hall", art: "stool", x: 0.8, y: 0.78, scale: 0.9 },
+        // Hawker Stall — a food cart + stool, lantern above.
+        { room: "food", art: "foodCart", x: 0.3, y: 0.34, scale: 1.2 },
+        { room: "food", art: "stool", x: 0.72, y: 0.4, scale: 0.9 },
+        // Little India — a dhol drum, a rangoli on the floor, and glowing diyas (Diwali).
+        { room: "festival", art: "dhol", x: 0.28, y: 0.30, scale: 1.15 },
+        { room: "festival", art: "rangoli", x: 0.26, y: 0.7, scale: 1.15, flat: true },
+        { room: "festival", art: "diya", x: 0.1, y: 0.54, scale: 0.7, flat: true },
+        { room: "festival", art: "diya", x: 0.45, y: 0.61, scale: 0.7, flat: true },
+        { room: "festival", art: "diya", x: 0.26, y: 0.9, scale: 0.7, flat: true },
+        // Gardens — a green lawn dotted with flowers + grass tufts.
+        { room: "flower", art: "grass", x: 0.3, y: 0.62, scale: 0.6, flat: true },
+        { room: "flower", art: "grass", x: 0.55, y: 0.82, scale: 0.5, flat: true },
+        { room: "flower", art: "grass", x: 0.2, y: 0.82, scale: 0.4, flat: true },
+        { room: "flower", art: "flower", x: 0.72, y: 0.4, scale: 0.9, flat: true },
+        { room: "flower", art: "daisy", x: 0.82, y: 0.66, scale: 0.85, flat: true },
+        { room: "flower", art: "flower", x: 0.44, y: 0.74, scale: 0.8, flat: true, flip: true },
+        { room: "flower", art: "daisy", x: 0.66, y: 0.7, scale: 0.75, flat: true },
+        { room: "flower", art: "flower", x: 0.86, y: 0.46, scale: 0.8, flat: true },
+        // Fruit Stall — crates of fruit.
+        { room: "fruit", art: "fruitCrate", x: 0.28, y: 0.75, scale: 1.15 },
+        { room: "fruit", art: "fruitCrate", x: 0.72, y: 0.60, scale: 1.0 },
+        // Exit Panel — lanterns flanking the carnival gate.
+        { room: "exit", art: "lantern", x: 0.16, y: 0.20, scale: 0.85, ceiling: true },
+        { room: "exit", art: "lantern", x: 0.84, y: 0.20, scale: 0.85, ceiling: true },
+      ],
     },
   },
   {
