@@ -418,6 +418,23 @@ const CHAR_R = 11; // character collision radius (units) — ~matches the sprite
 const MAP_SPEED = 150; // units / second (a cell is 100 units → ~0.7s to cross)
 const REACH = 58; // interaction range (units)
 
+/** Where the exit door pins inside its room. `pin` is the wall anchor for the
+ *  door graphic (with `transform` seating it against that wall); `hotspot` is the
+ *  spot just inside the room the player walks up to. Defaults to the bottom wall. */
+function exitDoorAnchor(er: Rect, side: "top" | "bottom" | "left" | "right" = "bottom") {
+  const c = centerOf(er);
+  switch (side) {
+    case "top":
+      return { hotspot: { x: c.x, y: er.y + 22 }, pin: { x: c.x, y: er.y + 4 }, transform: "translate(-50%, 0)" };
+    case "left":
+      return { hotspot: { x: er.x + 22, y: c.y }, pin: { x: er.x + 4, y: c.y }, transform: "translate(0, -50%)" };
+    case "right":
+      return { hotspot: { x: er.x + er.w - 22, y: c.y }, pin: { x: er.x + er.w - 4, y: c.y }, transform: "translate(-100%, -50%)" };
+    default:
+      return { hotspot: { x: c.x, y: c.y + 22 }, pin: { x: c.x, y: er.y + er.h - 4 }, transform: "translate(-50%, -100%)" };
+  }
+}
+
 type MapInteractable = {
   key: string;
   kind: "machine" | "note" | "item" | "charge" | "wash" | "deliver" | "exit";
@@ -467,7 +484,7 @@ function RoomMap({
     const rects: Rect[] = [...geo.walls];
     const sp = geo.spawn;
     for (const d of layout.decor ?? []) {
-      if (d.w != null && d.h != null) continue; // ceiling cables — walk under
+      if (d.ceiling || d.flat || (d.w != null && d.h != null)) continue; // ceiling / flat — walk over/under
       const r = geo.floors[d.room];
       if (!r) continue;
       const s = d.scale ?? 1;
@@ -721,8 +738,8 @@ function RoomMap({
     });
     const er = geo.floors[layout.exit];
     if (er) {
-      const c = centerOf(er);
-      list.push({ key: "exit", kind: "exit", id: layout.exit, label: "Open the door", x: c.x, y: c.y + 22, enabled: exitReady });
+      const { hotspot } = exitDoorAnchor(er, layout.exitDoorSide);
+      list.push({ key: "exit", kind: "exit", id: layout.exit, label: "Open the door", x: hotspot.x, y: hotspot.y, enabled: exitReady });
     }
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -965,15 +982,35 @@ function RoomMap({
           width: `min(100%, calc(62vh * ${layout.cols / layout.rows}))`,
         }}
       >
-        {/* Floor rooms */}
+        {/* Floor rooms — gradient tile + optional texture + a per-plate variation
+            grid (worn / polished / missing plates) for tiled floor kinds. */}
         {layout.cells.map((cell) => {
           const r = geo.floors[cell.id];
+          const rect = { left: pct(r.x, W), top: pct(r.y, H), width: pct(r.w, W), height: pct(r.h, H) };
+          const kind = cell.floorKind ?? room.floorKind;
+          const tex = FLOOR_TEXTURE[kind];
+          const grid = FLOOR_GRID[kind];
+          const cols = grid ? grid.cols(r.w, r.h) : 0;
+          const rows = grid ? grid.rows(r.w, r.h) : 0;
           return (
-            <div
-              key={cell.id}
-              className={`absolute z-0 rounded-lg bg-gradient-to-br ${room.wall} opacity-90`}
-              style={{ left: pct(r.x, W), top: pct(r.y, H), width: pct(r.w, W), height: pct(r.h, H) }}
-            />
+            <Fragment key={cell.id}>
+              <div
+                className={`absolute z-0 rounded-lg bg-gradient-to-br ${cell.floor ?? room.wall} opacity-90`}
+                style={rect}
+              />
+              {tex && <div aria-hidden className="pointer-events-none absolute z-0 rounded-lg" style={{ ...rect, ...tex }} />}
+              {grid && (
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute z-0 grid overflow-hidden rounded-lg"
+                  style={{ ...rect, gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` }}
+                >
+                  {Array.from({ length: rows * cols }).map((_, i) => (
+                    <div key={i} style={grid.tile(seededRand(`${cell.id}:${Math.floor(i / cols)}:${i % cols}`))} />
+                  ))}
+                </div>
+              )}
+            </Fragment>
           );
         })}
 
@@ -985,10 +1022,13 @@ function RoomMap({
           if (!r) return null;
           const left = pct(r.x + r.w * d.x, W);
           const top = pct(r.y + r.h * d.y, H);
-          // Explicit w/h → a stretched run (e.g. a cable). Treated as a ceiling
-          // fixture: in the room you're in it hangs ABOVE the player (z-45 >
-          // player z-40); in other rooms it drops below the fog (z-25) so the
-          // fog-of-war still hides it.
+          // Ceiling fixtures (stretched runs, or point props flagged `ceiling`)
+          // hang ABOVE the player (z-45 > player z-40) in the room you're in, and
+          // drop below the fog (z-25) elsewhere so the fog-of-war still hides them.
+          // Everything else is a floor prop under the player (z-10).
+          const ceiling = d.ceiling || (d.w != null && d.h != null);
+          const z = ceiling ? (d.room === curRoom ? "z-[45]" : "z-10") : "z-10";
+          // Explicit w/h → a stretched run (e.g. a cable / bunting).
           if (d.w != null && d.h != null) {
             return (
               <svg
@@ -996,9 +1036,7 @@ function RoomMap({
                 aria-hidden
                 viewBox="0 0 40 40"
                 preserveAspectRatio="none"
-                className={`pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 ${
-                  d.room === curRoom ? "z-[45]" : "z-10"
-                }`}
+                className={`pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 ${z}`}
                 style={{ left, top, width: pct(r.w * d.w, W), height: pct(r.h * d.h, H) }}
               >
                 {PROP_ART[d.art]}
@@ -1010,7 +1048,7 @@ function RoomMap({
             <div
               key={`decor-${i}`}
               aria-hidden
-              className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2"
+              className={`pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 ${z}`}
               style={{ left, top }}
             >
               <Prop
@@ -1018,7 +1056,9 @@ function RoomMap({
                 className="h-12 w-12 sm:h-14 sm:w-14"
                 style={{
                   transform: `scale(${d.flip ? -s : s}, ${s})`,
-                  filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.4))",
+                  // Standing props cast a shadow; flat decals are painted on the
+                  // floor, so no shadow (it would muddy thin shapes like the logo).
+                  filter: d.flat ? undefined : "drop-shadow(0 2px 3px rgba(0,0,0,0.4))",
                 }}
               />
             </div>
@@ -1054,7 +1094,7 @@ function RoomMap({
           return (
             <span
               key={`lbl-${cell.id}`}
-              className="absolute z-[35] -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-900/55 px-2 py-0.5 font-fun text-[9px] font-700 text-white/80 sm:text-[11px]"
+              className="absolute z-[55] -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-900/70 px-2 py-0.5 font-fun text-[9px] font-700 text-white/90 sm:text-[11px]"
               style={{ left: pct(r.x + r.w / 2, W), top: pct(r.y + 6, H) }}
             >
               {cell.label}
@@ -1073,7 +1113,7 @@ function RoomMap({
             <button
               key={n.id}
               onClick={() => setOpenNote(n.id)}
-              className={`absolute z-20 h-8 w-8 -translate-x-1/2 -translate-y-1/2 transition sm:h-9 sm:w-9 ${ringed ? "scale-110" : ""}`}
+              className={`absolute z-20 h-8 w-8 -translate-x-1/2 -translate-y-1/2 outline-none transition focus-visible:outline-none sm:h-9 sm:w-9 ${ringed ? "scale-110" : ""}`}
               style={{
                 left: pct(x, W),
                 top: pct(y, H),
@@ -1110,10 +1150,40 @@ function RoomMap({
           </div>
         )}
 
+        {/* Hero suit by the exit — chest sockets light as charged cores arrive. */}
+        {carry?.mode === "charge" && suitPt && (
+          <div
+            className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-1/2"
+            style={{ left: pct(suitPt.x, W), top: pct(suitPt.y - 8, H) }}
+          >
+            <SuitModel
+              cores={carryItems.map((it) => ({ color: CORE_COLOR[it.station ?? ""] ?? "#a3a3a3", lit: delivered.includes(it.id) }))}
+              className="h-20 w-auto drop-shadow-lg sm:h-24"
+            />
+          </div>
+        )}
+
+        {/* Time Capsule in the history vault — treasures nest into its slots as
+            they're placed (the loose delivered props are hidden below). */}
+        {carry?.mode === "direct" && room.scene === "history" && suitPt && (
+          <div
+            className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-1/2"
+            style={{ left: pct(suitPt.x, W), top: pct(suitPt.y, H) }}
+          >
+            <TimeCapsuleModel
+              slots={carryItems.map((it) => ({ emoji: it.emoji, filled: delivered.includes(it.id) }))}
+              className="h-16 w-auto drop-shadow-lg sm:h-20"
+            />
+          </div>
+        )}
+
         {/* World items — loose / charged / set-down / delivered (carried one is
             drawn on the character). */}
         {carryItems.map((it, i) => {
           if (carrying === it.id) return null;
+          // Delivered charge cores live in the suit's sockets, and the history
+          // vault's treasures nest in the Time Capsule — not loose on the floor.
+          if (delivered.includes(it.id) && (carry?.mode === "charge" || (carry?.mode === "direct" && room.scene === "history"))) return null;
           const p = itemPos(it, i);
           const done = delivered.includes(it.id);
           const isCore = carry?.mode === "charge";
@@ -1129,7 +1199,7 @@ function RoomMap({
               key={it.id}
               onClick={() => pickable && pickUp(it.id)}
               disabled={!pickable}
-              className={`absolute z-20 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center transition sm:h-10 sm:w-10 ${ringed ? "scale-110" : ""} ${pickable ? "" : "cursor-default"}`}
+              className={`absolute z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center outline-none transition focus-visible:outline-none ${isCore ? "h-6 w-6 sm:h-7 sm:w-7" : "h-8 w-8 sm:h-10 sm:w-10"} ${ringed ? "scale-110" : ""} ${pickable ? "" : "cursor-default"}`}
               style={{
                 left: pct(p.x, W),
                 top: pct(p.y, H),
@@ -1145,7 +1215,7 @@ function RoomMap({
               {isCore ? (
                 <span
                   className="flex h-full w-full items-center justify-center rounded-full ring-2 ring-white/70"
-                  style={{ background: chargedCore ? "radial-gradient(circle at 35% 30%, #fde68a, #f59e0b 55%, #b45309)" : "radial-gradient(circle at 35% 30%, #bae6fd, #38bdf8 55%, #075985)" }}
+                  style={{ background: chargedCore ? CORE_GRADIENT[it.station ?? ""] ?? CORE_CHARGED_FALLBACK : CORE_DIM }}
                 >
                   {chargedCore && it.station && <StationIcon name={STATION_ICON[`${room.slug}:${it.station}`] ?? "core"} className="h-4 w-4 text-white sm:h-5 sm:w-5" />}
                 </span>
@@ -1183,7 +1253,7 @@ function RoomMap({
             <button
               key={cell.id}
               onClick={() => (gated ? setFlash(lockMessage(cell)) : setOpenId(cell.stationId!))}
-              className={`absolute z-20 h-12 w-12 -translate-x-1/2 -translate-y-1/2 transition sm:h-14 sm:w-14 ${
+              className={`absolute z-20 h-12 w-12 -translate-x-1/2 -translate-y-1/2 outline-none transition focus-visible:outline-none sm:h-14 sm:w-14 ${
                 ringed ? "-translate-y-1 scale-110" : ""
               }`}
               style={{
@@ -1200,24 +1270,25 @@ function RoomMap({
           );
         })}
 
-        {/* Exit door */}
+        {/* Exit door — skinned to the room's scene where one is defined. */}
         {(() => {
           const er = geo.floors[layout.exit];
           if (!er) return null;
-          const c = centerOf(er);
+          const { pin, transform } = exitDoorAnchor(er, layout.exitDoorSide);
+          const door = DOOR_ART[room.scene] ?? { open: "doorOpen", locked: "doorLocked" };
           return (
             <button
-              onClick={() => exitReady && performAction(near?.kind === "exit" ? near : { key: "exit", kind: "exit", id: layout.exit, label: "", x: c.x, y: c.y, enabled: true })}
-              className={`absolute z-20 h-12 w-10 -translate-x-1/2 transition sm:h-16 sm:w-12 ${exitReady ? "animate-pulse" : ""}`}
+              onClick={() => exitReady && performAction(near?.kind === "exit" ? near : { key: "exit", kind: "exit", id: layout.exit, label: "", x: pin.x, y: pin.y, enabled: true })}
+              className={`absolute z-20 h-12 w-10 outline-none transition focus-visible:outline-none sm:h-16 sm:w-12 ${exitReady ? "animate-pulse" : ""}`}
               style={{
-                left: pct(c.x, W),
-                top: pct(er.y + er.h - 4, H),
-                transform: "translate(-50%, -100%)",
+                left: pct(pin.x, W),
+                top: pct(pin.y, H),
+                transform,
                 filter: exitReady ? "drop-shadow(0 0 6px rgba(251,191,36,0.9))" : "drop-shadow(0 2px 2px rgba(0,0,0,0.35))",
               }}
               title={exitReady ? "Open the door" : "Locked — finish the room first"}
             >
-              <Prop art={exitReady ? "doorOpen" : "doorLocked"} className="h-full w-full" />
+              <Prop art={exitReady ? door.open : door.locked} className="h-full w-full" />
             </button>
           );
         })()}
@@ -1249,7 +1320,7 @@ function RoomMap({
               {carry?.mode === "charge" ? (
                 <span
                   className="flex h-full w-full items-center justify-center rounded-full ring-2 ring-white/70"
-                  style={{ background: carriedReady ? "radial-gradient(circle at 35% 30%, #fde68a, #f59e0b 55%, #b45309)" : "radial-gradient(circle at 35% 30%, #bae6fd, #38bdf8 55%, #075985)" }}
+                  style={{ background: carriedReady ? CORE_GRADIENT[heldItem.station ?? ""] ?? CORE_CHARGED_FALLBACK : CORE_DIM }}
                 >
                   {carriedReady && heldItem.station && <StationIcon name={STATION_ICON[`${room.slug}:${heldItem.station}`] ?? "core"} className="h-3 w-3 text-white sm:h-3.5 sm:w-3.5" />}
                 </span>
@@ -1872,6 +1943,37 @@ const STATION_DEVICE: Record<string, string> = {
   "sg-nature:trailmap": "trailmap",
 };
 
+/** The Merlion vector (original viewBox 0 0 99.56 122.88) — a maned lion head
+ *  spouting water over a scaled fish body. */
+const MERLION_PATH =
+  "M47.98,48.48c0.25-1.14,0.55-2.24,0.91-3.3c0.44-1.28,0.97-2.46,1.6-3.53l0.2-0.32c-1.76-0.32-3.12-1.05-4.03-1.98c-0.68-0.69-1.13-1.49-1.34-2.32c-0.22-0.86-0.18-1.75,0.13-2.61c0.52-1.45,1.81-2.73,3.89-3.39c1.17-0.38,2.39-0.44,3.61-0.51c2.08-0.12,4.15-0.23,4.71-2.54c0.05-0.2,0.04-0.37-0.01-0.52v-0.01c-0.08-0.24-0.29-0.48-0.57-0.69L57,26.73c-0.42-0.29-0.97-0.52-1.58-0.67c-1.14-0.28-2.45-0.27-3.56,0.09c-0.08,0.03-0.16,0.05-0.24,0.07c-0.94,0.18-1.78,0.41-2.52,0.6c-1.69,0.46-2.9,0.78-4.33,0.33c-1.92-0.62-3.69-2.53-4.49-4.76c-0.4-1.12-0.57-2.34-0.41-3.54l0.01-0.05c0.18-1.26,0.72-2.47,1.72-3.52c1.57-1.62,4.28-2.79,8.57-2.89c0.47-1,1.04-1.88,1.7-2.66c0.92-1.08,2-1.95,3.18-2.6c0.82-0.45,1.65-0.81,2.48-1.06c2.87-3.77,7.24-5.68,11.92-6.01C74.5-0.31,79.94,1.17,84.26,4.1c8.78,5.95,9.06,15.48,9.35,25.14c0.12,4.12,0.25,8.27,1.08,12.09c0.63,2.9,1.78,5.49,2.96,8.16c0.39,0.88,0.78,1.77,1.18,2.72c0.26,0.62,0.05,1.32-0.46,1.71c-0.76,0.64-2.17,1.63-3.89,2.55c0.37,1.75,0.85,3.49,1.52,5.25c0.79,2.07,1.83,4.13,3.24,6.18l0.08,0.1c0.44,0.67,0.25,1.58-0.42,2.02c-1.72,1.13-3.42,2.01-5.31,2.71c0.91,6.65,1.54,13.25,1.48,19.39c-0.07,6.6-0.96,12.67-3.21,17.7c-1.88,4.21-4.61,7.33-7.81,9.47c-3.51,2.34-7.59,3.49-11.76,3.58c-1.24,0.03-2.47-0.02-3.66-0.15c-6.08-0.63-11.66-3.14-15.76-7.06c-4.14-3.96-6.77-9.33-6.9-15.66c-0.02-1.01,0.02-2.03,0.13-3.06c0.21-2.02,0.71-4.06,1.2-6.11c0.37-1.52,0.74-3.05,0.99-4.55c0.8-4.91-0.04-10.64-1.78-16.11c-2.02-6.34-5.24-12.27-8.52-16.11c-0.45-0.53-0.46-1.29-0.06-1.82c1.27-1.81,2.97-3,4.84-3.6c1.45-0.46,2.99-0.57,4.5-0.32C47.49,48.37,47.74,48.42,47.98,48.48L47.98,48.48z M74.14,112.99c-0.11-0.79,0.45-1.53,1.24-1.64c0.8-0.11,1.53,0.45,1.64,1.24c0.25,1.77-0.5,2.89-1.63,3.5c-0.68,0.37-1.5,0.5-2.27,0.44c-0.66-0.05-1.31-0.25-1.85-0.57c-0.54,0.31-1.2,0.51-1.85,0.57c-0.77,0.06-1.58-0.07-2.27-0.44c-1.13-0.61-1.88-1.73-1.63-3.5c0.11-0.8,0.85-1.35,1.64-1.24c0.8,0.11,1.35,0.84,1.24,1.64c-0.04,0.32,0.02,0.48,0.13,0.54c0.17,0.09,0.41,0.12,0.66,0.1c0.22-0.02,0.43-0.07,0.58-0.15c-0.1-0.68,0.3-1.36,0.98-1.59c0.17-0.06,0.35-0.08,0.52-0.07c0.17-0.01,0.35,0.02,0.52,0.07c0.68,0.22,1.08,0.9,0.98,1.59c0.15,0.08,0.36,0.13,0.58,0.15c0.25,0.02,0.49-0.01,0.66-0.1C74.12,113.47,74.18,113.31,74.14,112.99L74.14,112.99z M51.48,82.13c0.35,0.04,0.7,0.08,1.04,0.13c-0.35-4.4-0.44-9.02-0.29-13.67c0.12-4.01,0.41-8.04,0.84-11.96c-0.69-1.85-1.83-3.24-3.17-4.17c-0.96-0.66-2.02-1.09-3.1-1.26c-1.07-0.17-2.16-0.1-3.17,0.22c-0.99,0.32-1.91,0.88-2.69,1.7c3.24,4.09,6.33,9.97,8.31,16.19C50.6,73.54,51.45,77.97,51.48,82.13L51.48,82.13z M55.49,82.87l0.1,0.03c0.7-4.3,1.62-8.68,2.78-12.27c0.99-3.07,2.19-5.6,3.62-7.1c0.05-0.93-0.12-1.77-0.43-2.51c-0.39-0.91-1.02-1.67-1.77-2.23c-0.75-0.56-1.63-0.92-2.49-1.04c-0.48-0.06-0.96-0.05-1.42,0.05c-0.38,3.59-0.63,7.24-0.74,10.87C54.98,73.51,55.08,78.32,55.49,82.87L55.49,82.87z M58.36,84.01l0.08,0.04c0.86-1.51,2.02-3.36,3.62-5.14c1.65-1.84,3.73-3.6,6.39-4.83c0.06-0.26,0.11-0.53,0.15-0.8c0.27-1.8-0.03-3.43-0.79-4.71c-0.4-0.67-0.93-1.26-1.58-1.73c-0.28-0.08-0.53-0.23-0.71-0.45c-0.38-0.2-0.79-0.38-1.23-0.51c-0.13-0.04-0.28-0.08-0.42-0.11c-1,1.17-1.92,3.22-2.73,5.74C59.98,75.11,59.06,79.61,58.36,84.01L58.36,84.01z M60.82,85.76l0.03,0.03c2.05-0.91,4.11-1.45,6.16-1.62c1.97-0.17,3.93,0,5.88,0.51c0.57-1.18,0.56-2.32,0.11-3.45c-0.58-1.44-1.85-2.9-3.56-4.39c-2.14,1.04-3.85,2.49-5.21,4.01C62.72,82.54,61.62,84.33,60.82,85.76L60.82,85.76z M62.81,88.12c0.33,0.5,0.64,1.03,0.94,1.6c0.37,0.71,0.09,1.59-0.63,1.96c-0.71,0.36-1.58,0.09-1.95-0.61c-0.55,0.33-0.95,0.72-1.2,1.13c-0.26,0.42-0.38,0.87-0.38,1.34c0,0.51,0.13,1.05,0.38,1.58c0.45,0.96,1.27,1.86,2.35,2.53c1.27,0.79,2.85,1.22,4.46,1.05c1.38-0.14,2.8-0.74,4.09-1.94c0.55-0.52,1.04-1.11,1.44-1.75c0.39-0.63,0.71-1.32,0.92-2.06c0.26-0.88,0.34-1.83,0.19-2.83c-0.12-0.8-0.4-1.64-0.86-2.52c-1.76-0.51-3.53-0.69-5.32-0.54C65.77,87.2,64.29,87.55,62.81,88.12L62.81,88.12z M59.56,88.65c-0.81-0.94-1.73-1.64-2.75-2.17c-1.53-0.79-3.35-1.21-5.46-1.44c-0.05,0.58-0.13,1.15-0.22,1.71c-0.26,1.59-0.65,3.18-1.03,4.77c-0.2,0.83-0.4,1.65-0.58,2.47c0.31-0.35,0.79-0.54,1.28-0.47c0.8,0.11,1.35,0.85,1.24,1.64c-0.04,0.32,0.02,0.48,0.13,0.54c0.17,0.09,0.41,0.12,0.66,0.1c0.22-0.02,0.43-0.07,0.58-0.15c-0.1-0.68,0.3-1.36,0.98-1.59c0.76-0.25,1.58,0.16,1.83,0.92c0.43,1.29-0.1,2.33-1.09,3.01c-0.58,0.4-1.33,0.65-2.08,0.71c-0.77,0.06-1.58-0.07-2.27-0.44c-0.86-0.46-1.5-1.23-1.65-2.36c-0.07,0.45-0.14,0.9-0.18,1.34c-0.1,0.93-0.13,1.84-0.11,2.71c0.12,5.49,2.41,10.16,6,13.6c3.64,3.48,8.61,5.71,14.05,6.27c1.1,0.11,2.2,0.16,3.31,0.14c3.63-0.08,7.17-1.07,10.2-3.09c2.77-1.85,5.13-4.56,6.77-8.24c2.07-4.63,2.89-10.31,2.96-16.54c0.06-5.82-0.53-12.13-1.39-18.51c-2.93,0.72-6.42,1.11-11.08,1.29c-0.7,0.03-1.34-0.45-1.48-1.16c-1.15-5.59-1.83-11.79-2.08-17.86c-1,0.16-2.07,0.27-3.23,0.3c-1.43,0.03-2.98-0.08-4.71-0.42c-0.33,3.04-0.4,6.04-0.19,8.8c0.94,0.7,1.72,1.56,2.31,2.55c1.11,1.86,1.55,4.15,1.18,6.63c-0.04,0.29-0.1,0.6-0.17,0.91c2.06,1.78,3.61,3.61,4.38,5.51c0.85,2.09,0.8,4.19-0.45,6.32c0.55,1.1,0.89,2.18,1.05,3.23c0.23,1.45,0.11,2.83-0.27,4.09c-0.29,0.98-0.71,1.91-1.24,2.76c-0.54,0.88-1.2,1.67-1.93,2.36c-1.79,1.67-3.8,2.5-5.78,2.7c-2.27,0.23-4.49-0.37-6.28-1.47c-1.56-0.96-2.77-2.3-3.45-3.76c-0.43-0.91-0.66-1.87-0.66-2.82c0-1,0.26-1.98,0.81-2.87C57.98,89.92,58.65,89.22,59.56,88.65L59.56,88.65z M77.18,102.75c0.11-0.79,0.84-1.35,1.64-1.24s1.35,0.84,1.24,1.64c-0.04,0.32,0.02,0.48,0.13,0.54c0.17,0.09,0.41,0.12,0.66,0.1c0.23-0.02,0.43-0.07,0.58-0.15c-0.1-0.68,0.3-1.36,0.98-1.59c0.76-0.25,1.58,0.16,1.83,0.92c0.43,1.29-0.1,2.33-1.09,3.01c-0.58,0.4-1.33,0.65-2.08,0.71c-0.77,0.06-1.58-0.07-2.27-0.44C77.69,105.64,76.93,104.52,77.18,102.75L77.18,102.75z M55.09,103.61c0.11-0.8,0.84-1.35,1.64-1.24c0.79,0.11,1.35,0.84,1.24,1.64c-0.04,0.32,0.02,0.48,0.13,0.54c0.17,0.09,0.41,0.12,0.66,0.1c0.22-0.02,0.43-0.07,0.58-0.15c-0.1-0.68,0.3-1.36,0.98-1.59c0.76-0.25,1.58,0.16,1.83,0.92c0.43,1.29-0.1,2.33-1.09,3.01c-0.58,0.4-1.33,0.65-2.08,0.71c-0.77,0.06-1.58-0.07-2.26-0.44C55.6,106.5,54.84,105.38,55.09,103.61L55.09,103.61z M68.4,103.49c0.11-0.8,0.84-1.35,1.64-1.24c0.8,0.11,1.35,0.84,1.24,1.64c-0.04,0.32,0.02,0.48,0.13,0.54c0.17,0.09,0.41,0.12,0.66,0.1c0.23-0.02,0.43-0.07,0.58-0.15c-0.1-0.68,0.3-1.36,0.98-1.59c0.76-0.25,1.58,0.16,1.83,0.92c0.43,1.29-0.1,2.33-1.09,3.01c-0.58,0.4-1.33,0.65-2.08,0.71c-0.77,0.06-1.58-0.07-2.27-0.44C68.9,106.38,68.15,105.26,68.4,103.49L68.4,103.49z M85.98,93.76c-0.11-0.8,0.45-1.53,1.24-1.64c0.8-0.11,1.53,0.45,1.64,1.24c0.25,1.77-0.5,2.89-1.63,3.5c-0.68,0.37-1.5,0.5-2.26,0.44c-0.66-0.05-1.31-0.25-1.85-0.57c-0.54,0.31-1.2,0.51-1.85,0.57c-0.77,0.06-1.58-0.07-2.27-0.44c-1.13-0.61-1.88-1.73-1.63-3.5c0.11-0.8,0.84-1.35,1.64-1.24c0.8,0.11,1.35,0.84,1.24,1.64c-0.04,0.32,0.02,0.48,0.13,0.54c0.17,0.09,0.41,0.12,0.66,0.1c0.23-0.02,0.43-0.07,0.58-0.15c-0.1-0.68,0.3-1.36,0.98-1.59c0.17-0.06,0.35-0.08,0.52-0.07c0.17-0.01,0.35,0.02,0.52,0.07c0.68,0.22,1.08,0.9,0.98,1.59c0.15,0.08,0.36,0.13,0.58,0.15c0.25,0.02,0.49-0.01,0.66-0.1C85.96,94.24,86.03,94.08,85.98,93.76L85.98,93.76z M81.8,87.54c-0.32-0.74,0.02-1.59,0.75-1.91c0.74-0.32,1.59,0.02,1.91,0.75c0.06,0.15,0.21,0.25,0.37,0.3l0,0c0.19,0.06,0.41,0.07,0.64,0.04c0.2-0.03,0.37-0.09,0.49-0.18c0.05-0.04,0.09-0.09,0.09-0.14c0.06-0.8,0.76-1.4,1.56-1.34s1.4,0.76,1.34,1.56c-0.07,0.95-0.54,1.7-1.22,2.22c-0.53,0.41-1.18,0.67-1.85,0.77c-0.65,0.1-1.34,0.04-1.98-0.17C83.02,89.13,82.23,88.51,81.8,87.54L81.8,87.54z M79.72,79.54c0.11-0.8,0.84-1.35,1.64-1.24c0.79,0.11,1.35,0.84,1.24,1.64c-0.04,0.32,0.02,0.48,0.13,0.54c0.17,0.09,0.41,0.12,0.66,0.1c0.23-0.02,0.43-0.07,0.58-0.15c-0.1-0.68,0.3-1.36,0.98-1.59c0.76-0.25,1.58,0.16,1.83,0.92c0.43,1.29-0.1,2.33-1.09,3.01c-0.58,0.4-1.33,0.65-2.08,0.71c-0.77,0.06-1.58-0.07-2.26-0.44C80.22,82.44,79.47,81.31,79.72,79.54L79.72,79.54z M41.27,34.62c0.75-0.27,1.59,0.12,1.86,0.88s-0.12,1.59-0.88,1.86c-9.46,3.41-15.68,8.58-19.83,14.53c-4.17,5.97-6.28,12.76-7.5,19.34c-0.14,0.79-0.9,1.31-1.69,1.17c-0.79-0.14-1.31-0.9-1.17-1.69c1.29-6.92,3.53-14.1,7.98-20.48C24.51,43.82,31.17,38.26,41.27,34.62L41.27,34.62z M39.76,27.42c0.78-0.19,1.57,0.29,1.76,1.07c0.19,0.78-0.29,1.57-1.07,1.76c-9.27,2.3-16.9,6.13-23.09,11.27C11.17,46.66,6.38,53.14,2.77,60.75c-0.34,0.73-1.21,1.04-1.94,0.69s-1.04-1.21-0.69-1.94c3.78-7.98,8.82-14.8,15.36-20.23C22.04,33.86,30.05,29.83,39.76,27.42L39.76,27.42z M58.1,11.96c1.56-0.3,4.82,0.28,5.16,2.02c0.15,0.78-1.07,0.88-2.41,0.83l0,0.05c0,0.93-0.75,1.68-1.68,1.68c-0.93,0-1.68-0.75-1.68-1.68c0-0.07,0-0.14,0.01-0.21c-0.54-0.11-0.89-0.32-1.06-0.61C55.68,12.79,57.11,12.15,58.1,11.96L58.1,11.96z M53.69,51.72c0.01-0.04,0.01-0.09,0.02-0.13c0.32-1.68,0.78-3.28,1.41-4.8c1.26-3.04,3.2-5.72,6.02-7.94c0.63-0.5,1.55-0.39,2.04,0.24c0.5,0.63,0.39,1.55-0.25,2.04c-2.4,1.89-4.05,4.18-5.13,6.77c-0.55,1.33-0.96,2.74-1.24,4.22c-0.13,0.89-0.25,1.79-0.36,2.69c0.48-0.03,0.96-0.02,1.45,0.05c1.37,0.18,2.71,0.73,3.86,1.58c1.15,0.86,2.12,2.02,2.72,3.43c0.41,0.95,0.65,2.02,0.67,3.16l0.1,0.03c-0.14-3.66,0.16-7.62,0.82-11.47c0.82-4.76,2.2-9.38,4-13.11c0.35-0.72,1.22-1.03,1.94-0.68c0.72,0.35,1.03,1.22,0.68,1.94c-1.69,3.48-2.98,7.84-3.75,12.34c-0.04,0.25-0.08,0.5-0.12,0.75c1.58,0.32,2.99,0.43,4.27,0.4c1.12-0.02,2.18-0.15,3.2-0.33c-0.02-0.89-0.03-1.78-0.03-2.66c0-8.21,0.79-15.74,2.24-20.6c0.23-0.77,1.04-1.21,1.81-0.98s1.21,1.04,0.98,1.81c-1.38,4.61-2.13,11.84-2.13,19.77c0,1.23,0.02,2.47,0.05,3.72c0.01,0.08,0.01,0.15,0.01,0.22c0.18,5.96,0.78,12.12,1.84,17.72c3.9-0.2,6.89-0.56,9.4-1.2c2.19-0.55,4.04-1.32,5.84-2.37c-1.17-1.87-2.07-3.73-2.78-5.59c-0.64-1.67-1.12-3.35-1.5-5.03c-1.77,0.69-3.69,1.18-5.52,1.16c-0.71-0.01-1.3-0.53-1.42-1.21l0,0c-0.68-3.98-1.11-7.94-1.29-11.88c-0.18-3.94-0.12-7.82,0.18-11.66c0.06-0.8,0.76-1.4,1.56-1.34c0.8,0.06,1.4,0.76,1.34,1.56c-0.29,3.75-0.35,7.53-0.18,11.32c0.15,3.37,0.5,6.78,1.04,10.22c1.19-0.16,2.43-0.55,3.61-1.04c1.86-0.77,3.52-1.78,4.6-2.56c-0.24-0.55-0.48-1.1-0.72-1.65c-1.24-2.81-2.45-5.53-3.14-8.72c-0.88-4.04-1.01-8.34-1.14-12.62c-0.26-8.91-0.53-17.7-8.07-22.82c-0.41-0.27-0.82-0.54-1.25-0.78c0.4,0.42,0.78,0.87,1.13,1.35c3.13,4.13,4.72,10.05,4.09,16.61c-0.06,0.65-0.64,1.13-1.3,1.07c-0.65-0.06-1.13-0.64-1.07-1.3c0.57-5.96-0.84-11.29-3.62-14.96c-1.07-1.42-2.35-2.58-3.8-3.43c-1.44-0.84-3.04-1.38-4.79-1.54c-0.87-0.08-1.77-0.07-2.7,0.03c6.45,1.58,8.76,6.37,9.1,11.83c0.33,5.33-1.28,11.28-2.59,15.22c-0.21,0.62-0.88,0.96-1.5,0.75c-0.62-0.21-0.96-0.88-0.75-1.5c1.25-3.75,2.78-9.38,2.47-14.33c-0.29-4.63-2.27-8.67-7.9-9.79c-1.25-0.25-2.76-0.3-4.29,0.01c1.07,0.22,2.08,0.56,3.01,1L67,6.8c0.29,0.14,0.57,0.3,0.86,0.46c3.23,1.91,4.74,4.84,5.07,8.07c0.31,3.02-0.46,6.28-1.83,9.13l-0.05,0.12c-0.24,0.49-0.5,0.97-0.78,1.45c-1.03,1.74-2.31,3.37-3.72,4.87c-1.39,1.49-2.9,2.84-4.39,4.04c-0.91,0.73-1.8,1.41-2.66,2.07c-1.8,1.37-3.48,2.66-4.78,3.98l-0.08,0.08c-0.66,0.67-1.21,1.36-1.63,2.07c-0.54,0.91-0.99,1.92-1.36,2.99c-0.36,1.05-0.66,2.21-0.91,3.43c0.28,0.16,0.55,0.33,0.82,0.51c0.76,0.52,1.46,1.15,2.1,1.89L53.69,51.72L53.69,51.72L53.69,51.72z M56.57,52.13L56.57,52.13L56.57,52.13L56.57,52.13z M85.25,26.9c0.9,0,1.62,0.73,1.62,1.62c0,0.9-0.73,1.62-1.62,1.62c-0.9,0-1.62-0.73-1.62-1.62C83.63,27.63,84.35,26.9,85.25,26.9L85.25,26.9z M66.17,35.71c0.9,0,1.63,0.73,1.63,1.62s-0.73,1.62-1.63,1.62c-0.9,0-1.62-0.73-1.62-1.62S65.28,35.71,66.17,35.71L66.17,35.71z M53,38.58c1.37-1.32,3-2.57,4.72-3.89c0.86-0.65,1.74-1.33,2.6-2.02c1.42-1.15,2.83-2.4,4.1-3.76c1.25-1.34,2.4-2.8,3.33-4.37c0.23-0.39,0.46-0.81,0.67-1.24l0.06-0.11c1.15-2.4,1.8-5.11,1.55-7.58c-0.24-2.34-1.33-4.47-3.66-5.84c-0.2-0.12-0.41-0.23-0.65-0.35l-0.1-0.06c-1.33-0.63-2.91-1.01-4.58-0.96c-1.49,0.04-3.06,0.42-4.58,1.27c-0.88,0.49-1.68,1.13-2.37,1.94c-0.65,0.77-1.2,1.68-1.6,2.74c-0.23,0.61-0.83,0.98-1.46,0.94c-3.9-0.04-6.17,0.8-7.34,2.01c-0.55,0.57-0.84,1.23-0.94,1.91l-0.01,0.04c-0.09,0.71,0.02,1.46,0.27,2.16c0.51,1.43,1.55,2.62,2.63,2.97c0.6,0.19,1.47-0.04,2.69-0.37c0.74-0.2,1.59-0.43,2.65-0.63c1.62-0.52,3.49-0.53,5.11-0.14c0.96,0.23,1.85,0.61,2.57,1.11l0.09,0.07c0.77,0.56,1.35,1.28,1.63,2.13c0.22,0.66,0.26,1.37,0.08,2.13c-1.07,4.41-4.21,4.58-7.38,4.76c-1.04,0.06-2.07,0.11-2.88,0.37c-1.14,0.37-1.81,0.96-2.04,1.61c-0.11,0.29-0.12,0.61-0.04,0.92c0.09,0.34,0.28,0.67,0.58,0.98C49.5,38.1,50.93,38.65,53,38.58L53,38.58z";
+
+/** The Merlion scaled into the 40×40 prop box. `base:"plinth"` sets it on a stone
+ *  pedestal (the Lion City decor + station); the carried treasure omits the base. */
+function MerlionFigure({ fill, base }: { fill: string; base?: "plinth" }) {
+  // The figure fills the full box height with its base at the bottom-right, so the
+  // pedestal version shrinks + lifts the Merlion to seat it on a wide plinth; the
+  // carried treasure keeps the full-size figure (no base). A white silhouette image
+  // sits behind the (line-art) path so the body reads white with a coloured outline.
+  return base === "plinth" ? (
+    <>
+      <rect x="6" y="34" width="28" height="4" rx="1" fill="#b3aa99" stroke="#7d7565" strokeWidth="0.8" />
+      <rect x="8" y="31.5" width="24" height="2.8" rx="0.5" fill="#cdc5b7" />
+      <image href="/escape/merlion-body.png" x="6" y="1.6" width="24.9" height="30.7" />
+      <g transform="translate(6 1.6) scale(0.25)">
+        <path fill={fill} d={MERLION_PATH} />
+      </g>
+    </>
+  ) : (
+    <>
+      <image href="/escape/merlion-body.png" x="3.8" y="0" width="32.4" height="40" />
+      <g transform="translate(3.8 0) scale(0.3255)">
+        <path fill={fill} d={MERLION_PATH} />
+      </g>
+    </>
+  );
+}
+
 /** SVG art (viewBox 0 0 48 48) for each themed device type. */
 const THEMED_ART: Record<string, React.ReactNode> = {
   // Sci-fi charging pod: glowing core tube fills with energy, lightning emblem.
@@ -1992,17 +2094,12 @@ const THEMED_ART: Record<string, React.ReactNode> = {
     </>
   ),
   // Merlion statue on a plinth (Lion City Room).
+  // Merlion statue — a stone Merlion on a plinth, spouting water (the Lion City
+  // Room's station). Same figure as the carried Merlion, in stone.
   statue: (
-    <>
-      <rect x="15" y="37" width="18" height="3" rx="1" fill="#94a3b8" />
-      <rect x="18" y="32" width="12" height="6" rx="1" fill="#cbd5e1" />
-      {[[16.5, 22], [18.5, 16], [24, 14], [29.5, 16], [31.5, 22]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="2.7" fill="#cbd5e1" />)}
-      <circle cx="24" cy="22" r="8" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1.3" />
-      <circle cx="21.5" cy="21.5" r="1" fill="#0f172a" />
-      <circle cx="26.5" cy="21.5" r="1" fill="#0f172a" />
-      <path d="M22.5 25.5q1.5 1.5 3 0" stroke="#475569" strokeWidth="1" fill="none" />
-      <path d="M16 31q-3 1.5-3.5 5" stroke="#38bdf8" strokeWidth="1.6" fill="none" strokeLinecap="round" />
-    </>
+    <g transform="scale(1.2)">
+      <MerlionFigure fill="#9a8f7d" base="plinth" />
+    </g>
   ),
   // Hawker stall with an awning and a steaming bowl.
   hawker: (
@@ -2043,8 +2140,22 @@ const THEMED_ART: Record<string, React.ReactNode> = {
     <>
       <rect x="13" y="31" width="22" height="8" rx="1.5" fill="#a16207" stroke="#854d0e" strokeWidth="1" />
       <line x1="13" y1="35" x2="35" y2="35" stroke="#854d0e" strokeWidth="0.8" />
-      <circle cx="24" cy="22" r="9.5" fill="#84cc16" stroke="#4d7c0f" strokeWidth="1.3" />
-      {[[24, 10], [31, 13], [34, 21], [31, 29], [24, 32], [17, 29], [14, 21], [17, 13]].map(([x, y], i) => <polygon key={i} points={`${x},${y - 2.5} ${x + 2.2},${y + 1.5} ${x - 2.2},${y + 1.5}`} fill="#4d7c0f" />)}
+      {/* durian — khaki oval husk under long pyramid spikes, with a short stem */}
+      <rect x="22.7" y="8.5" width="2.6" height="4" rx="1" fill="#6b4f2a" />
+      {Array.from({ length: 15 }).map((_, i) => {
+        const a = (i / 15) * Math.PI * 2 - Math.PI / 2;
+        const bx = 24 + Math.cos(a) * 8.2;
+        const by = 22 + Math.sin(a) * 9.0;
+        const tx = 24 + Math.cos(a) * 13.2;
+        const ty = 22 + Math.sin(a) * 14.4;
+        const px = -Math.sin(a) * 2.1;
+        const py = Math.cos(a) * 2.1;
+        return <polygon key={i} points={`${bx + px},${by + py} ${bx - px},${by - py} ${tx},${ty}`} fill="#7c8a3e" />;
+      })}
+      <ellipse cx="24" cy="22" rx="9" ry="9.8" fill="#94a350" stroke="#5f6b2c" strokeWidth="1.1" />
+      {[[20, 18], [28, 18.5], [24, 24], [19, 23], [29, 23], [24, 15], [21.5, 20.5], [26.5, 20.5]].map(([x, y], i) => (
+        <path key={`f${i}`} d={`M${x - 2} ${y + 2} L${x} ${y - 2.4} L${x + 2} ${y + 2}`} fill="#7c8a3e" stroke="#5f6b2c" strokeWidth="0.7" strokeLinejoin="round" />
+      ))}
     </>
   ),
   // Crossword board with a highlighted column.
@@ -2192,27 +2303,32 @@ const PROP_ART: Record<string, React.ReactNode> = {
       <line x1="16" y1="23" x2="21" y2="23" stroke="#b45309" strokeWidth="1.2" />
     </>
   ),
+  // Singapore flag (real artwork, viewBox 55.32×38.52) on a pole with a gold
+  // finial — red over white, a crescent + five stars.
   flag: (
     <>
-      <line x1="13" y1="6" x2="13" y2="34" stroke="#94a3b8" strokeWidth="2" />
-      <rect x="13" y="7" width="18" height="6" fill="#dc2626" />
-      <rect x="13" y="13" width="18" height="6" fill="#fff" stroke="#e2e8f0" strokeWidth="0.5" />
-      <path d="M19 9a3 3 0 1 0 0 5 2.6 2.6 0 1 1 0-5z" fill="#fff" />
-      {[[22, 8.5], [24, 10.5], [22.5, 12.5], [20.5, 12.5], [20.5, 10.5]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="0.7" fill="#fff" />)}
+      <rect x="6.4" y="3.5" width="1.7" height="33" rx="0.85" fill="#8a8175" />
+      <rect x="6.4" y="3.5" width="0.7" height="33" rx="0.35" fill="#a8a095" />
+      <circle cx="7.25" cy="3" r="1.7" fill="#facc15" stroke="#ca8a04" strokeWidth="0.4" />
+      <g transform="translate(7.25 4) scale(0.5)">
+        <path fill="#ED2939" d="M0.06,19.26h55.2V3.09c0-1.66-1.35-3.02-3.01-3.03H3.07C1.41,0.07,0.06,1.43,0.06,3.09V19.26z" />
+        <path fill="#FFFFFF" d="M3.07,38.46h49.17c1.66-0.01,3.01-1.37,3.01-3.03V19.26H0.06v16.17C0.06,37.09,1.41,38.45,3.07,38.46z" />
+        <path fill="#FFFFFF" d="M18.62,9.66c0,3.99-3.23,7.22-7.22,7.22c-3.99,0-7.22-3.23-7.22-7.22c0-3.99,3.23-7.22,7.22-7.22C15.38,2.44,18.62,5.67,18.62,9.66z" />
+        <path fill="#ED2939" d="M20.88,9.66c0,3.77-3.06,6.82-6.82,6.82c-3.77,0-6.82-3.06-6.82-6.82c0-3.77,3.06-6.82,6.82-6.82C17.83,2.84,20.88,5.89,20.88,9.66z" />
+        <polygon fill="#FFFFFF" points="12.29,9.83 11.31,9.08 10.33,9.83 10.71,8.62 9.72,7.87 10.94,7.88 11.31,6.66 11.68,7.88 12.89,7.87 11.91,8.62" />
+        <polygon fill="#FFFFFF" points="19.98,9.83 19,9.08 18.02,9.83 18.4,8.62 17.42,7.87 18.63,7.88 19,6.66 19.38,7.88 20.59,7.87 19.61,8.62" />
+        <polygon fill="#FFFFFF" points="16.14,6.98 15.16,6.23 14.18,6.98 14.56,5.77 13.57,5.02 14.79,5.02 15.16,3.81 15.53,5.02 16.75,5.02 15.76,5.76" />
+        <polygon fill="#FFFFFF" points="13.73,14.4 12.75,13.65 11.77,14.4 12.15,13.19 11.16,12.44 12.38,12.45 12.75,11.23 13.12,12.45 14.33,12.44 13.35,13.19" />
+        <polygon fill="#FFFFFF" points="18.54,14.4 17.56,13.65 16.58,14.4 16.96,13.19 15.98,12.44 17.19,12.45 17.56,11.23 17.94,12.45 19.15,12.44 18.17,13.19" />
+        <path fill="none" stroke="#94a3b8" strokeWidth="0.5" d="M3.09,0.06h49.13c1.67,0,3.03,1.36,3.03,3.03v32.33c0,1.67-1.36,3.03-3.03,3.03H3.09c-1.67,0-3.03-1.37-3.03-3.03V3.09C0.06,1.42,1.42,0.06,3.09,0.06z" />
+      </g>
     </>
   ),
-  merlion: (
-    <>
-      <rect x="13" y="30" width="14" height="3" rx="1" fill="#94a3b8" />
-      <rect x="16" y="26" width="8" height="4" rx="1" fill="#cbd5e1" />
-      {[[13.5, 19], [15, 14.5], [20, 13], [25, 14.5], [26.5, 19]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="2.2" fill="#cbd5e1" />)}
-      <circle cx="20" cy="19" r="6.5" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1.2" />
-      <circle cx="18" cy="18.5" r="0.9" fill="#0f172a" />
-      <circle cx="22" cy="18.5" r="0.9" fill="#0f172a" />
-      <path d="M18.5 22q1.5 1.2 3 0" stroke="#475569" strokeWidth="0.9" fill="none" />
-      <path d="M13.5 27q-2.5 1-3 4" stroke="#38bdf8" strokeWidth="1.4" fill="none" strokeLinecap="round" />
-    </>
-  ),
+  // The Merlion — the national treasure carried to the Time Capsule.
+  merlion: <MerlionFigure fill="#5f7284" />,
+  // Singapore lion-head symbol — the real artwork, rendered as a painted floor
+  // emblem (flat decal) for the Lion City Room.
+  lionLogo: <image href="/escape/sg-lion.png" x="4" y="2" width="32" height="36" opacity="0.55" preserveAspectRatio="xMidYMid meet" />,
   sink: (
     <>
       <path d="M27 19v-5a3 3 0 0 0-3-3h-5" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" />
@@ -2255,6 +2371,50 @@ const PROP_ART: Record<string, React.ReactNode> = {
       <rect x="15" y="19" width="10" height="8" rx="1.5" fill="#fbbf24" />
       <path d="M16.8 19v-2a3.2 3.2 0 0 1 6.4 0v2" fill="none" stroke="#fbbf24" strokeWidth="1.6" />
       <circle cx="20" cy="23" r="1.3" fill="#1e293b" />
+    </>
+  ),
+  // Festival carnival gate — striped posts, an arch of pennants, and closed/open gates.
+  festivalGateLocked: (
+    <>
+      <rect x="8" y="14" width="5" height="23" rx="1" fill="#dc2626" />
+      <rect x="27" y="14" width="5" height="23" rx="1" fill="#dc2626" />
+      {[16, 20, 24, 28, 32].map((y, i) => (
+        <g key={i}>
+          <rect x="8" y={y} width="5" height="1.8" fill="#fff" opacity="0.85" />
+          <rect x="27" y={y} width="5" height="1.8" fill="#fff" opacity="0.85" />
+        </g>
+      ))}
+      <path d="M10.5 14 Q20 4 29.5 14" fill="none" stroke="#facc15" strokeWidth="2.5" />
+      {[12, 16, 20, 24, 28].map((x, i) => {
+        const y = 14 - Math.sin(((x - 10.5) / 19) * Math.PI) * 8.5;
+        return <polygon key={`p${i}`} points={`${x - 1.5},${y} ${x + 1.5},${y} ${x},${y + 3.2}`} fill={["#fb7185", "#a78bfa", "#34d399", "#38bdf8", "#f472b6"][i]} />;
+      })}
+      <rect x="13" y="16" width="14" height="21" rx="1" fill="#b45309" stroke="#7c2d12" strokeWidth="1" />
+      <line x1="20" y1="16" x2="20" y2="37" stroke="#7c2d12" strokeWidth="1" />
+      <rect x="17" y="24.5" width="6" height="5" rx="1" fill="#fbbf24" />
+      <path d="M18 24.5v-1.4a2 2 0 0 1 4 0v1.4" fill="none" stroke="#fbbf24" strokeWidth="1.2" />
+      <circle cx="20" cy="27" r="0.9" fill="#7c2d12" />
+    </>
+  ),
+  festivalGateOpen: (
+    <>
+      <rect x="8" y="14" width="5" height="23" rx="1" fill="#dc2626" />
+      <rect x="27" y="14" width="5" height="23" rx="1" fill="#dc2626" />
+      {[16, 20, 24, 28, 32].map((y, i) => (
+        <g key={i}>
+          <rect x="8" y={y} width="5" height="1.8" fill="#fff" opacity="0.85" />
+          <rect x="27" y={y} width="5" height="1.8" fill="#fff" opacity="0.85" />
+        </g>
+      ))}
+      <path d="M10.5 14 Q20 4 29.5 14" fill="none" stroke="#facc15" strokeWidth="2.5" />
+      {[12, 16, 20, 24, 28].map((x, i) => {
+        const y = 14 - Math.sin(((x - 10.5) / 19) * Math.PI) * 8.5;
+        return <polygon key={`p${i}`} points={`${x - 1.5},${y} ${x + 1.5},${y} ${x},${y + 3.2}`} fill={["#fb7185", "#a78bfa", "#34d399", "#38bdf8", "#f472b6"][i]} />;
+      })}
+      <rect x="13" y="16" width="14" height="21" rx="1" fill="#fde68a" />
+      <rect x="14.5" y="17.5" width="11" height="18" rx="0.8" fill="#fcd34d" opacity="0.6" />
+      <rect x="13" y="16" width="2.4" height="21" rx="0.8" fill="#92400e" />
+      <rect x="24.6" y="16" width="2.4" height="21" rx="0.8" fill="#92400e" />
     </>
   ),
   // --- purely cosmetic decor props (non-interactable) ---
@@ -2337,16 +2497,695 @@ const PROP_ART: Record<string, React.ReactNode> = {
       <circle cx="29" cy="24" r="2.5" fill="#facc15" />
     </>
   ),
+  // --- recycling-plant decor ---
+  // A three-bin recycling station (green / blue / amber) with white loop arrows.
+  recycleBins: (
+    <>
+      {[
+        { x: 6, fill: "#16a34a", lid: "#22c55e", edge: "#15803d" },
+        { x: 16, fill: "#2563eb", lid: "#3b82f6", edge: "#1d4ed8" },
+        { x: 26, fill: "#f59e0b", lid: "#fbbf24", edge: "#d97706" },
+      ].map((b, i) => (
+        <g key={i}>
+          <rect x={b.x} y={16} width={8} height={19} rx={1.5} fill={b.fill} stroke={b.edge} strokeWidth={1} />
+          <rect x={b.x - 0.6} y={13.4} width={9.2} height={3.2} rx={1} fill={b.lid} stroke={b.edge} strokeWidth={0.8} />
+          <rect x={b.x + 2.5} y={12} width={3} height={2} rx={0.6} fill={b.edge} />
+          {[0, 1, 2].map((j) => (
+            <polygon key={j} points={`${b.x + 4},22 ${b.x + 5.4},24.6 ${b.x + 2.6},24.6`} fill="#fff" opacity="0.9" transform={`rotate(${j * 120} ${b.x + 4} 24.6)`} />
+          ))}
+        </g>
+      ))}
+    </>
+  ),
+  // A conveyor belt discharging into a blue magnetic-separator box (a drum at the
+  // transfer point, output chutes, red stop button) — the sorting line's front end.
+  conveyor: (
+    <>
+      {/* separator unit */}
+      <rect x="21" y="11" width="15" height="19" rx="1.5" fill="#2563eb" stroke="#1e3a8a" strokeWidth="1.4" />
+      <rect x="23" y="13" width="11" height="5" rx="1" fill="#1e40af" />
+      <rect x="24" y="20.5" width="6" height="4" rx="0.6" fill="#1e3a8a" />
+      <circle cx="32.5" cy="23.5" r="1.3" fill="#ef4444" />
+      <rect x="24" y="30" width="2" height="6" fill="#1e3a8a" />
+      <rect x="32" y="30" width="2" height="6" fill="#1e3a8a" />
+      {/* magnetic drum at the belt-to-separator transfer */}
+      <circle cx="21" cy="23" r="3.6" fill="#94a3b8" stroke="#334155" strokeWidth="1.1" />
+      <circle cx="21" cy="23" r="1.3" fill="#475569" />
+      {/* belt feeding in from the left */}
+      <rect x="3" y="20.2" width="18" height="5.4" rx="2.7" fill="#475569" stroke="#334155" strokeWidth="1.1" />
+      <circle cx="6" cy="22.9" r="2.4" fill="#94a3b8" stroke="#334155" strokeWidth="0.9" />
+      <circle cx="6" cy="22.9" r="0.8" fill="#475569" />
+      {/* recyclables riding toward the separator */}
+      <rect x="8.5" y="16" width="3.2" height="4.6" rx="1.4" fill="#7dd3fc" stroke="#0891b2" strokeWidth="0.6" />
+      <circle cx="15" cy="18.1" r="1.9" fill="#fde68a" stroke="#d97706" strokeWidth="0.6" />
+      {/* belt legs */}
+      <rect x="5" y="25.6" width="2" height="8.4" fill="#334155" />
+      <rect x="16" y="25.6" width="2" height="8.4" fill="#334155" />
+    </>
+  ),
+  // A baler / compactor machine — hopper on top, hazard band, a fresh bale in the
+  // output slot.
+  compactor: (
+    <>
+      <rect x="8" y="9" width="24" height="25" rx="2" fill="#3f6212" stroke="#1a2e05" strokeWidth="1.4" />
+      <rect x="12" y="7" width="16" height="4" rx="1" fill="#1a2e05" />
+      <rect x="10.5" y="13" width="6" height="8" rx="1" fill="#1a2e05" />
+      <circle cx="13.5" cy="15.5" r="1" fill="#f87171" />
+      <circle cx="13.5" cy="18.5" r="1" fill="#4ade80" />
+      <rect x="8" y="23.4" width="24" height="2.2" fill="#facc15" />
+      <rect x="19" y="26.5" width="11" height="7" rx="0.8" fill="#1a2e05" />
+      <rect x="20.2" y="27.6" width="8.6" height="5" rx="0.5" fill="#a3e635" stroke="#4d7c0f" strokeWidth="0.7" />
+      <line x1="23" y1="27.6" x2="23" y2="32.6" stroke="#4d7c0f" strokeWidth="0.6" />
+      <line x1="26" y1="27.6" x2="26" y2="32.6" stroke="#4d7c0f" strokeWidth="0.6" />
+    </>
+  ),
+  // Overhead pipe run (ceiling, stretched via w/h) — a fat grey pipe + thin teal
+  // line hung from two straps. Non-scaling strokes stay crisp when stretched wide.
+  pipeRun: (
+    <>
+      <rect x="10" y="5" width="1.6" height="8" fill="#334155" />
+      <rect x="28.4" y="5" width="1.6" height="8" fill="#334155" />
+      <line x1="0" y1="13" x2="40" y2="13" stroke="#475569" strokeWidth="5" vectorEffect="non-scaling-stroke" />
+      <line x1="0" y1="11.4" x2="40" y2="11.4" stroke="#94a3b8" strokeWidth="1.4" opacity="0.8" vectorEffect="non-scaling-stroke" />
+      <line x1="0" y1="20" x2="40" y2="20" stroke="#0e7490" strokeWidth="3" vectorEffect="non-scaling-stroke" />
+    </>
+  ),
+  // A young potted plant — the eco payoff of recycling.
+  sapling: (
+    <>
+      <path d="M14 28 h12 l-1.5 8 h-9 z" fill="#b45309" stroke="#7c2d12" strokeWidth="1.2" />
+      <rect x="13" y="26" width="14" height="3" rx="1" fill="#92400e" />
+      <path d="M20 27 v-11" stroke="#15803d" strokeWidth="1.6" fill="none" />
+      <path d="M20 21 q-6 -1 -7 -6 q6 0 7 6z" fill="#22c55e" />
+      <path d="M20 18 q6 -1 7 -6 q-6 0 -7 6z" fill="#16a34a" />
+      <path d="M20 15.5 q-3 -3 -2 -7 q4 3 2 7z" fill="#4ade80" />
+    </>
+  ),
+  // A rack of renewable-energy storage batteries with green charge bars.
+  batteryBank: (
+    <>
+      <rect x="8" y="14" width="24" height="20" rx="1.5" fill="#334155" stroke="#1e293b" strokeWidth="1.2" />
+      {[0, 1, 2].map((i) => (
+        <g key={i}>
+          <rect x={10 + i * 7.5} y={17} width={6} height={14} rx={1} fill="#0f766e" stroke="#134e4a" strokeWidth="0.8" />
+          <rect x={11.5 + i * 7.5} y={15.6} width={3} height={2} rx={0.5} fill="#22d3ee" />
+          <rect x={11 + i * 7.5} y={20} width={4} height={1.4} fill="#4ade80" />
+          <rect x={11 + i * 7.5} y={22.5} width={4} height={1.4} fill="#4ade80" />
+          <rect x={11 + i * 7.5} y={25} width={4} height={1.4} fill="#a3e635" />
+        </g>
+      ))}
+      {/* power/charge lightning bolt on the middle cell */}
+      <path d="M21.5 17.5 L17 24.5 L20 24.5 L18.5 30.5 L23.5 22.5 L20.5 22.5 L22 17.5 Z" fill="#facc15" stroke="#a16207" strokeWidth="0.6" strokeLinejoin="round" />
+      <circle cx="20" cy="12.5" r="1" fill="#34d399" />
+    </>
+  ),
+  // A faded painted recycle logo on the floor (flat decal, walkable) — three
+  // chasing arrows around a triangle (the universal recycling mark), not solid
+  // triangles. One arm drawn along the bottom edge, then rotated 120°/240°.
+  // Universal recycling mark (real artwork, viewBox 122.88×121.52 scaled to fit
+  // the 40×40 prop box), painted flat on the floor.
+  recycleDecal: (
+    <g opacity="0.25" transform="translate(0.5 0.7) scale(0.3255)">
+      <path
+        fillRule="evenodd"
+        fill="#16a34a"
+        d="M50.43.09,77.25,0C82.1,0,85.4.86,88.58,5l7.57,13.52,7.68-4.74L90.6,36.93l-26.74-.1L72,32.09,58.26,8.77A25.12,25.12,0,0,0,54.12,3,22.45,22.45,0,0,0,50.43.09ZM56.9,112.26l-25.73,0c-5.69-.88-9.34-4-10.43-8.26-.93-3.71,0-5.42,1.6-8.61,1.93-3.81,4.2-7.49,6.38-11.2l28.49.1-.31,27.92Zm-41-10L2.43,79.06C0,74.87-.91,71.57,1.12,66.72L9.05,53.4,1.11,49.13,27.73,49,41,72.24l-8.19-4.71L19.52,91.12a24.94,24.94,0,0,0-3,6.49,22.15,22.15,0,0,0-.64,4.63Zm92.91-60.6,12.91,22.25C123.82,69.26,123,74,119.8,77.05c-2.74,2.67-4.69,2.73-8.26,2.93-4.26.23-8.58.1-12.89.07L84.49,55.33l24.34-13.69Zm11.81,40.5-13.33,23.27c-2.41,4.21-4.82,6.64-10,7.3l-15.5-.21.27,9-13.4-23L82.11,75.4l0,9.45,27.08-.27a25,25,0,0,0,7.1-.68,22.2,22.2,0,0,0,4.33-1.76ZM21.26,30.57,34.08,8.27c3.6-4.5,8.1-6.11,12.36-4.91,3.68,1.05,4.71,2.7,6.67,5.69,2.33,3.57,4.38,7.38,6.51,11.13L45.28,44.8l-24-14.23Z"
+      />
+    </g>
+  ),
+  // --- history-vault / museum decor ---
+  // A classical fluted stone column (base + shaft + capital).
+  stonePillar: (
+    <>
+      <rect x="14" y="7" width="12" height="2.6" rx="0.5" fill="#d9d2c5" />
+      <rect x="15" y="9.6" width="10" height="2" fill="#c7bfb0" />
+      <rect x="16" y="11.6" width="8" height="20.4" fill="#cdc5b7" stroke="#a89f8e" strokeWidth="0.5" />
+      <line x1="18" y1="11.6" x2="18" y2="32" stroke="#a89f8e" strokeWidth="0.5" />
+      <line x1="20" y1="11.6" x2="20" y2="32" stroke="#a89f8e" strokeWidth="0.5" />
+      <line x1="22" y1="11.6" x2="22" y2="32" stroke="#a89f8e" strokeWidth="0.5" />
+      <rect x="14" y="32" width="12" height="2.6" rx="0.5" fill="#d9d2c5" />
+      <rect x="13" y="34.6" width="14" height="2.4" rx="0.5" fill="#c7bfb0" />
+    </>
+  ),
+  // A hanging heritage banner (crimson + gold) with a lion medallion.
+  heritageBanner: (
+    <>
+      <rect x="12" y="5" width="16" height="2" rx="0.6" fill="#78350f" />
+      <path d="M13 7 h14 v21 l-2.8 -2.8 -4.2 2.8 -4 -2.8 -3 2.8 z" fill="#b91c1c" stroke="#7f1d1d" strokeWidth="0.8" />
+      <rect x="13" y="7" width="14" height="3.2" fill="#f59e0b" />
+      <circle cx="20" cy="17" r="3.4" fill="#fbbf24" stroke="#b45309" strokeWidth="0.6" />
+      <path d="M18.4 18.4 q1.6 1.4 3.2 0 q0.4 -2.4 -1.6 -3 q-2 0.6 -1.6 3z" fill="#7c2d12" />
+    </>
+  ),
+  // A colonial-era cannon on a wooden carriage.
+  oldCannon: (
+    <>
+      <path d="M10 30 L28 26.5 L28.5 29.5 L13.5 33 z" fill="#6b4f3a" stroke="#4a3626" strokeWidth="0.6" />
+      <rect x="11" y="19.5" width="17" height="5" rx="2.5" fill="#3f4653" stroke="#1e293b" strokeWidth="0.8" transform="rotate(-9 20 22)" />
+      <circle cx="11.3" cy="21.4" r="1.1" fill="#1e293b" />
+      <circle cx="14" cy="30.5" r="4" fill="#5b4636" stroke="#33261b" strokeWidth="1" />
+      <circle cx="14" cy="30.5" r="1.2" fill="#33261b" />
+      <circle cx="25.5" cy="30.5" r="3" fill="#5b4636" stroke="#33261b" strokeWidth="1" />
+      <circle cx="25.5" cy="30.5" r="0.9" fill="#33261b" />
+    </>
+  ),
+  // An ancient pottery urn with handles and a gold band.
+  ancientUrn: (
+    <>
+      <ellipse cx="20" cy="16" rx="5" ry="1.6" fill="#92400e" />
+      <path d="M15 16 q-1.5 4 0.5 9 q1.2 5.5 4.5 5.5 q3.3 0 4.5 -5.5 q2 -5 0.5 -9z" fill="#b45309" stroke="#7c2d12" strokeWidth="0.8" />
+      <rect x="18" y="12.5" width="4" height="3.5" fill="#b45309" stroke="#7c2d12" strokeWidth="0.5" />
+      <path d="M15.5 17.5 q-2.5 1.5 -1 4.5" fill="none" stroke="#7c2d12" strokeWidth="1.1" />
+      <path d="M24.5 17.5 q2.5 1.5 1 4.5" fill="none" stroke="#7c2d12" strokeWidth="1.1" />
+      <path d="M16 23 q4 2.2 8 0" stroke="#fcd34d" strokeWidth="0.9" fill="none" />
+    </>
+  ),
+  // A wall torch — bracket + flame (a vault-ambiance ceiling/wall fixture).
+  torchSconce: (
+    <>
+      <path d="M17.5 18 h5 l-1 -3.2 h-3 z" fill="#78350f" stroke="#57534e" strokeWidth="0.5" />
+      <rect x="19.2" y="18" width="1.6" height="9" fill="#57534e" />
+      <path d="M20 6 q3.2 4.2 1.6 8.4 q-1.6 2 -3.2 0 q-1.6 -4.2 1.6 -8.4z" fill="#f97316" />
+      <path d="M20 9 q1.6 2.2 0.7 5.2 q-0.7 1 -1.5 0 q-0.7 -3 0.8 -5.2z" fill="#fde047" />
+    </>
+  ),
+  // A stone lion-head sculpture on a plinth (the Lion City).
+  // --- hero HQ decor ---
+  // A standing hero banner on a pole with a gold lightning emblem.
+  heroBanner: (
+    <>
+      <rect x="9" y="6" width="1.8" height="30" rx="0.6" fill="#78716c" />
+      <path d="M10.5 8 h16 v20 l-8 -3.5 -8 3.5 z" fill="#4f46e5" stroke="#3730a3" strokeWidth="1" />
+      <path d="M10.5 8 h16" stroke="#facc15" strokeWidth="1.4" />
+      <path d="M18 12 l-3 7 h3 l-2 6 6 -8 h-3 l2 -5 z" fill="#facc15" />
+    </>
+  ),
+  // A bronze/stone superhero statue on a pedestal — cape, arms akimbo, emblem.
+  heroStatue: (
+    <>
+      <rect x="12" y="31" width="16" height="5" rx="1" fill="#78716c" stroke="#57534e" strokeWidth="1" />
+      <rect x="14" y="28" width="12" height="3.5" fill="#8a8580" />
+      <path d="M15 12 Q11 22 14 28 L20 25 L26 28 Q29 22 25 12 Z" fill="#9ca3af" opacity="0.9" />
+      <rect x="17.5" y="22" width="2.6" height="6.5" fill="#a8a29e" />
+      <rect x="20" y="22" width="2.6" height="6.5" fill="#a8a29e" />
+      <path d="M16 12 Q20 9 24 12 L23 23 Q20 25 17 23 Z" fill="#b6b1ab" stroke="#78716c" strokeWidth="0.6" />
+      <path d="M16.5 14 L12.5 18 L15.5 18 L17.5 15 Z" fill="#a8a29e" />
+      <path d="M23.5 14 L27.5 18 L24.5 18 L22.5 15 Z" fill="#a8a29e" />
+      <circle cx="20" cy="8.6" r="3.2" fill="#c4bfb8" stroke="#78716c" strokeWidth="0.6" />
+      <path d="M20 15 l-1.2 2.6 h1.2 l-.8 2 2.2 -2.8 h-1.2 l.8 -1.8 z" fill="#facc15" opacity="0.85" />
+    </>
+  ),
+  // A glowing power cell / energy canister for the charger rooms.
+  powerCell: (
+    <>
+      <rect x="14" y="13" width="12" height="19" rx="2" fill="#1e293b" stroke="#0f172a" strokeWidth="1" />
+      <rect x="17" y="10.5" width="6" height="3" rx="1" fill="#475569" />
+      <rect x="16" y="15" width="8" height="15" rx="1.2" fill="#0e2a3a" />
+      {[0, 1, 2, 3].map((i) => (
+        <rect key={i} x="17.2" y={16.5 + i * 3.3} width="5.6" height="2" rx="1" fill="#22d3ee" opacity={0.9 - i * 0.18} />
+      ))}
+    </>
+  ),
+  // A hero mission-control console with a glowing screen + lightning emblem.
+  heroConsole: (
+    <>
+      <path d="M9 20 h22 l2 13 h-26 z" fill="#3730a3" stroke="#312e81" strokeWidth="1" />
+      <rect x="11" y="9" width="18" height="11.5" rx="1.5" fill="#0f172a" stroke="#4338ca" strokeWidth="1.2" />
+      <path d="M13 15.5 l2 -2 2 3 2 -3 2 2" fill="none" stroke="#22d3ee" strokeWidth="1.1" strokeLinejoin="round" />
+      <path d="M24.5 11 l-1.6 3.6 h1.6 l-1 2.6 3 -3.8 h-1.6 l1 -2.4 z" fill="#facc15" />
+      {[0, 1, 2].map((i) => (
+        <circle key={i} cx={14 + i * 3} cy="28" r="1" fill={["#22d3ee", "#34d399", "#f59e0b"][i]} />
+      ))}
+    </>
+  ),
+  // A glass display case holding a dummy hero suit on a stand.
+  suitCase: (
+    <>
+      <rect x="10" y="33" width="20" height="3" rx="1" fill="#3730a3" />
+      <rect x="11" y="8" width="18" height="25" rx="1.5" fill="#1e1b4b" stroke="#4338ca" strokeWidth="1.4" />
+      <rect x="13" y="10" width="14" height="21" rx="1" fill="#312e81" opacity="0.45" />
+      <path d="M14.5 11 l2.6 0 -2.6 7 z" fill="#c7d2fe" opacity="0.3" />
+      <rect x="17.6" y="25" width="2.2" height="6" fill="#4338ca" />
+      <rect x="20.2" y="25" width="2.2" height="6" fill="#4338ca" />
+      <path d="M16.5 16 Q20 13.5 23.5 16 L23 26 Q20 27.5 17 26 Z" fill="#6366f1" />
+      <circle cx="20" cy="13.5" r="2.5" fill="#818cf8" />
+      <path d="M20 18 l-1 2.2 h1 l-.7 1.8 1.8 -2.4 h-1 l.7 -1.6 z" fill="#facc15" />
+    </>
+  ),
+  // A glass display case of hero gear — a shield, a gauntlet and an energy bolt.
+  weaponCase: (
+    <>
+      <rect x="9" y="31" width="22" height="3" rx="1" fill="#3730a3" />
+      <rect x="9" y="9" width="22" height="22" rx="1.5" fill="#1e1b4b" stroke="#4338ca" strokeWidth="1.4" />
+      <rect x="11" y="11" width="18" height="18" rx="1" fill="#312e81" opacity="0.45" />
+      <path d="M14 14 l4 -1.4 4 1.4 v3.4 a4 4 0 0 1 -8 0 z" fill="#eab308" stroke="#a16207" strokeWidth="0.8" />
+      <path d="M18 13 v6.4" stroke="#fef9c3" strokeWidth="0.6" />
+      <rect x="13" y="23.5" width="6.5" height="3.5" rx="1.4" fill="#22d3ee" stroke="#0e7490" strokeWidth="0.6" />
+      <path d="M25 22 l-2 4 h2 l-1.3 3.2 3.2 -4.2 h-2 l1.3 -3 z" fill="#facc15" />
+    </>
+  ),
+  // --- festival decor ---
+  // Stretched string of triangular pennants that follows a gentle swag droop.
+  bunting: (
+    <>
+      <path d="M1 7 q 19 11 38 0" fill="none" stroke="#78716c" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+      {[4, 10, 16, 22, 28, 34].map((x, i) => {
+        const y = 7 + Math.sin((x / 38) * Math.PI) * 5.5;
+        return (
+          <polygon
+            key={i}
+            points={`${x - 2.4},${y} ${x + 2.4},${y} ${x},${y + 6}`}
+            fill={["#fb7185", "#fbbf24", "#a78bfa", "#34d399", "#38bdf8", "#f472b6"][i % 6]}
+          />
+        );
+      })}
+    </>
+  ),
+  // A hanging paper lantern (ceiling prop).
+  lantern: (
+    <>
+      <line x1="20" y1="3" x2="20" y2="9" stroke="#78716c" strokeWidth="1" />
+      <rect x="14.5" y="8.5" width="11" height="2.4" rx="1" fill="#fca5a5" />
+      <ellipse cx="20" cy="17.5" rx="7.5" ry="9" fill="#ef4444" stroke="#b91c1c" strokeWidth="1" />
+      <ellipse cx="17.3" cy="14" rx="1.5" ry="3" fill="#fecaca" opacity="0.7" />
+      <rect x="14.5" y="24" width="11" height="2.4" rx="1" fill="#fca5a5" />
+      <line x1="20" y1="26.4" x2="20" y2="31" stroke="#fbbf24" strokeWidth="1.6" />
+    </>
+  ),
+  // A hawker food cart with a canopy and a pot of steam.
+  foodCart: (
+    <>
+      <rect x="8" y="20" width="24" height="11" rx="1.5" fill="#b45309" stroke="#7c2d12" strokeWidth="1" />
+      <rect x="8" y="17" width="24" height="3.5" rx="1" fill="#dc2626" />
+      <rect x="7" y="11" width="26" height="3" rx="1.2" fill="#facc15" />
+      {[9, 15, 21, 27].map((x, i) => (
+        <line key={i} x1={x} y1="14" x2={x + 3} y2="17" stroke="#f59e0b" strokeWidth="0.6" />
+      ))}
+      <circle cx="13" cy="33" r="2.4" fill="#374151" />
+      <circle cx="27" cy="33" r="2.4" fill="#374151" />
+      <ellipse cx="20" cy="24" rx="4" ry="2" fill="#78716c" />
+      <path d="M18 22c-1-2 1-3 0-5M22 22c-1-2 1-3 0-5" fill="none" stroke="#cbd5e1" strokeWidth="0.9" opacity="0.7" />
+    </>
+  ),
+  // A festival drum on a little stand.
+  drum: (
+    <>
+      <path d="M11 16h18l-2 12h-14z" fill="#dc2626" stroke="#7f1d1d" strokeWidth="1" />
+      <ellipse cx="20" cy="16" rx="9" ry="3" fill="#fef3c7" stroke="#b45309" strokeWidth="1" />
+      <ellipse cx="20" cy="16" rx="9" ry="3" fill="none" stroke="#f59e0b" strokeWidth="0.6" />
+      {[0, 1, 2, 3, 4].map((i) => (
+        <line key={i} x1={12 + i * 4} y1="17.5" x2={11 + i * 4} y2="26.5" stroke="#fcd34d" strokeWidth="0.7" />
+      ))}
+      <rect x="14" y="28" width="2" height="5" fill="#7c2d12" />
+      <rect x="24" y="28" width="2" height="5" fill="#7c2d12" />
+    </>
+  ),
+  // A dhol — Indian double-headed barrel drum with zigzag rope lacing.
+  dhol: (
+    <>
+      <path d="M11 18 Q20 15.5 29 18 L29 26 Q20 28.5 11 26 Z" fill="#b45309" stroke="#7c2d12" strokeWidth="1" />
+      <path d="M12.5 18.5 L14.5 25.5 L16.5 18.5 L18.5 25.5 L20.5 18.5 L22.5 25.5 L24.5 18.5 L26.5 25.5" fill="none" stroke="#fca5a5" strokeWidth="0.8" strokeLinejoin="round" />
+      <ellipse cx="11" cy="22" rx="2.4" ry="4.4" fill="#fde68a" stroke="#7c2d12" strokeWidth="1" />
+      <ellipse cx="29" cy="22" rx="2.4" ry="4.4" fill="#fef3c7" stroke="#7c2d12" strokeWidth="1" />
+      <rect x="15.5" y="27" width="1.6" height="6" rx="0.6" fill="#57534e" />
+      <rect x="22.9" y="27" width="1.6" height="6" rx="0.6" fill="#57534e" />
+    </>
+  ),
+  // A diya — small clay oil lamp with a flame (Diwali). Flat ground detail.
+  diya: (
+    <>
+      <ellipse cx="20" cy="23" rx="10" ry="3.2" fill="#fef3c7" opacity="0.35" />
+      <path d="M20 12 q 2.4 3 0 6 q -2.4 -3 0 -6z" fill="#fbbf24" />
+      <path d="M20 14 q 1.3 1.9 0 3.4 q -1.3 -1.5 0 -3.4z" fill="#f97316" />
+      <rect x="19.4" y="18.5" width="1.2" height="3" fill="#78350f" />
+      <path d="M12 21 q 8 4 16 0 q -1.6 4 -8 4 q -6.4 0 -8 -4z" fill="#c2410c" stroke="#7c2d12" strokeWidth="0.8" />
+      <ellipse cx="20" cy="21" rx="8" ry="2.2" fill="#9a3412" />
+    </>
+  ),
+  // A rangoli — colourful symmetric floor pattern (Diwali). Flat ground detail.
+  rangoli: (
+    <>
+      <circle cx="20" cy="20" r="13" fill="none" stroke="#f472b6" strokeWidth="1" opacity="0.45" />
+      {Array.from({ length: 12 }).map((_, i) => {
+        const a = (i / 12) * Math.PI * 2;
+        return <circle key={`o${i}`} cx={20 + Math.cos(a) * 11} cy={20 + Math.sin(a) * 11} r="1.5" fill={["#f472b6", "#fbbf24", "#38bdf8", "#a855f7"][i % 4]} />;
+      })}
+      {Array.from({ length: 8 }).map((_, i) => {
+        const a = (i / 8) * Math.PI * 2;
+        const x = 20 + Math.cos(a) * 6.5;
+        const y = 20 + Math.sin(a) * 6.5;
+        return (
+          <ellipse
+            key={`p${i}`}
+            cx={x}
+            cy={y}
+            rx="2.9"
+            ry="1.4"
+            fill={["#fb7185", "#f59e0b", "#34d399", "#818cf8"][i % 4]}
+            opacity="0.85"
+            transform={`rotate(${(a * 180) / Math.PI} ${x} ${y})`}
+          />
+        );
+      })}
+      <circle cx="20" cy="20" r="3" fill="#facc15" stroke="#f97316" strokeWidth="0.8" />
+      <circle cx="20" cy="20" r="1.2" fill="#dc2626" />
+    </>
+  ),
+  // A potted plant.
+  plantpot: (
+    <>
+      <path d="M13 26h14l-2 8h-10z" fill="#c2410c" stroke="#7c2d12" strokeWidth="1" />
+      <rect x="12" y="24" width="16" height="3" rx="1" fill="#ea580c" />
+      <path d="M20 24c-1-6-6-7-8-10 4 0 7 2 8 6 1-4 4-6 8-6-2 3-7 4-8 10z" fill="#16a34a" />
+      <path d="M20 24c0-5 0-9 0-12" fill="none" stroke="#15803d" strokeWidth="1" />
+      <circle cx="16" cy="15" r="1.6" fill="#f472b6" />
+      <circle cx="24" cy="16" r="1.6" fill="#fbbf24" />
+    </>
+  ),
+  // A little ground flower (pink) — flat garden detail.
+  flower: (
+    <>
+      <path d="M20 34 Q19 27 20 19" fill="none" stroke="#15803d" strokeWidth="1.6" />
+      <path d="M20 28 q -4 -1.5 -6.5 -3.5 q 3.5 0.2 6.5 2.2" fill="#22c55e" />
+      <path d="M20 25 q 4 -1.5 6.5 -3.5 q -3.5 0.2 -6.5 2.2" fill="#16a34a" />
+      {Array.from({ length: 6 }).map((_, i) => {
+        const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+        return <circle key={i} cx={20 + Math.cos(a) * 4} cy={15 + Math.sin(a) * 4} r="3" fill="#f472b6" />;
+      })}
+      <circle cx="20" cy="15" r="2.6" fill="#fde047" />
+    </>
+  ),
+  // A little white daisy — flat garden detail.
+  daisy: (
+    <>
+      <path d="M20 34 Q21 27 20 19" fill="none" stroke="#15803d" strokeWidth="1.6" />
+      <path d="M20 27 q 4 -1.5 6.5 -3.5 q -3.5 0.2 -6.5 2.2" fill="#22c55e" />
+      {Array.from({ length: 7 }).map((_, i) => {
+        const a = (i / 7) * Math.PI * 2;
+        return <circle key={i} cx={20 + Math.cos(a) * 4} cy={15 + Math.sin(a) * 4} r="2.4" fill="#fff" stroke="#e2e8f0" strokeWidth="0.4" />;
+      })}
+      <circle cx="20" cy="15" r="2.6" fill="#f59e0b" />
+    </>
+  ),
+  // A tuft of grass blades (flat ground detail).
+  grass: (
+    <>
+      {[[12, -4], [15, -1], [18, 1.5], [21, -1.5], [24, 3], [27, -1], [30, 2]].map(([x, lean], i) => (
+        <path
+          key={i}
+          d={`M${x} 33 Q ${x + lean} 25 ${x + lean * 1.7} 15`}
+          fill="none"
+          stroke={i % 2 ? "#65a30d" : "#4d7c0f"}
+          strokeWidth="2.2"
+          strokeLinecap="round"
+        />
+      ))}
+    </>
+  ),
+  // A wooden crate with a spiky durian (king of fruits) flanked by round fruit.
+  fruitCrate: (
+    <>
+      <rect x="9" y="20" width="22" height="13" rx="1" fill="#a16207" stroke="#713f12" strokeWidth="1" />
+      <line x1="9" y1="25" x2="31" y2="25" stroke="#713f12" strokeWidth="0.8" />
+      <line x1="16" y1="20" x2="16" y2="33" stroke="#713f12" strokeWidth="0.7" opacity="0.6" />
+      <line x1="24" y1="20" x2="24" y2="33" stroke="#713f12" strokeWidth="0.7" opacity="0.6" />
+      <circle cx="13" cy="18.5" r="3" fill="#ef4444" />
+      <circle cx="27" cy="18.5" r="3" fill="#f97316" />
+      {/* durian — a khaki oval husk under long pyramid spikes, with a short stem */}
+      <rect x="19.2" y="9.2" width="1.7" height="3" rx="0.6" fill="#6b4f2a" />
+      {Array.from({ length: 13 }).map((_, i) => {
+        const a = (i / 13) * Math.PI * 2 - Math.PI / 2;
+        const bx = 20 + Math.cos(a) * 3.7;
+        const by = 16 + Math.sin(a) * 4.1;
+        const tx = 20 + Math.cos(a) * 6.5;
+        const ty = 16 + Math.sin(a) * 7.1;
+        const px = -Math.sin(a) * 1.05;
+        const py = Math.cos(a) * 1.05;
+        return <polygon key={i} points={`${bx + px},${by + py} ${bx - px},${by - py} ${tx},${ty}`} fill="#7c8a3e" />;
+      })}
+      <ellipse cx="20" cy="16" rx="4.1" ry="4.5" fill="#94a350" stroke="#5f6b2c" strokeWidth="0.5" />
+      {/* facet spikes across the husk so it reads as a durian, not a ball */}
+      {[[18, 14.4], [21.8, 14.6], [20, 17.2], [17.4, 16.8], [22.4, 16.6], [19.9, 13.4]].map(([x, y], i) => (
+        <path key={`f${i}`} d={`M${x - 1} ${y + 1} L${x} ${y - 1.2} L${x + 1} ${y + 1}`} fill="#7c8a3e" stroke="#5f6b2c" strokeWidth="0.35" strokeLinejoin="round" />
+      ))}
+    </>
+  ),
+  // A round wooden stool.
+  stool: (
+    <>
+      <ellipse cx="20" cy="20" rx="8" ry="3.2" fill="#b45309" stroke="#7c2d12" strokeWidth="1" />
+      <ellipse cx="20" cy="19" rx="8" ry="3.2" fill="#d97706" />
+      <rect x="13.5" y="21" width="2" height="10" fill="#7c2d12" transform="rotate(6 14.5 26)" />
+      <rect x="24.5" y="21" width="2" height="10" fill="#7c2d12" transform="rotate(-6 25.5 26)" />
+      <rect x="19" y="21.5" width="2" height="10" fill="#92400e" />
+    </>
+  ),
 };
 
 /** Maps a carry item's `icon` to its themed prop art (direct-delivery items). */
 const ITEM_PROP: Record<string, string> = { key: "key", lion: "merlion", flag: "flag", note: "scroll" };
+
+/** Per-scene exit-door skins, keyed by `room.scene`; falls back to the generic door. */
+const DOOR_ART: Record<string, { open: string; locked: string }> = {
+  festival: { open: "festivalGateOpen", locked: "festivalGateLocked" },
+};
+
+/** Subtle repeating floor textures for the top-down tiles, keyed by `floorKind`
+ *  (per-cell override, else the room's). Overlaid on the floor gradient; a kind
+ *  with no entry just shows the plain gradient. */
+/** A tiling desaturated fractal-noise background at a given frequency + opacity,
+ *  for worn floor grain. Unique filter id per call to avoid data-URI id clashes. */
+const noiseBg = (id: string, freq: number, opacity: number) =>
+  `url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='200'%20height='200'%3E%3Cfilter%20id='${id}'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='${freq}'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23${id})'%20opacity='${opacity}'/%3E%3C/svg%3E")`;
+
+/** Seamless honeycomb lattice (hero-patterns "Hexagons"), tinted indigo — the
+ *  signature high-tech HQ floor for the superhero-suit escape room. Thin,
+ *  non-rectangular outlines that read as a hero base without boxing objects. */
+const HEX_TILE =
+  "url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='28'%20height='49'%3E%3Cpath%20fill='%23a5b4fc'%20fill-opacity='0.84'%20d='M13.99%209.25l13%207.5v15l-13%207.5L1%2031.75v-15l12.99-7.5zM3%2017.9v12.7l10.99%206.34%2011-6.35V17.9l-11-6.34L3%2017.9zM0%2015l12.98-7.5V0h-2v6.35L0%2012.69v2.3zm0%2018.5L12.98%2041v8h-2v-6.85L0%2035.81v-2.3zM15%200v7.5L27.99%2015H28v-2.31h-.01L17%206.35V0h-2zm0%2049v-8l12.99-7.5H28v2.31h-.01L17%2042.15V49h-2z'/%3E%3C/svg%3E\")";
+
+/**
+ * Continuous floor textures — ONE repeating background per room, not a grid of
+ * bordered tile divs, so they never frame a small object (e.g. the note) as a
+ * box. Grid patterns are kept FINER than a sprite so lines cross through it, not
+ * around it. Only `metal` keeps a discrete plate grid (FLOOR_GRID.metal), where
+ * the plates are the point and its seams are hairlines.
+ */
+const FLOOR_TEXTURE: Record<string, React.CSSProperties> = {
+  metal: {
+    backgroundImage: noiseBg("nMe", 0.6, 0.1),
+    backgroundSize: "200px 200px",
+  },
+  // Concrete (recycling plant) — a poured-slab industrial floor: widely spaced
+  // control joints (big slabs, not tight tiles) + heavy grey mottle. Continuous,
+  // so nothing gets boxed.
+  concrete: {
+    backgroundImage:
+      "repeating-linear-gradient(0deg, rgba(30,41,59,.11) 0 2px, transparent 2px 132px)," +
+      "repeating-linear-gradient(90deg, rgba(30,41,59,.11) 0 2px, transparent 2px 132px)," +
+      "radial-gradient(70% 55% at 32% 38%, rgba(0,0,0,.06), transparent 65%)," +
+      noiseBg("nCo", 0.45, 0.11),
+    backgroundSize: "132px 132px, 132px 132px, 100% 100%, 220px 220px",
+  },
+  // Stone (history vault) — warm flagstone: big slab joints + brown mottle. Same
+  // continuous approach as concrete, so nothing gets boxed.
+  stone: {
+    backgroundImage:
+      "repeating-linear-gradient(0deg, rgba(87,63,42,.13) 0 2px, transparent 2px 120px)," +
+      "repeating-linear-gradient(90deg, rgba(87,63,42,.13) 0 2px, transparent 2px 120px)," +
+      "radial-gradient(65% 55% at 30% 35%, rgba(120,90,60,.07), transparent 60%)," +
+      noiseBg("nSt", 0.5, 0.1),
+    backgroundSize: "120px 120px, 120px 120px, 100% 100%, 210px 210px",
+  },
+  // Wood — horizontal plank seams + shade banding + fine grain + noise (all
+  // directional, so nothing gets boxed).
+  wood: {
+    backgroundImage:
+      "repeating-linear-gradient(0deg, rgba(60,30,8,.2) 0 1.5px, transparent 1.5px 15px)," +
+      "repeating-linear-gradient(0deg, rgba(0,0,0,.045) 0 15px, rgba(255,255,255,.03) 15px 30px)," +
+      "repeating-linear-gradient(90deg, rgba(90,50,15,.04) 0 1px, transparent 1px 5px)," +
+      noiseBg("nWo", 0.9, 0.07),
+    backgroundSize: "auto, auto, auto, 200px 200px",
+  },
+  // Ceramic — a fine continuous grout grid (finer than a sprite) + soft noise.
+  tile: {
+    backgroundImage:
+      "linear-gradient(rgba(0,0,0,.1) 1px, transparent 1px)," +
+      "linear-gradient(90deg, rgba(0,0,0,.1) 1px, transparent 1px)," +
+      noiseBg("nTi", 0.7, 0.05),
+    backgroundSize: "26px 26px, 26px 26px, 180px 180px",
+  },
+  // Panel (hero HQ) — a glowing honeycomb tech-plate lattice (the signature
+  // superhero-base floor) over a soft corner sheen + opposite shade (room-level
+  // depth) + noise. The hex outlines are thin and non-axis-aligned, so nothing
+  // gets framed as a box.
+  panel: {
+    backgroundImage:
+      HEX_TILE +
+      "," +
+      "radial-gradient(130% 100% at 25% 15%, rgba(255,255,255,.07), transparent 55%)," +
+      "radial-gradient(130% 100% at 82% 92%, rgba(2,6,23,.12), transparent 55%)," +
+      noiseBg("nPa", 0.6, 0.05),
+    backgroundSize: "46px 80px, 100% 100%, 100% 100%, 200px 200px",
+  },
+};
+
+/** One embossed diamond stud (light top-left edge, dark bottom-right). Tiled per
+ *  plate at a % size so each plate always shows a whole number of diamonds. */
+const DIAMOND_TILE = `url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%3E%3Cpolygon%20points='11,5%2017,11%2011,17%205,11'%20fill='rgba(203,213,225,.14)'/%3E%3Cpath%20d='M5%2011%20L11%205%20L17%2011'%20fill='none'%20stroke='rgba(241,245,249,.32)'%20stroke-width='1.1'/%3E%3Cpath%20d='M5%2011%20L11%2017%20L17%2011'%20fill='none'%20stroke='rgba(2,6,23,.36)'%20stroke-width='1.2'/%3E%3C/svg%3E")`;
+
+/** Stable pseudo-random 0–1 from a string (FNV-1a) — so a tile's look is fixed
+ *  per position and doesn't flicker between renders. */
+function seededRand(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 100000) / 100000;
+}
+
+/** Per-plate variation for a tiled floor: a seam on every plate, plus a random
+ *  mix of worn (darker), polished (lighter) and missing (recessed, no tread)
+ *  plates. `tread` says whether the diamond studs are drawn on this plate. */
+function tileVariant(t: number): { backgroundColor?: string; boxShadow: string; tread: boolean } {
+  const seam = "inset 0 0 0 1px rgba(15,23,42,.1)";
+  if (t < 0.07) return { backgroundColor: "rgba(2,6,23,.62)", boxShadow: `${seam}, inset 0 0 9px 2px rgba(0,0,0,.55)`, tread: false };
+  if (t < 0.22) return { backgroundColor: "rgba(2,6,23,.20)", boxShadow: seam, tread: true };
+  if (t < 0.33) return { backgroundColor: "rgba(226,232,240,.09)", boxShadow: seam, tread: true };
+  return { boxShadow: seam, tread: true };
+}
+
+/** Per-kind floor grid — kept ONLY for metal tread plate (discrete plates are the
+ *  point there); its seams are hairlines so a small object on a plate isn't boxed.
+ *  Every other kind uses a continuous FLOOR_TEXTURE instead. */
+const FLOOR_GRID: Record<
+  string,
+  { cols: (w: number, h: number) => number; rows: (w: number, h: number) => number; tile: (seed: number) => React.CSSProperties }
+> = {
+  metal: {
+    cols: (w) => Math.max(1, Math.round(w / 38)),
+    rows: (_w, h) => Math.max(1, Math.round(h / 38)),
+    tile: (t) => {
+      const v = tileVariant(t);
+      return {
+        backgroundColor: v.backgroundColor,
+        boxShadow: v.boxShadow,
+        backgroundImage: v.tread ? DIAMOND_TILE : undefined,
+        backgroundSize: v.tread ? "33.333% 33.333%" : undefined,
+      };
+    },
+  },
+};
 
 /** Renders a small themed prop SVG (carriable / sink / door / note). */
 function Prop({ art, className, style }: { art: string; className?: string; style?: React.CSSProperties }) {
   return (
     <svg viewBox="0 0 40 40" className={className} style={style}>
       {PROP_ART[art]}
+    </svg>
+  );
+}
+
+/** Glow colour for a hero core, keyed by its station id (💚 / 💙 / 💛). */
+const CORE_COLOR: Record<string, string> = {
+  kindness: "#22c55e",
+  honesty: "#3b82f6",
+  fairness: "#eab308",
+};
+
+/** Charged-core sphere gradient in the core's own colour (keyed by station). */
+const CORE_GRADIENT: Record<string, string> = {
+  kindness: "radial-gradient(circle at 35% 30%, #bbf7d0, #22c55e 55%, #15803d)",
+  honesty: "radial-gradient(circle at 35% 30%, #bfdbfe, #3b82f6 55%, #1e40af)",
+  fairness: "radial-gradient(circle at 35% 30%, #fef9c3, #eab308 55%, #a16207)",
+};
+/** Uncharged / empty core — a dim grey sphere (no colour until charged). */
+const CORE_DIM = "radial-gradient(circle at 35% 30%, #e2e8f0, #94a3b8 55%, #475569)";
+const CORE_CHARGED_FALLBACK = "radial-gradient(circle at 35% 30%, #fde68a, #f59e0b 55%, #b45309)";
+
+/** The hero suit on a stand, standing by the exit. Its chest sockets light up
+ *  (one per core, in that core's colour) as charged cores are delivered. */
+function SuitModel({ cores, className }: { cores: { color: string; lit: boolean }[]; className?: string }) {
+  const n = cores.length;
+  return (
+    <svg viewBox="0 0 48 66" className={className} aria-hidden>
+      {/* stand + ground shadow */}
+      <ellipse cx="24" cy="62" rx="13" ry="2.6" fill="rgba(0,0,0,.3)" />
+      <rect x="22.5" y="52" width="3" height="10" fill="#475569" />
+      <ellipse cx="24" cy="62" rx="6" ry="1.6" fill="#334155" />
+      {/* cape */}
+      <path d="M13 21 Q7 44 12 55 L24 49 L36 55 Q41 44 35 21 Z" fill="#4c1d95" opacity="0.85" />
+      {/* legs + boots */}
+      <rect x="18" y="41" width="5.5" height="15" rx="2" fill="#3730a3" />
+      <rect x="24.5" y="41" width="5.5" height="15" rx="2" fill="#3730a3" />
+      <rect x="16.5" y="53" width="8" height="4.5" rx="1.6" fill="#dc2626" />
+      <rect x="23.5" y="53" width="8" height="4.5" rx="1.6" fill="#dc2626" />
+      {/* arms */}
+      <rect x="9.5" y="22" width="5" height="19" rx="2.5" fill="#4338ca" />
+      <rect x="33.5" y="22" width="5" height="19" rx="2.5" fill="#4338ca" />
+      {/* torso */}
+      <path d="M15 20 Q24 15 33 20 L32 43 Q24 47 16 43 Z" fill="#4f46e5" stroke="#3730a3" strokeWidth="1" />
+      {/* belt */}
+      <rect x="16" y="39.5" width="16" height="3.4" rx="1" fill="#facc15" />
+      <rect x="22" y="39.5" width="4" height="3.4" fill="#f59e0b" />
+      {/* head / helmet */}
+      <circle cx="24" cy="11.5" r="7.5" fill="#6366f1" stroke="#3730a3" strokeWidth="1" />
+      <path d="M17.5 10.5 h13" stroke="#c7d2fe" strokeWidth="1.3" strokeLinecap="round" />
+      {/* chest sockets — one per core, centred as a row */}
+      {cores.map((c, i) => {
+        const cx = 24 + (i - (n - 1) / 2) * 6;
+        const cy = 28;
+        return (
+          <g key={i}>
+            <circle cx={cx} cy={cy} r="3" fill="#1e1b4b" stroke="#312e81" strokeWidth="0.8" />
+            {c.lit && (
+              <>
+                <circle cx={cx} cy={cy} r="4" fill="none" stroke={c.color} strokeWidth="1" opacity="0.55" className="animate-pulse" />
+                <circle cx={cx} cy={cy} r="2.4" fill={c.color} />
+                <circle cx={cx - 0.8} cy={cy - 0.8} r="0.9" fill="#fff" opacity="0.85" />
+              </>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/** The Time Capsule that stands in the history vault's exit room. Three slots run
+ *  down its face; each fills with a national treasure (its emoji) as it's placed. */
+function TimeCapsuleModel({ slots, className }: { slots: { emoji: string; filled: boolean }[]; className?: string }) {
+  return (
+    <svg viewBox="0 0 48 66" className={className} aria-hidden>
+      <ellipse cx="24" cy="63" rx="14" ry="2.6" fill="rgba(0,0,0,.28)" />
+      {/* stone plinth */}
+      <rect x="12" y="55" width="24" height="7" rx="1.5" fill="#b3aa99" stroke="#7d7565" strokeWidth="1" />
+      <rect x="14" y="52" width="20" height="3.5" fill="#cdc5b7" />
+      {/* metallic capsule body + highlight + bands + gold seal */}
+      <path d="M15 53 L15 20 Q15 8 24 8 Q33 8 33 20 L33 53 Z" fill="#94a3b8" stroke="#475569" strokeWidth="1.4" />
+      <path d="M18.5 50 L18.5 20 Q18.5 12 22 10" fill="none" stroke="#e2e8f0" strokeWidth="1.4" opacity="0.7" />
+      <rect x="15" y="17.5" width="18" height="2" fill="#64748b" />
+      <rect x="15" y="48.5" width="18" height="2" fill="#64748b" />
+      <circle cx="24" cy="13.5" r="3" fill="#fbbf24" stroke="#b45309" strokeWidth="0.8" />
+      <path d="M22.7 13.5 l1 1 1.6 -2" fill="none" stroke="#78350f" strokeWidth="0.7" />
+      {/* treasure slots */}
+      {slots.map((s, i) => {
+        const cy = 24 + i * 8.5;
+        return (
+          <g key={i}>
+            <circle cx="24" cy={cy} r="3.8" fill="#1e293b" stroke="#475569" strokeWidth="0.8" />
+            {s.filled && (
+              <>
+                <circle cx="24" cy={cy} r="4.7" fill="none" stroke="#fbbf24" strokeWidth="1" opacity="0.6" className="animate-pulse" />
+                <text x="24" y={cy} fontSize="5" textAnchor="middle" dominantBaseline="central">
+                  {s.emoji}
+                </text>
+              </>
+            )}
+          </g>
+        );
+      })}
     </svg>
   );
 }
