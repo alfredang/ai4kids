@@ -104,7 +104,6 @@ Floors compose (all z-0):
 **The "box around the note" lesson (bit us hard):** a grid of bordered tile `<div>`s — especially with an inner vignette — **frames any small object sitting on a tile** (a machine is big enough to hide its tile; the note isn't). Rules to avoid it:
 - Prefer a **continuous background pattern** (`FLOOR_TEXTURE`) over a per-tile div grid.
 - If you use lines/grids, keep cells **finer than a sprite** (~≤26px) so lines cross THROUGH an object, not around it, and use **directional** (1-axis) patterns where possible (planks) — you need both axes to frame.
-- **Never** put a hard border + inner shadow on floor tiles; seams are faint hairlines at most.
 
 **Alignment corollary:** the reason a per-plate diamond used to slice at seams was the fixed-px background under a fractional div grid. Continuous patterns don't have this problem. For the surviving `metal` grid, the motif is sized in **%** per plate (`DIAMOND_TILE` at `33.333%` = 3×3 whole diamonds), not px.
 

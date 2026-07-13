@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   generateWordGrid,
@@ -421,17 +421,19 @@ const REACH = 58; // interaction range (units)
 /** Where the exit door pins inside its room. `pin` is the wall anchor for the
  *  door graphic (with `transform` seating it against that wall); `hotspot` is the
  *  spot just inside the room the player walks up to. Defaults to the bottom wall. */
-function exitDoorAnchor(er: Rect, side: "top" | "bottom" | "left" | "right" = "bottom") {
+function exitDoorAnchor(er: Rect, side: "top" | "bottom" | "left" | "right" = "bottom", along = 0.5) {
   const c = centerOf(er);
+  const ax = er.x + er.w * along; // position along a horizontal (top/bottom) wall
+  const ay = er.y + er.h * along; // position along a vertical (left/right) wall
   switch (side) {
     case "top":
-      return { hotspot: { x: c.x, y: er.y + 22 }, pin: { x: c.x, y: er.y + 4 }, transform: "translate(-50%, 0)" };
+      return { hotspot: { x: ax, y: er.y + 22 }, pin: { x: ax, y: er.y + 4 }, transform: "translate(-50%, 0)" };
     case "left":
-      return { hotspot: { x: er.x + 22, y: c.y }, pin: { x: er.x + 4, y: c.y }, transform: "translate(0, -50%)" };
+      return { hotspot: { x: er.x + 22, y: ay }, pin: { x: er.x + 4, y: ay }, transform: "translate(0, -50%)" };
     case "right":
-      return { hotspot: { x: er.x + er.w - 22, y: c.y }, pin: { x: er.x + er.w - 4, y: c.y }, transform: "translate(-100%, -50%)" };
+      return { hotspot: { x: er.x + er.w - 22, y: ay }, pin: { x: er.x + er.w - 4, y: ay }, transform: "translate(-100%, -50%)" };
     default:
-      return { hotspot: { x: c.x, y: c.y + 22 }, pin: { x: c.x, y: er.y + er.h - 4 }, transform: "translate(-50%, -100%)" };
+      return { hotspot: { x: ax, y: c.y + 22 }, pin: { x: ax, y: er.y + er.h - 4 }, transform: "translate(-50%, -100%)" };
   }
 }
 
@@ -583,7 +585,9 @@ function RoomMap({
   };
   const suitRoomId = carry && carry.mode !== "recycle" ? carry.suitRoom : null;
   const suitFloor = suitRoomId ? geo.floors[suitRoomId] : null;
-  const suitPt = suitFloor ? centerOf(suitFloor) : null;
+  const suitMx = carry && carry.mode !== "recycle" ? carry.suitMx ?? 0.5 : 0.5;
+  const suitMy = carry && carry.mode !== "recycle" ? carry.suitMy ?? 0.5 : 0.5;
+  const suitPt = suitFloor ? { x: suitFloor.x + suitFloor.w * suitMx, y: suitFloor.y + suitFloor.h * suitMy } : null;
   const sinkFloor = carry?.mode === "recycle" ? geo.floors[carry.sinkRoom] : null;
   const depositFloor = carry?.mode === "recycle" ? geo.floors[carry.depositRoom] : null;
   const sinkPt = sinkFloor ? { x: sinkFloor.x + sinkFloor.w * 0.26, y: sinkFloor.y + sinkFloor.h * 0.82 } : null;
@@ -738,7 +742,7 @@ function RoomMap({
     });
     const er = geo.floors[layout.exit];
     if (er) {
-      const { hotspot } = exitDoorAnchor(er, layout.exitDoorSide);
+      const { hotspot } = exitDoorAnchor(er, layout.exitDoorSide, layout.exitDoorAlong);
       list.push({ key: "exit", kind: "exit", id: layout.exit, label: "Open the door", x: hotspot.x, y: hotspot.y, enabled: exitReady });
     }
     return list;
@@ -974,7 +978,7 @@ function RoomMap({
   return (
     <>
       <div
-        className={`relative mx-auto mt-4 overflow-hidden rounded-[2rem] bg-gradient-to-br ${room.floor} shadow-sm ring-1 ${room.ring}`}
+        className={`relative mx-auto mt-4 rounded-[2rem] bg-gradient-to-br ${room.floor} shadow-sm ring-1 ${room.ring}`}
         style={{
           aspectRatio: `${layout.cols} / ${layout.rows}`,
           // Fit within the column width AND ~62% of the viewport height, keeping
@@ -982,6 +986,12 @@ function RoomMap({
           width: `min(100%, calc(62vh * ${layout.cols / layout.rows}))`,
         }}
       >
+        {/* Background layers (floor, decor, fog, walls) are clipped to the rounded
+            frame by this inner wrapper. It has NO z-index, so it does NOT create a
+            stacking context — fog (z-25) / walls (z-30) still paint over machines
+            (z-20) by their global z-index — but interactables (rendered OUTSIDE this
+            wrapper, below) keep their coral proximity glow un-clipped at the edges. */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[2rem]">
         {/* Floor rooms — gradient tile + optional texture + a per-plate variation
             grid (worn / polished / missing plates) for tiled floor kinds. */}
         {layout.cells.map((cell) => {
@@ -1086,6 +1096,7 @@ function RoomMap({
             style={{ left: pct(w.x, W), top: pct(w.y, H), width: pct(w.w, W), height: pct(w.h, H) }}
           />
         ))}
+        </div>
 
         {/* Room labels (above walls; only the room you're currently in) */}
         {layout.cells.map((cell) => {
@@ -1256,16 +1267,15 @@ function RoomMap({
               className={`absolute z-20 h-12 w-12 -translate-x-1/2 -translate-y-1/2 outline-none transition focus-visible:outline-none sm:h-14 sm:w-14 ${
                 ringed ? "-translate-y-1 scale-110" : ""
               }`}
-              style={{
-                left: pct(c.x, W),
-                top: pct(c.y, H),
-                filter: ringed
-                  ? "drop-shadow(0 0 5px rgba(248,113,113,0.95)) drop-shadow(0 3px 3px rgba(0,0,0,0.35))"
-                  : "drop-shadow(0 3px 3px rgba(0,0,0,0.35))",
-              }}
+              style={{ left: pct(c.x, W), top: pct(c.y, H) }}
               title={gated ? "Locked — finish the room first" : solved ? `${station.label} (done)` : station.label}
             >
-              {device ? <ThemedDevice device={device} tone={tone} /> : <MachineDevice kind={station.puzzle.kind} tone={tone} />}
+              {/* Ground contact shadow as a radial background (not a filter). The
+                  coral proximity glow is an SVG feDropShadow INSIDE the device (see
+                  ThemedDevice/MachineDevice) — it hugs the silhouette tightly and its
+                  filter region is fixed, so it never zoom-clips like a CSS filter. */}
+              <span aria-hidden className="pointer-events-none absolute inset-x-1.5 -bottom-0.5 -z-10 h-2.5 rounded-[50%]" style={{ background: "radial-gradient(closest-side, rgba(0,0,0,0.3), transparent)" }} />
+              {device ? <ThemedDevice device={device} tone={tone} glow={ringed} /> : <MachineDevice kind={station.puzzle.kind} tone={tone} glow={ringed} />}
             </button>
           );
         })}
@@ -1274,7 +1284,7 @@ function RoomMap({
         {(() => {
           const er = geo.floors[layout.exit];
           if (!er) return null;
-          const { pin, transform } = exitDoorAnchor(er, layout.exitDoorSide);
+          const { pin, transform } = exitDoorAnchor(er, layout.exitDoorSide, layout.exitDoorAlong);
           const door = DOOR_ART[room.scene] ?? { open: "doorOpen", locked: "doorLocked" };
           return (
             <button
@@ -1487,7 +1497,7 @@ function PuzzleModal({
   onShowHint: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <button aria-label="Close puzzle" onClick={onClose} className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" />
       <div className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl ring-1 ring-amber-100">
         <div className="flex items-center gap-2 font-fun font-700 text-slate-700">
@@ -1623,7 +1633,7 @@ function NoteCard({ note, room, onClose }: { note: RoomNote; room: EscapeRoom; o
   const carry = room.layout.carry;
   const chargeCarry = carry?.mode === "charge" ? carry : null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <button aria-label="Close note" onClick={onClose} className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" />
       <div className="relative z-10 w-full max-w-sm rounded-[2rem] bg-amber-50 p-6 shadow-2xl ring-1 ring-amber-200">
         <div className="flex items-center gap-2 font-fun font-700 text-amber-800">
@@ -1758,7 +1768,8 @@ function EscapedCard({
  * crossword board, padlock…) rather than a generic icon chip. Body colour shifts
  * to green when solved and slate when locked, with a check / padlock face.
  */
-function MachineDevice({ kind, tone }: { kind: EscapeRoomPuzzle["kind"]; tone: "idle" | "solved" | "gated" }) {
+function MachineDevice({ kind, tone, glow }: { kind: EscapeRoomPuzzle["kind"]; tone: "idle" | "solved" | "gated"; glow?: boolean }) {
+  const fid = useId().replace(/:/g, "");
   const palette: Record<EscapeRoomPuzzle["kind"], [string, string]> = {
     code: ["#3b82f6", "#1e40af"],
     mcq: ["#a855f7", "#6b21a8"],
@@ -1903,11 +1914,20 @@ function MachineDevice({ kind, tone }: { kind: EscapeRoomPuzzle["kind"]; tone: "
   })();
 
   return (
-    <svg viewBox="0 0 48 52" className="h-full w-full">
-      <rect x="13" y="44" width="22" height="5" rx="2" fill={dark} />
-      <rect x="6" y="5" width="36" height="40" rx="6" fill={lite} stroke={dark} strokeWidth="1.6" />
-      <rect x="9" y="8" width="30" height="4.5" rx="2.2" fill="#fff" opacity="0.25" />
-      {face}
+    <svg viewBox="0 0 48 52" className="h-full w-full overflow-visible">
+      {glow && (
+        <defs>
+          <filter id={fid} x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="0" stdDeviation="1.6" floodColor="#f87171" floodOpacity="0.95" />
+          </filter>
+        </defs>
+      )}
+      <g filter={glow ? `url(#${fid})` : undefined}>
+        <rect x="13" y="44" width="22" height="5" rx="2" fill={dark} />
+        <rect x="6" y="5" width="36" height="40" rx="6" fill={lite} stroke={dark} strokeWidth="1.6" />
+        <rect x="9" y="8" width="30" height="4.5" rx="2.2" fill="#fff" opacity="0.25" />
+        {face}
+      </g>
     </svg>
   );
 }
@@ -1928,9 +1948,9 @@ const STATION_DEVICE: Record<string, string> = {
   "green-lab:panel": "solar",
   "green-lab:bins": "manual",
   "green-lab:circuit": "fusebox",
-  "sg-history:merlion": "pedestal",
+  "sg-history:founding": "pedestal",
   "sg-history:timeline": "vault",
-  "sg-history:river": "statue",
+  "sg-history:lioncity": "statue",
   "sg-culture:food": "hawker",
   "sg-culture:festival": "lamp",
   "sg-culture:flower": "flower",
@@ -1938,7 +1958,7 @@ const STATION_DEVICE: Record<string, string> = {
   "sg-culture:crossword": "crosswordboard",
   "sg-culture:lockpad": "lockpanel",
   "sg-nature:river": "river",
-  "sg-nature:seed": "tree",
+  "sg-nature:trail": "tree",
   "sg-nature:ranger": "signpost",
   "sg-nature:trailmap": "trailmap",
 };
@@ -1947,6 +1967,11 @@ const STATION_DEVICE: Record<string, string> = {
  *  spouting water over a scaled fish body. */
 const MERLION_PATH =
   "M47.98,48.48c0.25-1.14,0.55-2.24,0.91-3.3c0.44-1.28,0.97-2.46,1.6-3.53l0.2-0.32c-1.76-0.32-3.12-1.05-4.03-1.98c-0.68-0.69-1.13-1.49-1.34-2.32c-0.22-0.86-0.18-1.75,0.13-2.61c0.52-1.45,1.81-2.73,3.89-3.39c1.17-0.38,2.39-0.44,3.61-0.51c2.08-0.12,4.15-0.23,4.71-2.54c0.05-0.2,0.04-0.37-0.01-0.52v-0.01c-0.08-0.24-0.29-0.48-0.57-0.69L57,26.73c-0.42-0.29-0.97-0.52-1.58-0.67c-1.14-0.28-2.45-0.27-3.56,0.09c-0.08,0.03-0.16,0.05-0.24,0.07c-0.94,0.18-1.78,0.41-2.52,0.6c-1.69,0.46-2.9,0.78-4.33,0.33c-1.92-0.62-3.69-2.53-4.49-4.76c-0.4-1.12-0.57-2.34-0.41-3.54l0.01-0.05c0.18-1.26,0.72-2.47,1.72-3.52c1.57-1.62,4.28-2.79,8.57-2.89c0.47-1,1.04-1.88,1.7-2.66c0.92-1.08,2-1.95,3.18-2.6c0.82-0.45,1.65-0.81,2.48-1.06c2.87-3.77,7.24-5.68,11.92-6.01C74.5-0.31,79.94,1.17,84.26,4.1c8.78,5.95,9.06,15.48,9.35,25.14c0.12,4.12,0.25,8.27,1.08,12.09c0.63,2.9,1.78,5.49,2.96,8.16c0.39,0.88,0.78,1.77,1.18,2.72c0.26,0.62,0.05,1.32-0.46,1.71c-0.76,0.64-2.17,1.63-3.89,2.55c0.37,1.75,0.85,3.49,1.52,5.25c0.79,2.07,1.83,4.13,3.24,6.18l0.08,0.1c0.44,0.67,0.25,1.58-0.42,2.02c-1.72,1.13-3.42,2.01-5.31,2.71c0.91,6.65,1.54,13.25,1.48,19.39c-0.07,6.6-0.96,12.67-3.21,17.7c-1.88,4.21-4.61,7.33-7.81,9.47c-3.51,2.34-7.59,3.49-11.76,3.58c-1.24,0.03-2.47-0.02-3.66-0.15c-6.08-0.63-11.66-3.14-15.76-7.06c-4.14-3.96-6.77-9.33-6.9-15.66c-0.02-1.01,0.02-2.03,0.13-3.06c0.21-2.02,0.71-4.06,1.2-6.11c0.37-1.52,0.74-3.05,0.99-4.55c0.8-4.91-0.04-10.64-1.78-16.11c-2.02-6.34-5.24-12.27-8.52-16.11c-0.45-0.53-0.46-1.29-0.06-1.82c1.27-1.81,2.97-3,4.84-3.6c1.45-0.46,2.99-0.57,4.5-0.32C47.49,48.37,47.74,48.42,47.98,48.48L47.98,48.48z M74.14,112.99c-0.11-0.79,0.45-1.53,1.24-1.64c0.8-0.11,1.53,0.45,1.64,1.24c0.25,1.77-0.5,2.89-1.63,3.5c-0.68,0.37-1.5,0.5-2.27,0.44c-0.66-0.05-1.31-0.25-1.85-0.57c-0.54,0.31-1.2,0.51-1.85,0.57c-0.77,0.06-1.58-0.07-2.27-0.44c-1.13-0.61-1.88-1.73-1.63-3.5c0.11-0.8,0.85-1.35,1.64-1.24c0.8,0.11,1.35,0.84,1.24,1.64c-0.04,0.32,0.02,0.48,0.13,0.54c0.17,0.09,0.41,0.12,0.66,0.1c0.22-0.02,0.43-0.07,0.58-0.15c-0.1-0.68,0.3-1.36,0.98-1.59c0.17-0.06,0.35-0.08,0.52-0.07c0.17-0.01,0.35,0.02,0.52,0.07c0.68,0.22,1.08,0.9,0.98,1.59c0.15,0.08,0.36,0.13,0.58,0.15c0.25,0.02,0.49-0.01,0.66-0.1C74.12,113.47,74.18,113.31,74.14,112.99L74.14,112.99z M51.48,82.13c0.35,0.04,0.7,0.08,1.04,0.13c-0.35-4.4-0.44-9.02-0.29-13.67c0.12-4.01,0.41-8.04,0.84-11.96c-0.69-1.85-1.83-3.24-3.17-4.17c-0.96-0.66-2.02-1.09-3.1-1.26c-1.07-0.17-2.16-0.1-3.17,0.22c-0.99,0.32-1.91,0.88-2.69,1.7c3.24,4.09,6.33,9.97,8.31,16.19C50.6,73.54,51.45,77.97,51.48,82.13L51.48,82.13z M55.49,82.87l0.1,0.03c0.7-4.3,1.62-8.68,2.78-12.27c0.99-3.07,2.19-5.6,3.62-7.1c0.05-0.93-0.12-1.77-0.43-2.51c-0.39-0.91-1.02-1.67-1.77-2.23c-0.75-0.56-1.63-0.92-2.49-1.04c-0.48-0.06-0.96-0.05-1.42,0.05c-0.38,3.59-0.63,7.24-0.74,10.87C54.98,73.51,55.08,78.32,55.49,82.87L55.49,82.87z M58.36,84.01l0.08,0.04c0.86-1.51,2.02-3.36,3.62-5.14c1.65-1.84,3.73-3.6,6.39-4.83c0.06-0.26,0.11-0.53,0.15-0.8c0.27-1.8-0.03-3.43-0.79-4.71c-0.4-0.67-0.93-1.26-1.58-1.73c-0.28-0.08-0.53-0.23-0.71-0.45c-0.38-0.2-0.79-0.38-1.23-0.51c-0.13-0.04-0.28-0.08-0.42-0.11c-1,1.17-1.92,3.22-2.73,5.74C59.98,75.11,59.06,79.61,58.36,84.01L58.36,84.01z M60.82,85.76l0.03,0.03c2.05-0.91,4.11-1.45,6.16-1.62c1.97-0.17,3.93,0,5.88,0.51c0.57-1.18,0.56-2.32,0.11-3.45c-0.58-1.44-1.85-2.9-3.56-4.39c-2.14,1.04-3.85,2.49-5.21,4.01C62.72,82.54,61.62,84.33,60.82,85.76L60.82,85.76z M62.81,88.12c0.33,0.5,0.64,1.03,0.94,1.6c0.37,0.71,0.09,1.59-0.63,1.96c-0.71,0.36-1.58,0.09-1.95-0.61c-0.55,0.33-0.95,0.72-1.2,1.13c-0.26,0.42-0.38,0.87-0.38,1.34c0,0.51,0.13,1.05,0.38,1.58c0.45,0.96,1.27,1.86,2.35,2.53c1.27,0.79,2.85,1.22,4.46,1.05c1.38-0.14,2.8-0.74,4.09-1.94c0.55-0.52,1.04-1.11,1.44-1.75c0.39-0.63,0.71-1.32,0.92-2.06c0.26-0.88,0.34-1.83,0.19-2.83c-0.12-0.8-0.4-1.64-0.86-2.52c-1.76-0.51-3.53-0.69-5.32-0.54C65.77,87.2,64.29,87.55,62.81,88.12L62.81,88.12z M59.56,88.65c-0.81-0.94-1.73-1.64-2.75-2.17c-1.53-0.79-3.35-1.21-5.46-1.44c-0.05,0.58-0.13,1.15-0.22,1.71c-0.26,1.59-0.65,3.18-1.03,4.77c-0.2,0.83-0.4,1.65-0.58,2.47c0.31-0.35,0.79-0.54,1.28-0.47c0.8,0.11,1.35,0.85,1.24,1.64c-0.04,0.32,0.02,0.48,0.13,0.54c0.17,0.09,0.41,0.12,0.66,0.1c0.22-0.02,0.43-0.07,0.58-0.15c-0.1-0.68,0.3-1.36,0.98-1.59c0.76-0.25,1.58,0.16,1.83,0.92c0.43,1.29-0.1,2.33-1.09,3.01c-0.58,0.4-1.33,0.65-2.08,0.71c-0.77,0.06-1.58-0.07-2.27-0.44c-0.86-0.46-1.5-1.23-1.65-2.36c-0.07,0.45-0.14,0.9-0.18,1.34c-0.1,0.93-0.13,1.84-0.11,2.71c0.12,5.49,2.41,10.16,6,13.6c3.64,3.48,8.61,5.71,14.05,6.27c1.1,0.11,2.2,0.16,3.31,0.14c3.63-0.08,7.17-1.07,10.2-3.09c2.77-1.85,5.13-4.56,6.77-8.24c2.07-4.63,2.89-10.31,2.96-16.54c0.06-5.82-0.53-12.13-1.39-18.51c-2.93,0.72-6.42,1.11-11.08,1.29c-0.7,0.03-1.34-0.45-1.48-1.16c-1.15-5.59-1.83-11.79-2.08-17.86c-1,0.16-2.07,0.27-3.23,0.3c-1.43,0.03-2.98-0.08-4.71-0.42c-0.33,3.04-0.4,6.04-0.19,8.8c0.94,0.7,1.72,1.56,2.31,2.55c1.11,1.86,1.55,4.15,1.18,6.63c-0.04,0.29-0.1,0.6-0.17,0.91c2.06,1.78,3.61,3.61,4.38,5.51c0.85,2.09,0.8,4.19-0.45,6.32c0.55,1.1,0.89,2.18,1.05,3.23c0.23,1.45,0.11,2.83-0.27,4.09c-0.29,0.98-0.71,1.91-1.24,2.76c-0.54,0.88-1.2,1.67-1.93,2.36c-1.79,1.67-3.8,2.5-5.78,2.7c-2.27,0.23-4.49-0.37-6.28-1.47c-1.56-0.96-2.77-2.3-3.45-3.76c-0.43-0.91-0.66-1.87-0.66-2.82c0-1,0.26-1.98,0.81-2.87C57.98,89.92,58.65,89.22,59.56,88.65L59.56,88.65z M77.18,102.75c0.11-0.79,0.84-1.35,1.64-1.24s1.35,0.84,1.24,1.64c-0.04,0.32,0.02,0.48,0.13,0.54c0.17,0.09,0.41,0.12,0.66,0.1c0.23-0.02,0.43-0.07,0.58-0.15c-0.1-0.68,0.3-1.36,0.98-1.59c0.76-0.25,1.58,0.16,1.83,0.92c0.43,1.29-0.1,2.33-1.09,3.01c-0.58,0.4-1.33,0.65-2.08,0.71c-0.77,0.06-1.58-0.07-2.27-0.44C77.69,105.64,76.93,104.52,77.18,102.75L77.18,102.75z M55.09,103.61c0.11-0.8,0.84-1.35,1.64-1.24c0.79,0.11,1.35,0.84,1.24,1.64c-0.04,0.32,0.02,0.48,0.13,0.54c0.17,0.09,0.41,0.12,0.66,0.1c0.22-0.02,0.43-0.07,0.58-0.15c-0.1-0.68,0.3-1.36,0.98-1.59c0.76-0.25,1.58,0.16,1.83,0.92c0.43,1.29-0.1,2.33-1.09,3.01c-0.58,0.4-1.33,0.65-2.08,0.71c-0.77,0.06-1.58-0.07-2.26-0.44C55.6,106.5,54.84,105.38,55.09,103.61L55.09,103.61z M68.4,103.49c0.11-0.8,0.84-1.35,1.64-1.24c0.8,0.11,1.35,0.84,1.24,1.64c-0.04,0.32,0.02,0.48,0.13,0.54c0.17,0.09,0.41,0.12,0.66,0.1c0.23-0.02,0.43-0.07,0.58-0.15c-0.1-0.68,0.3-1.36,0.98-1.59c0.76-0.25,1.58,0.16,1.83,0.92c0.43,1.29-0.1,2.33-1.09,3.01c-0.58,0.4-1.33,0.65-2.08,0.71c-0.77,0.06-1.58-0.07-2.27-0.44C68.9,106.38,68.15,105.26,68.4,103.49L68.4,103.49z M85.98,93.76c-0.11-0.8,0.45-1.53,1.24-1.64c0.8-0.11,1.53,0.45,1.64,1.24c0.25,1.77-0.5,2.89-1.63,3.5c-0.68,0.37-1.5,0.5-2.26,0.44c-0.66-0.05-1.31-0.25-1.85-0.57c-0.54,0.31-1.2,0.51-1.85,0.57c-0.77,0.06-1.58-0.07-2.27-0.44c-1.13-0.61-1.88-1.73-1.63-3.5c0.11-0.8,0.84-1.35,1.64-1.24c0.8,0.11,1.35,0.84,1.24,1.64c-0.04,0.32,0.02,0.48,0.13,0.54c0.17,0.09,0.41,0.12,0.66,0.1c0.23-0.02,0.43-0.07,0.58-0.15c-0.1-0.68,0.3-1.36,0.98-1.59c0.17-0.06,0.35-0.08,0.52-0.07c0.17-0.01,0.35,0.02,0.52,0.07c0.68,0.22,1.08,0.9,0.98,1.59c0.15,0.08,0.36,0.13,0.58,0.15c0.25,0.02,0.49-0.01,0.66-0.1C85.96,94.24,86.03,94.08,85.98,93.76L85.98,93.76z M81.8,87.54c-0.32-0.74,0.02-1.59,0.75-1.91c0.74-0.32,1.59,0.02,1.91,0.75c0.06,0.15,0.21,0.25,0.37,0.3l0,0c0.19,0.06,0.41,0.07,0.64,0.04c0.2-0.03,0.37-0.09,0.49-0.18c0.05-0.04,0.09-0.09,0.09-0.14c0.06-0.8,0.76-1.4,1.56-1.34s1.4,0.76,1.34,1.56c-0.07,0.95-0.54,1.7-1.22,2.22c-0.53,0.41-1.18,0.67-1.85,0.77c-0.65,0.1-1.34,0.04-1.98-0.17C83.02,89.13,82.23,88.51,81.8,87.54L81.8,87.54z M79.72,79.54c0.11-0.8,0.84-1.35,1.64-1.24c0.79,0.11,1.35,0.84,1.24,1.64c-0.04,0.32,0.02,0.48,0.13,0.54c0.17,0.09,0.41,0.12,0.66,0.1c0.23-0.02,0.43-0.07,0.58-0.15c-0.1-0.68,0.3-1.36,0.98-1.59c0.76-0.25,1.58,0.16,1.83,0.92c0.43,1.29-0.1,2.33-1.09,3.01c-0.58,0.4-1.33,0.65-2.08,0.71c-0.77,0.06-1.58-0.07-2.26-0.44C80.22,82.44,79.47,81.31,79.72,79.54L79.72,79.54z M41.27,34.62c0.75-0.27,1.59,0.12,1.86,0.88s-0.12,1.59-0.88,1.86c-9.46,3.41-15.68,8.58-19.83,14.53c-4.17,5.97-6.28,12.76-7.5,19.34c-0.14,0.79-0.9,1.31-1.69,1.17c-0.79-0.14-1.31-0.9-1.17-1.69c1.29-6.92,3.53-14.1,7.98-20.48C24.51,43.82,31.17,38.26,41.27,34.62L41.27,34.62z M39.76,27.42c0.78-0.19,1.57,0.29,1.76,1.07c0.19,0.78-0.29,1.57-1.07,1.76c-9.27,2.3-16.9,6.13-23.09,11.27C11.17,46.66,6.38,53.14,2.77,60.75c-0.34,0.73-1.21,1.04-1.94,0.69s-1.04-1.21-0.69-1.94c3.78-7.98,8.82-14.8,15.36-20.23C22.04,33.86,30.05,29.83,39.76,27.42L39.76,27.42z M58.1,11.96c1.56-0.3,4.82,0.28,5.16,2.02c0.15,0.78-1.07,0.88-2.41,0.83l0,0.05c0,0.93-0.75,1.68-1.68,1.68c-0.93,0-1.68-0.75-1.68-1.68c0-0.07,0-0.14,0.01-0.21c-0.54-0.11-0.89-0.32-1.06-0.61C55.68,12.79,57.11,12.15,58.1,11.96L58.1,11.96z M53.69,51.72c0.01-0.04,0.01-0.09,0.02-0.13c0.32-1.68,0.78-3.28,1.41-4.8c1.26-3.04,3.2-5.72,6.02-7.94c0.63-0.5,1.55-0.39,2.04,0.24c0.5,0.63,0.39,1.55-0.25,2.04c-2.4,1.89-4.05,4.18-5.13,6.77c-0.55,1.33-0.96,2.74-1.24,4.22c-0.13,0.89-0.25,1.79-0.36,2.69c0.48-0.03,0.96-0.02,1.45,0.05c1.37,0.18,2.71,0.73,3.86,1.58c1.15,0.86,2.12,2.02,2.72,3.43c0.41,0.95,0.65,2.02,0.67,3.16l0.1,0.03c-0.14-3.66,0.16-7.62,0.82-11.47c0.82-4.76,2.2-9.38,4-13.11c0.35-0.72,1.22-1.03,1.94-0.68c0.72,0.35,1.03,1.22,0.68,1.94c-1.69,3.48-2.98,7.84-3.75,12.34c-0.04,0.25-0.08,0.5-0.12,0.75c1.58,0.32,2.99,0.43,4.27,0.4c1.12-0.02,2.18-0.15,3.2-0.33c-0.02-0.89-0.03-1.78-0.03-2.66c0-8.21,0.79-15.74,2.24-20.6c0.23-0.77,1.04-1.21,1.81-0.98s1.21,1.04,0.98,1.81c-1.38,4.61-2.13,11.84-2.13,19.77c0,1.23,0.02,2.47,0.05,3.72c0.01,0.08,0.01,0.15,0.01,0.22c0.18,5.96,0.78,12.12,1.84,17.72c3.9-0.2,6.89-0.56,9.4-1.2c2.19-0.55,4.04-1.32,5.84-2.37c-1.17-1.87-2.07-3.73-2.78-5.59c-0.64-1.67-1.12-3.35-1.5-5.03c-1.77,0.69-3.69,1.18-5.52,1.16c-0.71-0.01-1.3-0.53-1.42-1.21l0,0c-0.68-3.98-1.11-7.94-1.29-11.88c-0.18-3.94-0.12-7.82,0.18-11.66c0.06-0.8,0.76-1.4,1.56-1.34c0.8,0.06,1.4,0.76,1.34,1.56c-0.29,3.75-0.35,7.53-0.18,11.32c0.15,3.37,0.5,6.78,1.04,10.22c1.19-0.16,2.43-0.55,3.61-1.04c1.86-0.77,3.52-1.78,4.6-2.56c-0.24-0.55-0.48-1.1-0.72-1.65c-1.24-2.81-2.45-5.53-3.14-8.72c-0.88-4.04-1.01-8.34-1.14-12.62c-0.26-8.91-0.53-17.7-8.07-22.82c-0.41-0.27-0.82-0.54-1.25-0.78c0.4,0.42,0.78,0.87,1.13,1.35c3.13,4.13,4.72,10.05,4.09,16.61c-0.06,0.65-0.64,1.13-1.3,1.07c-0.65-0.06-1.13-0.64-1.07-1.3c0.57-5.96-0.84-11.29-3.62-14.96c-1.07-1.42-2.35-2.58-3.8-3.43c-1.44-0.84-3.04-1.38-4.79-1.54c-0.87-0.08-1.77-0.07-2.7,0.03c6.45,1.58,8.76,6.37,9.1,11.83c0.33,5.33-1.28,11.28-2.59,15.22c-0.21,0.62-0.88,0.96-1.5,0.75c-0.62-0.21-0.96-0.88-0.75-1.5c1.25-3.75,2.78-9.38,2.47-14.33c-0.29-4.63-2.27-8.67-7.9-9.79c-1.25-0.25-2.76-0.3-4.29,0.01c1.07,0.22,2.08,0.56,3.01,1L67,6.8c0.29,0.14,0.57,0.3,0.86,0.46c3.23,1.91,4.74,4.84,5.07,8.07c0.31,3.02-0.46,6.28-1.83,9.13l-0.05,0.12c-0.24,0.49-0.5,0.97-0.78,1.45c-1.03,1.74-2.31,3.37-3.72,4.87c-1.39,1.49-2.9,2.84-4.39,4.04c-0.91,0.73-1.8,1.41-2.66,2.07c-1.8,1.37-3.48,2.66-4.78,3.98l-0.08,0.08c-0.66,0.67-1.21,1.36-1.63,2.07c-0.54,0.91-0.99,1.92-1.36,2.99c-0.36,1.05-0.66,2.21-0.91,3.43c0.28,0.16,0.55,0.33,0.82,0.51c0.76,0.52,1.46,1.15,2.1,1.89L53.69,51.72L53.69,51.72L53.69,51.72z M56.57,52.13L56.57,52.13L56.57,52.13L56.57,52.13z M85.25,26.9c0.9,0,1.62,0.73,1.62,1.62c0,0.9-0.73,1.62-1.62,1.62c-0.9,0-1.62-0.73-1.62-1.62C83.63,27.63,84.35,26.9,85.25,26.9L85.25,26.9z M66.17,35.71c0.9,0,1.63,0.73,1.63,1.62s-0.73,1.62-1.63,1.62c-0.9,0-1.62-0.73-1.62-1.62S65.28,35.71,66.17,35.71L66.17,35.71z M53,38.58c1.37-1.32,3-2.57,4.72-3.89c0.86-0.65,1.74-1.33,2.6-2.02c1.42-1.15,2.83-2.4,4.1-3.76c1.25-1.34,2.4-2.8,3.33-4.37c0.23-0.39,0.46-0.81,0.67-1.24l0.06-0.11c1.15-2.4,1.8-5.11,1.55-7.58c-0.24-2.34-1.33-4.47-3.66-5.84c-0.2-0.12-0.41-0.23-0.65-0.35l-0.1-0.06c-1.33-0.63-2.91-1.01-4.58-0.96c-1.49,0.04-3.06,0.42-4.58,1.27c-0.88,0.49-1.68,1.13-2.37,1.94c-0.65,0.77-1.2,1.68-1.6,2.74c-0.23,0.61-0.83,0.98-1.46,0.94c-3.9-0.04-6.17,0.8-7.34,2.01c-0.55,0.57-0.84,1.23-0.94,1.91l-0.01,0.04c-0.09,0.71,0.02,1.46,0.27,2.16c0.51,1.43,1.55,2.62,2.63,2.97c0.6,0.19,1.47-0.04,2.69-0.37c0.74-0.2,1.59-0.43,2.65-0.63c1.62-0.52,3.49-0.53,5.11-0.14c0.96,0.23,1.85,0.61,2.57,1.11l0.09,0.07c0.77,0.56,1.35,1.28,1.63,2.13c0.22,0.66,0.26,1.37,0.08,2.13c-1.07,4.41-4.21,4.58-7.38,4.76c-1.04,0.06-2.07,0.11-2.88,0.37c-1.14,0.37-1.81,0.96-2.04,1.61c-0.11,0.29-0.12,0.61-0.04,0.92c0.09,0.34,0.28,0.67,0.58,0.98C49.5,38.1,50.93,38.65,53,38.58L53,38.58z";
+
+/** The two water jets spouting from the Merlion's mouth — a subset of MERLION_PATH,
+ *  drawn again in blue over the figure so the water reads as water. */
+const MERLION_WATER =
+  "M41.27,34.62c0.75-0.27,1.59,0.12,1.86,0.88s-0.12,1.59-0.88,1.86c-9.46,3.41-15.68,8.58-19.83,14.53c-4.17,5.97-6.28,12.76-7.5,19.34c-0.14,0.79-0.9,1.31-1.69,1.17c-0.79-0.14-1.31-0.9-1.17-1.69c1.29-6.92,3.53-14.1,7.98-20.48C24.51,43.82,31.17,38.26,41.27,34.62L41.27,34.62z M39.76,27.42c0.78-0.19,1.57,0.29,1.76,1.07c0.19,0.78-0.29,1.57-1.07,1.76c-9.27,2.3-16.9,6.13-23.09,11.27C11.17,46.66,6.38,53.14,2.77,60.75c-0.34,0.73-1.21,1.04-1.94,0.69s-1.04-1.21-0.69-1.94c3.78-7.98,8.82-14.8,15.36-20.23C22.04,33.86,30.05,29.83,39.76,27.42L39.76,27.42z";
 
 /** The Merlion scaled into the 40×40 prop box. `base:"plinth"` sets it on a stone
  *  pedestal (the Lion City decor + station); the carried treasure omits the base. */
@@ -1962,6 +1987,7 @@ function MerlionFigure({ fill, base }: { fill: string; base?: "plinth" }) {
       <image href="/escape/merlion-body.png" x="6" y="1.6" width="24.9" height="30.7" />
       <g transform="translate(6 1.6) scale(0.25)">
         <path fill={fill} d={MERLION_PATH} />
+        <path fill="#38bdf8" d={MERLION_WATER} />
       </g>
     </>
   ) : (
@@ -1969,6 +1995,7 @@ function MerlionFigure({ fill, base }: { fill: string; base?: "plinth" }) {
       <image href="/escape/merlion-body.png" x="3.8" y="0" width="32.4" height="40" />
       <g transform="translate(3.8 0) scale(0.3255)">
         <path fill={fill} d={MERLION_PATH} />
+        <path fill="#38bdf8" d={MERLION_WATER} />
       </g>
     </>
   );
@@ -2179,8 +2206,6 @@ const THEMED_ART: Record<string, React.ReactNode> = {
   // Lazy river with an otter.
   river: (
     <>
-      <rect x="8" y="20" width="32" height="18" rx="3" fill="#0ea5e9" opacity="0.85" />
-      {[26, 31, 36].map((y, i) => <path key={i} d={`M10 ${y}q4 -2.5 8 0t8 0t8 0`} fill="none" stroke="#bae6fd" strokeWidth="1.2" />)}
       <ellipse cx="24" cy="22" rx="6" ry="4.5" fill="#78350f" />
       <circle cx="24" cy="17" r="4" fill="#92400e" />
       <circle cx="22" cy="15" r="1.5" fill="#78350f" />
@@ -2244,17 +2269,30 @@ const THEMED_ART: Record<string, React.ReactNode> = {
 };
 
 /** Renders a themed station object with solved (✓) / locked (padlock) states. */
-function ThemedDevice({ device, tone }: { device: string; tone: "idle" | "solved" | "gated" }) {
+function ThemedDevice({ device, tone, glow }: { device: string; tone: "idle" | "solved" | "gated"; glow?: boolean }) {
+  const fid = useId().replace(/:/g, "");
   const art = THEMED_ART[device];
   if (!art) return null;
   return (
     <div className="relative h-full w-full">
       <svg
         viewBox="0 0 48 48"
-        className="h-full w-full"
+        // overflow-visible so the tight coral glow (feDropShadow below) can extend
+        // past the viewBox without the svg clipping it.
+        className="h-full w-full overflow-visible"
         style={tone === "gated" ? { filter: "grayscale(1) brightness(0.6)" } : tone === "solved" ? { opacity: 0.92 } : undefined}
       >
-        {art}
+        {glow && (
+          <defs>
+            {/* Tight coral proximity glow that hugs the silhouette. The filter region
+                is fixed in user units (not the CSS compositing bounds), so — unlike a
+                CSS drop-shadow — it never zoom-clips into a hard cut. */}
+            <filter id={fid} x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="0" stdDeviation="1.6" floodColor="#f87171" floodOpacity="0.95" />
+            </filter>
+          </defs>
+        )}
+        <g filter={glow ? `url(#${fid})` : undefined}>{art}</g>
       </svg>
       {tone === "solved" && (
         <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-white sm:h-5 sm:w-5">
@@ -2415,6 +2453,48 @@ const PROP_ART: Record<string, React.ReactNode> = {
       <rect x="14.5" y="17.5" width="11" height="18" rx="0.8" fill="#fcd34d" opacity="0.6" />
       <rect x="13" y="16" width="2.4" height="21" rx="0.8" fill="#92400e" />
       <rect x="24.6" y="16" width="2.4" height="21" rx="0.8" fill="#92400e" />
+    </>
+  ),
+  // Garden gate (nature scene exit) — wooden posts, a leafy vine arch, and a picket
+  // gate. Locked = closed pickets + padlock; open = a sunny path with the gates swung
+  // aside and the arch in bloom.
+  natureGateLocked: (
+    <>
+      <rect x="7.5" y="10" width="4" height="27" rx="1" fill="#92400e" stroke="#5b2b08" strokeWidth="0.8" />
+      <rect x="28.5" y="10" width="4" height="27" rx="1" fill="#92400e" stroke="#5b2b08" strokeWidth="0.8" />
+      <ellipse cx="9.5" cy="10.2" rx="2.2" ry="1.1" fill="#a1622c" />
+      <ellipse cx="30.5" cy="10.2" rx="2.2" ry="1.1" fill="#a1622c" />
+      <path d="M9.5 11 Q20 0.5 30.5 11" fill="none" stroke="#4d7c0f" strokeWidth="2.4" strokeLinecap="round" />
+      {([[12, 8, -30], [15.5, 4.2, -15], [20, 2.6, 0], [24.5, 4.2, 15], [28, 8, 30]] as [number, number, number][]).map(([x, y, r], i) => (
+        <ellipse key={i} cx={x} cy={y} rx="2.4" ry="1.3" fill={i % 2 ? "#65a30d" : "#4d7c0f"} transform={`rotate(${r} ${x} ${y})`} />
+      ))}
+      {[13.4, 16.6, 19.8, 23, 26.2].map((x, i) => (
+        <path key={i} d={`M${x} 34 V16.5 L${x + 1} 14.8 L${x + 2} 16.5 V34 Z`} fill="#b06a2e" stroke="#7c4a1e" strokeWidth="0.5" />
+      ))}
+      <rect x="12.5" y="19.5" width="15" height="2" rx="0.5" fill="#8a5220" />
+      <rect x="12.5" y="29" width="15" height="2" rx="0.5" fill="#8a5220" />
+      <rect x="17.5" y="24.2" width="5" height="4.3" rx="1" fill="#fbbf24" stroke="#b45309" strokeWidth="0.4" />
+      <path d="M18.4 24.2v-1.3a1.6 1.6 0 0 1 3.2 0v1.3" fill="none" stroke="#fbbf24" strokeWidth="1" />
+      <circle cx="20" cy="26.4" r="0.8" fill="#7c2d12" />
+    </>
+  ),
+  natureGateOpen: (
+    <>
+      <rect x="7.5" y="10" width="4" height="27" rx="1" fill="#92400e" stroke="#5b2b08" strokeWidth="0.8" />
+      <rect x="28.5" y="10" width="4" height="27" rx="1" fill="#92400e" stroke="#5b2b08" strokeWidth="0.8" />
+      <ellipse cx="9.5" cy="10.2" rx="2.2" ry="1.1" fill="#a1622c" />
+      <ellipse cx="30.5" cy="10.2" rx="2.2" ry="1.1" fill="#a1622c" />
+      <path d="M9.5 11 Q20 0.5 30.5 11" fill="none" stroke="#4d7c0f" strokeWidth="2.4" strokeLinecap="round" />
+      <rect x="12.5" y="13.5" width="15" height="23.5" rx="1" fill="#fef3c7" />
+      <rect x="12.5" y="13.5" width="15" height="23.5" rx="1" fill="#fde68a" opacity="0.55" />
+      <path d="M15 37 L18.5 19 L21.5 19 L25 37 Z" fill="#86efac" opacity="0.55" />
+      <rect x="11.8" y="15.5" width="2.2" height="21" rx="0.6" fill="#92400e" stroke="#5b2b08" strokeWidth="0.4" />
+      <rect x="26" y="15.5" width="2.2" height="21" rx="0.6" fill="#92400e" stroke="#5b2b08" strokeWidth="0.4" />
+      {([[12, 8, -30], [15.5, 4.2, -15], [20, 2.6, 0], [24.5, 4.2, 15], [28, 8, 30]] as [number, number, number][]).map(([x, y, r], i) => (
+        <ellipse key={i} cx={x} cy={y} rx="2.4" ry="1.3" fill={i % 2 ? "#65a30d" : "#4d7c0f"} transform={`rotate(${r} ${x} ${y})`} />
+      ))}
+      <circle cx="13" cy="7" r="1.3" fill="#f472b6" />
+      <circle cx="27" cy="7" r="1.3" fill="#fb7185" />
     </>
   ),
   // --- purely cosmetic decor props (non-interactable) ---
@@ -2902,6 +2982,199 @@ const PROP_ART: Record<string, React.ReactNode> = {
       ))}
     </>
   ),
+  // A mossy garden boulder (standing prop → casts a shadow, small collision box).
+  // Grey body with a lit top-left facet, a shadowed right facet and moss specks.
+  rock: (
+    <>
+      <ellipse cx="20" cy="33" rx="11" ry="2.6" fill="#000" opacity="0.18" />
+      <path d="M9 32 C7 24 12 19 20 19 C28 19 32 25 30 32 Z" fill="#9ca3af" stroke="#4b5563" strokeWidth="0.8" strokeLinejoin="round" />
+      <path d="M13 27 C13 22 18 20 22 21 C18 21 15 23 15 28 Z" fill="#cbd5e1" opacity="0.75" />
+      <path d="M24 21 C29 23 31 27 29 32 L24 32 C26 28 26 24 24 21 Z" fill="#6b7280" opacity="0.55" />
+      <path d="M20 20 L19 26 L22 30" fill="none" stroke="#4b5563" strokeWidth="0.5" opacity="0.6" />
+      <circle cx="14" cy="30" r="1.3" fill="#65a30d" opacity="0.75" />
+      <circle cx="24" cy="31" r="1.1" fill="#4d7c0f" opacity="0.75" />
+      <circle cx="18" cy="31.5" r="0.9" fill="#528000" opacity="0.7" />
+    </>
+  ),
+  // A wooden trail signpost — a post with two carved arrow-boards: the upper one
+  // points RIGHT, the lower one is rotated to point diagonally DOWN-RIGHT (guides
+  // the player from the entrance toward the next rooms). Standing prop.
+  trailSign: (
+    <>
+      <ellipse cx="20" cy="33" rx="7" ry="2" fill="#000" opacity="0.18" />
+      {/* post */}
+      <rect x="18.3" y="9" width="3.4" height="24" rx="1" fill="#92400e" stroke="#5b2b08" strokeWidth="0.6" />
+      <line x1="20" y1="10" x2="20" y2="32" stroke="#5b2b08" strokeWidth="0.4" opacity="0.5" />
+      
+      {/* lower board — a flat arrow board rotated to point DIAGONALLY DOWN-RIGHT.
+          Tweak the rotate() angle to re-aim it. */}
+      <g transform="rotate(173 20 24)">
+        <path d="M10 20.5 H25 L30.5 24 L25 27.5 H10 Z" fill="#a16207" stroke="#78350f" strokeWidth="0.7" strokeLinejoin="round" />
+        <line x1="12.5" y1="24" x2="23" y2="24" stroke="#78350f" strokeWidth="0.8" opacity="0.55" strokeLinecap="round" />
+      </g>
+
+      {/* upper board — points RIGHT */}
+      <path d="M10 11.5 H25 L30.5 15 L25 18.5 H10 Z" fill="#b45309" stroke="#78350f" strokeWidth="0.7" strokeLinejoin="round" />
+      <line x1="12.5" y1="15" x2="23" y2="15" stroke="#78350f" strokeWidth="0.8" opacity="0.55" strokeLinecap="round" />
+    </>
+  ),
+  // A park lamppost — a coach-style lamp with a warm glow on a dark post. Standing
+  // prop; the halo circle is drawn first so it sits behind the housing.
+  lamppost: (
+    <>
+      <circle cx="20" cy="9" r="5.5" fill="#fde68a" opacity="0.22" />
+      <ellipse cx="20" cy="33" rx="5" ry="1.6" fill="#000" opacity="0.18" />
+      <path d="M16.5 33 L17.8 29 H22.2 L23.5 33 Z" fill="#334155" stroke="#1e293b" strokeWidth="0.5" />
+      <rect x="19.1" y="12" width="1.8" height="18" fill="#3f4b5c" stroke="#1e293b" strokeWidth="0.4" />
+      <rect x="18.6" y="28.6" width="2.8" height="1.6" rx="0.4" fill="#334155" />
+      <rect x="18.3" y="12.4" width="3.4" height="1.2" rx="0.4" fill="#334155" />
+      <path d="M15.5 12 L17 6.6 H23 L24.5 12 Z" fill="#1e293b" />
+      <path d="M16.7 11.3 L17.6 7.5 H22.4 L23.3 11.3 Z" fill="#fde68a" />
+      <ellipse cx="20" cy="9.3" rx="2" ry="2.6" fill="#fef9c3" opacity="0.9" />
+      <path d="M15 6.9 L20 3.4 L25 6.9 Z" fill="#334155" stroke="#1e293b" strokeWidth="0.4" />
+      <circle cx="20" cy="3" r="0.9" fill="#334155" />
+    </>
+  ),
+  // A wooden park bench (front view) — slatted back + seat on turned legs. Standing prop.
+  bench: (
+    <>
+      <ellipse cx="20" cy="32" rx="13" ry="2" fill="#000" opacity="0.16" />
+      <rect x="8" y="9" width="1.8" height="14" fill="#7c4a1e" />
+      <rect x="30.2" y="9" width="1.8" height="14" fill="#7c4a1e" />
+      <rect x="8" y="10.5" width="24" height="2.6" rx="0.8" fill="#a1622c" stroke="#5b2b08" strokeWidth="0.4" />
+      <rect x="8" y="14.5" width="24" height="2.6" rx="0.8" fill="#96591f" stroke="#5b2b08" strokeWidth="0.4" />
+      <rect x="6.5" y="19.5" width="27" height="3.2" rx="0.9" fill="#b06a2e" stroke="#5b2b08" strokeWidth="0.5" />
+      <rect x="7" y="22.5" width="26" height="1.6" fill="#8a5220" />
+      <rect x="8.5" y="23.5" width="2.2" height="8" fill="#6f4019" />
+      <rect x="29.3" y="23.5" width="2.2" height="8" fill="#6f4019" />
+      <rect x="6.3" y="17" width="2" height="6.5" rx="0.6" fill="#7c4a1e" />
+      <rect x="31.7" y="17" width="2" height="6.5" rx="0.6" fill="#7c4a1e" />
+    </>
+  ),
+  // A wooden trailhead sign stand (nature-trail style) — an A-frame with splayed
+  // legs, a cross brace and a top mount rail the map board sits on. Decor is z-10,
+  // so the map machine (z-20) renders mounted on the rail. Place it under the
+  // station, nudged down so the map rests on the rail with the legs below.
+  signStand: (
+    <>
+      <ellipse cx="20" cy="36" rx="12" ry="2.4" fill="#000" opacity="0.15" />
+      <path d="M11 20 L8.5 36 L11.5 36 L13.5 20 Z" fill="#92400e" stroke="#5b2b08" strokeWidth="0.5" />
+      <path d="M29 20 L31.5 36 L28.5 36 L26.5 20 Z" fill="#92400e" stroke="#5b2b08" strokeWidth="0.5" />
+      <rect x="12" y="29" width="16" height="2.4" rx="0.6" fill="#7c4a1e" stroke="#5b2b08" strokeWidth="0.4" />
+      <rect x="9" y="17" width="22" height="4" rx="0.8" fill="#a1622c" stroke="#5b2b08" strokeWidth="0.5" />
+      <line x1="11" y1="19" x2="29" y2="19" stroke="#5b2b08" strokeWidth="0.4" opacity="0.5" />
+      {/* framed board — the map machine (z-20) renders inside this wooden frame */}
+      <rect x="10.5" y="3" width="19" height="16" rx="1.2" fill="#8a5a2b" stroke="#5b2b08" strokeWidth="0.6" />
+      <rect x="12.5" y="5" width="15" height="12" rx="0.6" fill="#6b4423" />
+    </>
+  ),
+  // A still pond (flat ground detail) — an irregular oval sharing the `stream`'s
+  // exact water palette + blue wet edge, so a stream overlapping it reads as one
+  // continuous body of water. Deeper far side, sky-reflection highlight, ripple
+  // rings and a lily pad.
+  pond: (
+    <>
+      <path d="M4 21 Q3 11 20 9 Q36 10 37 20 Q38 29 21 31.5 Q5 32 4 21 Z" fill="#0369a1" opacity="0.28" />
+      <path d="M6 21 Q5 13 20 11.5 Q33 12 34 20 Q35 28 21 29.5 Q7 30 6 21 Z" fill="#38bdf8" />
+      <g transform="translate(26 25)">
+        <ellipse cx="0" cy="0" rx="2.6" ry="2" fill="#4d9e5a" stroke="#3f7d47" strokeWidth="0.3" />
+        <line x1="0" y1="0" x2="2.6" y2="-0.6" stroke="#2f5d37" strokeWidth="0.5" />
+      </g>
+    </>
+  ),
+  // A packed-dirt trail (flat ground detail) — a gently winding earth path with
+  // gravel speckles and a trodden lighter centre. Low amplitude (nearly straight).
+  // Phase-aligned sine band, so tiles in a row join into one continuous trail.
+  dirtTrail: (() => {
+    const W = 40,
+      cy = 20,
+      amp = 2.2;
+    const c = (x: number) => cy + amp * Math.sin((2 *Math.PI * x) / W);
+    const xs = Array.from({ length: 25 }, (_, i) => -2 + ((W + 4) * i) / 24);
+    const band = (half: number) => {
+      const top = xs.map((x, i) => `${i ? "L" : "M"}${x.toFixed(1)} ${(c(x) - half).toFixed(1)}`).join(" ");
+      const bot = [...xs].reverse().map((x) => `L${x.toFixed(1)} ${(c(x) + half).toFixed(1)}`).join(" ");
+      return `${top} ${bot} Z`;
+    };
+    const gravel: [number, number][] = [[6, -3], [13, 2], [20, -2], [27, 3], [34, -3], [10, 4], [24, 4], [31, 3]];
+    return (
+      <>
+        <path d={band(9)} fill="#6f5836" opacity="0.44" />
+        <path d={band(7.5)} fill="#c2a06a" opacity="0.9" />
+        <path d={band(4)} fill="#e0cfa0" opacity="0.72" />
+        {gravel.map(([x, dy], i) => (
+          <circle key={i} cx={x} cy={(c(x) + dy).toFixed(1)} r="0.7" fill="#8a6d42" opacity="0.4" />
+        ))}
+      </>
+    );
+  })(),
+  // A winding stepping-stone trail (flat ground detail) — discrete flagstones on
+  // the grass (gaps show the turf), echoing the trail-maze puzzle (walk the path
+  // to the key). Deliberately DISCRETE, unlike the river's continuous band, so the
+  // two don't read alike. Stones follow a phase-aligned sine, so tiles in a row
+  // join into one continuous path.
+  trailPath: (() => {
+    const W = 40,
+      cy = 20,
+      amp = 6;
+    const c = (x: number) => cy + amp * Math.sin((2 * Math.PI * x) / W);
+    const stones = [4, 10, 17, 24, 31, 36];
+    return (
+      <>
+        {stones.map((x, i) => {
+          const rx = 3.5 - (i % 3) * 0.45;
+          const ry = 2.6 - (i % 2) * 0.35;
+          const rot = ((i * 37) % 60) - 30;
+          return (
+            <g key={i} transform={`translate(${x} ${c(x).toFixed(2)}) rotate(${rot})`}>
+              <ellipse cx="0" cy="1.1" rx={rx} ry={ry * 0.8} fill="#000" opacity="0.14" />
+              <ellipse cx="0" cy="0" rx={rx} ry={ry} fill="#a8a29e" stroke="#6f6a62" strokeWidth="0.4" />
+              <ellipse cx={-rx * 0.22} cy={-ry * 0.28} rx={rx * 0.62} ry={ry * 0.55} fill="#c9c2b7" opacity="0.75" />
+            </g>
+          );
+        })}
+      </>
+    );
+  })(),
+  // Flowing river/stream water (flat ground detail). A winding band whose
+  // centreline is one full sine period across the tile (y = 20 + 5·sin(2πx/40)),
+  // so it meanders rather than running dead-straight. The wave is phase-aligned
+  // at x=0 and x=40, so several tiles placed in a row still join into one
+  // continuous river. Ripples and stones follow the curve. Use with flat: true.
+  // The outer <svg> clips to its viewBox; the -2/42 overscan keeps edges gap-free.
+  stream: (() => {
+    const W = 40,
+      cy = 20,
+      amp = 5,
+      N = 24;
+    const c = (x: number) => cy + amp * Math.sin((2 * Math.PI * x) / W);
+    const xs = Array.from({ length: N + 1 }, (_, i) => -2 + ((W + 4) * i) / N);
+    // A constant-thickness band around the centreline: top edge L→R, bottom R→L.
+    const band = (half: number) => {
+      const top = xs.map((x, i) => `${i ? "L" : "M"}${x.toFixed(1)} ${(c(x) - half).toFixed(1)}`).join(" ");
+      const bot = [...xs].reverse().map((x) => `L${x.toFixed(1)} ${(c(x) + half).toFixed(1)}`).join(" ");
+      return `${top} ${bot} Z`;
+    };
+    const ripple = (off: number) =>
+      "M" + xs.map((x, i) => `${i ? "L" : ""}${x.toFixed(1)} ${(c(x) + off).toFixed(1)}`).join(" ");
+    return (
+      <>
+        {/* wet bank edge — a wider, darker band under the water */}
+        <path d={band(8)} fill="#0369a1" opacity="0.28" />
+        {/* water body */}
+        <path d={band(6.5)} fill="#38bdf8" />
+        {/* deeper channel down the middle */}
+        <path d={band(3.3)} fill="#0ea5e9" opacity="0.5" />
+        {/* waterline highlight + current ripples, all following the meander */}
+        <path d={ripple(-5)} fill="none" stroke="#bae6fd" strokeWidth="1" strokeLinecap="round" opacity="0.85" />
+        <path d={ripple(-1)} fill="none" stroke="#e0f2fe" strokeWidth="0.8" strokeLinecap="round" opacity="0.7" />
+        <path d={ripple(3)} fill="none" stroke="#7dd3fc" strokeWidth="0.9" strokeLinecap="round" opacity="0.7" />
+        {/* stepping stones peeking through the current, sitting on the curve */}
+        <ellipse cx="12" cy={c(12).toFixed(1)} rx="2.5" ry="1.8" fill="#94a3b8" stroke="#64748b" strokeWidth="0.4" />
+        <ellipse cx="30" cy={c(30).toFixed(1)} rx="2.1" ry="1.5" fill="#a8b2c0" stroke="#64748b" strokeWidth="0.4" />
+      </>
+    );
+  })(),
   // A wooden crate with a spiky durian (king of fruits) flanked by round fruit.
   fruitCrate: (
     <>
@@ -2948,6 +3221,7 @@ const ITEM_PROP: Record<string, string> = { key: "key", lion: "merlion", flag: "
 /** Per-scene exit-door skins, keyed by `room.scene`; falls back to the generic door. */
 const DOOR_ART: Record<string, { open: string; locked: string }> = {
   festival: { open: "festivalGateOpen", locked: "festivalGateLocked" },
+  nature: { open: "natureGateOpen", locked: "natureGateLocked" },
 };
 
 /** Subtle repeating floor textures for the top-down tiles, keyed by `floorKind`
@@ -2963,6 +3237,38 @@ const noiseBg = (id: string, freq: number, opacity: number) =>
  *  non-rectangular outlines that read as a hero base without boxing objects. */
 const HEX_TILE =
   "url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='28'%20height='49'%3E%3Cpath%20fill='%23a5b4fc'%20fill-opacity='0.84'%20d='M13.99%209.25l13%207.5v15l-13%207.5L1%2031.75v-15l12.99-7.5zM3%2017.9v12.7l10.99%206.34%2011-6.35V17.9l-11-6.34L3%2017.9zM0%2015l12.98-7.5V0h-2v6.35L0%2012.69v2.3zm0%2018.5L12.98%2041v8h-2v-6.85L0%2035.81v-2.3zM15%200v7.5L27.99%2015H28v-2.31h-.01L17%206.35V0h-2zm0%2049v-8l12.99-7.5H28v2.31h-.01L17%2042.15V49h-2z'/%3E%3C/svg%3E\")";
+
+/** Scattered grass blades on a 64px tile — the garden/nature floor motif. Blades
+ *  are generated with a fixed-seed PRNG (mulberry32) so the tile is randomised in
+ *  position, length, width, lean, opacity and colour, yet identical on every
+ *  render (a fixed seed — not Math.random — so SSR and client agree, no hydration
+ *  mismatch). The big tile + irregular strokes read as turf, never a grid, and
+ *  never box an object. encodeURIComponent escapes the '#' hex colours. */
+const BLADE_TILE = (() => {
+  const S = 64;
+  let seed = 0x9e3779b9;
+  const rnd = () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const cols = ["#3f6212", "#4d7c0f", "#528000", "#65a30d", "#76a838"];
+  const paths: string[] = [];
+  for (let i = 0; i < 30; i++) {
+    const x = rnd() * S;
+    const y = rnd() * S;
+    const len = 5 + rnd() * 7;
+    const lean = (rnd() - 0.5) * 5;
+    const w = (0.7 + rnd() * 0.8).toFixed(2);
+    const op = (0.26 + rnd() * 0.26).toFixed(2);
+    const col = cols[(rnd() * cols.length) | 0];
+    const d = `M${x.toFixed(1)} ${y.toFixed(1)} Q${(x + lean * 0.45).toFixed(1)} ${(y - len * 0.55).toFixed(1)} ${(x + lean).toFixed(1)} ${(y - len).toFixed(1)}`;
+    paths.push(`<path d='${d}' fill='none' stroke='${col}' stroke-width='${w}' stroke-linecap='round' opacity='${op}'/>`);
+  }
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${S}' height='${S}'>${paths.join("")}</svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+})();
 
 /**
  * Continuous floor textures — ONE repeating background per room, not a grid of
@@ -3006,6 +3312,18 @@ const FLOOR_TEXTURE: Record<string, React.CSSProperties> = {
       "repeating-linear-gradient(90deg, rgba(90,50,15,.04) 0 1px, transparent 1px 5px)," +
       noiseBg("nWo", 0.9, 0.07),
     backgroundSize: "auto, auto, auto, 200px 200px",
+  },
+  // Grass (garden / nature) — scattered blade strokes (BLADE_TILE, 24px) over a
+  // soft two-tone green mottle + fine noise. All continuous/organic, so nothing
+  // gets boxed. Sits on a green floor gradient.
+  grass: {
+    backgroundImage:
+      BLADE_TILE +
+      "," +
+      "radial-gradient(58% 58% at 28% 24%, rgba(132,204,22,.16), transparent 62%)," +
+      "radial-gradient(52% 52% at 76% 80%, rgba(22,101,52,.14), transparent 58%)," +
+      noiseBg("nGr", 0.85, 0.06),
+    backgroundSize: "64px 64px, 100% 100%, 100% 100%, 200px 200px",
   },
   // Ceramic — a fine continuous grout grid (finer than a sprite) + soft noise.
   tile: {
@@ -3202,9 +3520,9 @@ const STATION_ICON: Record<string, string> = {
   "green-lab:panel": "solar",
   "green-lab:bins": "bin",
   "green-lab:circuit": "plug",
-  "sg-history:merlion": "note",
+  "sg-history:founding": "note",
   "sg-history:timeline": "panel",
-  "sg-history:river": "lion",
+  "sg-history:lioncity": "lion",
   "sg-culture:food": "skewer",
   "sg-culture:festival": "lantern",
   "sg-culture:flower": "flower",
@@ -3212,7 +3530,7 @@ const STATION_ICON: Record<string, string> = {
   "sg-culture:crossword": "grid",
   "sg-culture:lockpad": "lock",
   "sg-nature:river": "water",
-  "sg-nature:seed": "sprout",
+  "sg-nature:trail": "sprout",
   "sg-nature:ranger": "key",
   "sg-nature:trailmap": "map",
 };
@@ -5304,7 +5622,7 @@ function ExitKeypad({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <button
         aria-label="Close keypad"
         onClick={() => !ok && onClose()}
@@ -5419,7 +5737,7 @@ function CipherExitKeypad({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <button
         aria-label="Close decoder"
         onClick={() => !ok && onClose()}
@@ -5569,7 +5887,7 @@ function UnscrambleExitKeypad({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <button
         aria-label="Close suit console"
         onClick={() => !ok && onClose()}

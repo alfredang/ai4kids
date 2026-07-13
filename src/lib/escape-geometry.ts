@@ -137,12 +137,14 @@ export function buildGeometry(
   }
 
   const spawnFloor = floors[layout.spawn] ?? Object.values(floors)[0];
+  const smx = layout.spawnMx ?? 0.5;
+  const smy = layout.spawnMy ?? 0.5;
   return {
     area: { x: 0, y: 0, w: area.w, h: area.h },
     cell: { w: cw, h: ch },
     floors,
     walls,
-    spawn: centerOf(spawnFloor),
+    spawn: { x: spawnFloor.x + spawnFloor.w * smx, y: spawnFloor.y + spawnFloor.h * smy },
   };
 }
 

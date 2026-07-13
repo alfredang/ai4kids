@@ -390,8 +390,10 @@ export type CarryItem = {
  *    `depositRoom`. `gateRoom`'s puzzle stays locked until every bottle is in.
  */
 export type CarryConfig =
-  | { mode: "charge"; items: CarryItem[]; coreRoom: string; suitRoom: string }
-  | { mode: "direct"; items: CarryItem[]; suitRoom: string }
+  // `suitMx`/`suitMy` position the delivery point (and its prop — e.g. the Time
+  // Capsule / superhero suit) as 0–1 fractions of the suit room. Default centre.
+  | { mode: "charge"; items: CarryItem[]; coreRoom: string; suitRoom: string; suitMx?: number; suitMy?: number }
+  | { mode: "direct"; items: CarryItem[]; suitRoom: string; suitMx?: number; suitMy?: number }
   | { mode: "recycle"; items: CarryItem[]; sinkRoom: string; depositRoom: string; gateRoom: string };
 
 /** A read-only clue / "lab note" object placed in a room. */
@@ -440,12 +442,20 @@ export type RoomLayout = {
   doors: [string, string][];
   /** Room the character spawns in. */
   spawn: string;
+  /** Where in the spawn room the character starts, as 0–1 fractions of the room
+   *  (same convention as machine `mx`/`my`). Default centre (0.5, 0.5). */
+  spawnMx?: number;
+  spawnMy?: number;
   /** Room hosting the final lock (the room's `exit` mechanism). */
   exit: string;
   /** Which wall of the exit room the door graphic + its interaction hotspot pin
    *  to. Defaults to "bottom"; use another side when the bottom wall holds the
    *  doorway into the exit room (e.g. the Recycling Plant's top-right exit). */
   exitDoorSide?: "top" | "bottom" | "left" | "right";
+  /** Where the exit door sits ALONG its wall, as a 0–1 fraction (0 = left/top
+   *  end, 0.5 = centre = default, 1 = right/bottom end). Use it to slide the door
+   *  clear of a doorway or note on the same wall. */
+  exitDoorAlong?: number;
   /** Optional pick-up-and-carry mechanic (cores / artefacts / bottles). */
   carry?: CarryConfig;
   notes?: RoomNote[];
@@ -472,7 +482,7 @@ export type EscapeRoom = {
   /** Themed texture painted over the wall. */
   pattern: "circuit" | "dots" | "leaves" | "none";
   /** Themed look for the floor strip. */
-  floorKind: "metal" | "tile" | "wood" | "concrete" | "stone";
+  floorKind: "metal" | "tile" | "wood" | "concrete" | "stone" | "grass";
   /** Hand-drawn SVG backdrop illustration for the room (no emojis). */
   scene: SceneKind;
   /** Emoji avatar that explores the room. */
@@ -1029,7 +1039,7 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
     stations: [
       {
         // Android Vault: west "Founding Gallery" — Mcq (1819).
-        id: "merlion",
+        id: "founding",
         emoji: "📜",
         label: "Founding Gallery",
         x: 17,
@@ -1063,7 +1073,7 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
       },
       {
         // Android Vault: top "Lion City Room" — Unscramble (SINGA, PURA).
-        id: "river",
+        id: "lioncity",
         emoji: "🦁",
         label: "Lion City Room",
         x: 72,
@@ -1092,28 +1102,34 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
       // red-earth for the ancient Lion City, cooler for modern Independence Hall.
       cells: [
         { id: "hall", label: "Vault Entrance", gx: 0, gy: 0, role: "spawn", floor: "from-stone-300 via-stone-200 to-stone-300", floorKind: "stone" },
-        { id: "merlion", label: "Founding Gallery", gx: 1, gy: 0, stationId: "merlion", role: "puzzle", floor: "from-amber-200 via-stone-200 to-amber-100", floorKind: "stone" },
-        { id: "river", label: "Lion City Room", gx: 2, gy: 0, stationId: "river", role: "puzzle", floor: "from-orange-200 via-amber-100 to-red-100", floorKind: "stone" },
+        { id: "founding", label: "Founding Gallery", gx: 1, gy: 0, stationId: "founding", role: "puzzle", floor: "from-amber-200 via-stone-200 to-amber-100", floorKind: "stone" },
+        { id: "lioncity", label: "Lion City Room", gx: 2, gy: 0, stationId: "lioncity", role: "puzzle", my: 0.3, floor: "from-orange-200 via-amber-100 to-red-100", floorKind: "stone" },
         { id: "timeline", label: "Independence Hall", gx: 3, gy: 0, stationId: "timeline", role: "puzzle", floor: "from-stone-200 via-slate-100 to-stone-200", floorKind: "stone" },
         { id: "capsule", label: "Time Capsule", gx: 0, gy: 1, gw: 4, role: "exit", floor: "from-stone-400 via-stone-300 to-stone-400", floorKind: "stone" },
       ],
       doors: [
-        ["hall", "merlion"],
+        ["hall", "founding"],
         ["hall", "capsule"],
-        ["merlion", "capsule"],
-        ["river", "capsule"],
+        ["founding", "capsule"],
+        ["lioncity", "capsule"],
         ["timeline", "capsule"],
       ],
       spawn: "hall",
       exit: "capsule",
+      // Slide the Time Capsule door off-centre so it clears the doorway + note on
+      // the same wall (0 = left end, 0.5 = centre, 1 = right end).
+      exitDoorAlong: 0.75,
       // Each treasure rests in its gallery and is pickable only once that
       // gallery's puzzle is solved; carry all three to the Time Capsule.
       carry: {
         mode: "direct",
         suitRoom: "capsule",
+        // Position the Time Capsule prop within the room (0–1 fractions; default
+        // centre). Nudged down so it clears the top-wall doorways + the note.
+        suitMy: 0.68,
         items: [
-          { id: "art-treaty", emoji: "📜", label: "Treaty Scroll", icon: "note", station: "merlion" },
-          { id: "art-merlion", emoji: "🦁", label: "Merlion", icon: "lion", station: "river" },
+          { id: "art-treaty", emoji: "📜", label: "Treaty Scroll", icon: "note", station: "founding" },
+          { id: "art-merlion", emoji: "🦁", label: "Merlion", icon: "lion", station: "lioncity" },
           { id: "art-flag", emoji: "🇸🇬", label: "National Flag", icon: "flag", station: "timeline" },
         ],
       },
@@ -1132,13 +1148,13 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
         { room: "hall", art: "heritageBanner", x: 0.5, y: 0.12, scale: 1.0, ceiling: true },
         { room: "hall", art: "torchSconce", x: 0.85, y: 0.16, scale: 0.9, ceiling: true },
         // Founding Gallery (1819) — a colonial cannon + a torch.
-        { room: "merlion", art: "oldCannon", x: 0.2, y: 0.74, scale: 1.0 },
-        { room: "merlion", art: "torchSconce", x: 0.5, y: 0.1, scale: 0.85, ceiling: true },
+        { room: "founding", art: "oldCannon", x: 0.2, y: 0.74, scale: 1.0 },
+        { room: "founding", art: "torchSconce", x: 0.5, y: 0.1, scale: 0.85, ceiling: true },
         // Lion City Room — a lion-head floor emblem (clear of the centre machine
         // and the treasure that rests top-left), an ancient urn + a pillar.
-        { room: "river", art: "lionLogo", x: 0.33, y: 0.74, scale: 1.5, flat: true },
-        { room: "river", art: "ancientUrn", x: 0.82, y: 0.74, scale: 0.95 },
-        { room: "river", art: "stonePillar", x: 0.85, y: 0.26, scale: 0.9 },
+        { room: "lioncity", art: "lionLogo", x: 0.5, y: 0.74, scale: 1.5, flat: true },
+        { room: "lioncity", art: "ancientUrn", x: 0.17, y: 0.74, scale: 0.95 },
+        { room: "lioncity", art: "stonePillar", x: 0.85, y: 0.26, scale: 0.9 },
         // Independence Hall (1965) — a pillar + a torch.
         { room: "timeline", art: "stonePillar", x: 0.82, y: 0.24, scale: 0.9 },
         { room: "timeline", art: "torchSconce", x: 0.5, y: 0.1, scale: 0.85, ceiling: true },
@@ -1354,10 +1370,10 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
     ageRange: "8–11",
     accent: "bg-mint/15 text-emerald-600",
     ring: "ring-mint/30",
-    wall: "from-sky-200 via-emerald-100 to-lime-100",
+    wall: "from-green-300 to-emerald-300",
     floor: "from-amber-700 to-amber-900",
     pattern: "leaves",
-    floorKind: "wood",
+    floorKind: "grass",
     scene: "nature",
     character: "👦",
     intro:
@@ -1383,7 +1399,7 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
         },
       },
       {
-        id: "seed",
+        id: "trail",
         emoji: "🥾",
         label: "The Trail",
         x: 44,
@@ -1484,30 +1500,93 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
       cols: 4,
       rows: 2,
       cells: [
-        { id: "start", label: "Trail Start", gx: 0, gy: 0, role: "spawn" },
+        { id: "start",  label: "Trail Start", gx: 0, gy: 0, role: "spawn", },
         { id: "meadow", label: "Meadow", gx: 1, gy: 0, gw: 2 },
         { id: "exit", label: "Garden Gate", gx: 3, gy: 0, role: "exit" },
         { id: "river", label: "Lazy River", gx: 0, gy: 1, stationId: "river", role: "puzzle" },
-        { id: "ranger", label: "Ranger's Code", gx: 1, gy: 1, stationId: "ranger", role: "puzzle" },
-        { id: "seed", label: "The Trail", gx: 2, gy: 1, stationId: "seed", role: "puzzle" },
-        { id: "trailmap", label: "Trail Map", gx: 3, gy: 1, stationId: "trailmap", role: "puzzle" },
+        { id: "ranger", label: "Ranger's Code", gx: 1, gy: 1, stationId: "ranger", role: "puzzle", my: 0.2 },
+        { id: "trail", label: "The Trail", gx: 2, gy: 1, stationId: "trail", role: "puzzle", my: 0.3, mx: 0.44 },
+        { id: "trailmap", label: "Trail Map", gx: 3, gy: 1, stationId: "trailmap", role: "puzzle", mx: 0.8, my: 0.2 },
       ],
       doors: [
         ["start", "meadow"],
         ["start", "river"],
+        ["river", "ranger"],
         ["meadow", "ranger"],
-        ["meadow", "seed"],
-        ["seed", "trailmap"],
+        ["meadow", "trail"],
+        ["trail", "trailmap"],
         ["trailmap", "exit"],
       ],
       spawn: "start",
+      spawnMy: 0.6,
       exit: "exit",
+      exitDoorSide: "top",
+      decor: [
+        // Lazy River — a stream flowing across the lower half of the room (three
+        // full-bleed `stream` tiles in a row read as one continuous river). Flat,
+        // so the child walks over it; kept below the otter station (room centre).
+        { room: "river", art: "stream", x: 0.22, y: 0.56, scale: 2, flat: true },
+        { room: "river", art: "stream", x: 0.78, y: 0.54, scale: 2, flat: true },
+        // Trail Start (entrance) — a wooden signpost: right arm → Meadow, down-right
+        // arm → Lazy River (the room's two doorways). Kept upper-left of the doors.
+        { room: "start", art: "dirtTrail", x: 0.27, y: 0.6, scale: 2, flat: true },
+        { room: "start", art: "dirtTrail", x: 0.58, y: 0.6, scale: 2, flat: true },
+        { room: "start", art: "trailSign", x: 0.4, y: 0.35, scale: 1.8 },
+        { room: "start", art: "flower", x: 0.74, y: 0.3, scale: 0.8, flat: true },
+        { room: "start", art: "rock", x: 0.26, y: 0.69, scale: 1.5, flat: true },
+
+        // Boulders on the banks (solid props) + flowers on the grassy edges above
+        // and below the stream (which runs through the middle, y≈0.55).
+        { room: "river", art: "rock", x: 0.14, y: 0.3, scale: 0.9 },
+        { room: "river", art: "rock", x: 0.86, y: 0.82, scale: 0.7 },
+        { room: "river", art: "flower", x: 0.3, y: 0.24, scale: 0.85, flat: true },
+        { room: "river", art: "daisy", x: 0.66, y: 0.22, scale: 0.8, flat: true },
+        { room: "river", art: "flower", x: 0.5, y: 0.9, scale: 0.8, flat: true, flip: true },
+        // Meadow hub — flowers + a boulder in the upper half, clear of the three
+        // doorways along the bottom edge.
+        { room: "meadow", art: "dirtTrail", x: 0.08, y: 0.6, scale: 2, flat: true },
+        { room: "meadow", art: "dirtTrail", x: 0.37, y: 0.6, scale: 2, flat: true },
+        { room: "meadow", art: "dirtTrail", x: 0.87, y: 0.63, scale: 2, flat: true, flip:true },
+        { room: "meadow", art: "dirtTrail", x: 0.66, y: 0.6, scale: 2, flat: true },
+        
+        { room: "meadow", art: "flower", x: 0.34, y: 0.28, scale: 0.85, flat: true },
+        { room: "meadow", art: "daisy", x: 0.5, y: 0.80, scale: 0.85, flat: true },
+        { room: "meadow", art: "flower", x: 0.88, y: 0.3, scale: 0.8, flat: true, flip: true },
+        { room: "meadow", art: "rock", x: 0.77, y: 0.66, scale: 1.1 },
+        { room: "meadow", art: "lamppost", x: 0.64, y: 0.34, scale: 1 },
+        { room: "meadow", art: "bench", x: 0.16, y: 0.36, scale: 0.95 },
+
+        // Ranger's Code — a stream entering from the left that flows INTO a pond on
+        // the right (share one water palette so they read as one body).
+                { room: "ranger", art: "pond", x: 0.77, y: 0.52, scale: 2, flat: true },
+        { room: "ranger", art: "stream", x: 0.35, y: 0.54, scale: 1.9, flat: true },
+        // The Trail — a winding stone path across the room (two tiles join into one
+        // continuous trail), echoing the trail-maze puzzle: walk the path to the key.
+        { room: "trail", art: "trailPath", x: 0.28, y: 0.52, scale: 1.5, flat: true },
+        { room: "trail", art: "trailPath", x: 0.72, y: 0.5, scale: 1.8, flat: true },
+        { room: "trail", art: "daisy", x: 0.3, y: 0.80, scale: 0.85, flat: true },
+        { room: "trail", art: "trailPath", x: 0.67, y: 0.76, scale: 1.8, flat: true, flip:true },
+        // Trail Map — the stone path continues in from The Trail (same grass floor),
+        // so the two read as one continuous trail. Nudge x/y to line up the doorway.
+        { room: "trailmap", art: "trailPath", x: 0.25, y: 0.48, scale: 1.8, flat: true },
+        { room: "trailmap", art: "trailPath", x: 0.4, y: 0.62, scale: 2.1, flat: true },
+        // Trail Map station sits on a wooden trailhead sign stand (centred under the
+        // machine at mx/my 0.5; nudged down so the map rests on the mount rail).
+        { room: "trailmap", art: "signStand", x: 0.8, y: 0.32, scale: 1.8 },
+        { room: "trailmap", art: "flower", x: 0.28, y: 0.3, scale: 0.8, flat: true, flip: true },
+
+        // Garden Gate — a pair of park lampposts flanking the exit door.
+        { room: "exit", art: "lamppost", x: 0.16, y: 0.34, scale: 1 },
+        { room: "exit", art: "lamppost", x: 0.84, y: 0.34, scale: 1 },
+        
+        
+      ],
       // Walking The Trail (the maze) frees the gate key in that room; carry it to
       // the Garden Gate (the exit) and place it to unlock the door.
       carry: {
         mode: "direct",
         suitRoom: "exit",
-        items: [{ id: "gate-key", emoji: "🔑", label: "Gate Key", icon: "key", station: "seed" }],
+        items: [{ id: "gate-key", emoji: "🔑", label: "Gate Key", icon: "key", station: "trail" }],
       },
       notes: [
         {
