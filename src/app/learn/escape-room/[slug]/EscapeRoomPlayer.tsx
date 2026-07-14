@@ -986,11 +986,10 @@ function RoomMap({
           width: `min(100%, calc(62vh * ${layout.cols / layout.rows}))`,
         }}
       >
-        {/* Background layers (floor, decor, fog, walls) are clipped to the rounded
-            frame by this inner wrapper. It has NO z-index, so it does NOT create a
-            stacking context — fog (z-25) / walls (z-30) still paint over machines
-            (z-20) by their global z-index — but interactables (rendered OUTSIDE this
-            wrapper, below) keep their coral proximity glow un-clipped at the edges. */}
+        {/* Inner wrapper clips floor/decor/fog/walls to the rounded frame; machines
+            & player render OUTSIDE it so their glows aren't clipped at the edges. No
+            z-index here, so it's not a stacking context — fog/walls still layer over
+            machines by global z-index. */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[2rem]">
         {/* Floor rooms — gradient tile + optional texture + a per-plate variation
             grid (worn / polished / missing plates) for tiled floor kinds. */}
@@ -1036,15 +1035,17 @@ function RoomMap({
           // hang ABOVE the player (z-45 > player z-40) in the room you're in, and
           // drop below the fog (z-25) elsewhere so the fog-of-war still hides them.
           // Everything else is a floor prop under the player (z-10).
-          const ceiling = d.ceiling || (d.w != null && d.h != null);
+          // Stretched runs (w/h) hang from the ceiling (cables/bunting) UNLESS flagged
+          // `flat`, in which case they're a stretched floor decal (e.g. a wide dirt path).
+          const ceiling = d.ceiling || (d.w != null && d.h != null && !d.flat);
           const z = ceiling ? (d.room === curRoom ? "z-[45]" : "z-10") : "z-10";
-          // Explicit w/h → a stretched run (e.g. a cable / bunting).
+          // Explicit w/h → a stretched run (a cable / bunting, or a flat wide decal).
           if (d.w != null && d.h != null) {
             return (
               <svg
                 key={`decor-${i}`}
                 aria-hidden
-                viewBox="0 0 40 40"
+                viewBox={`0 0 ${d.vw ?? 40} ${d.vh ?? 40}`}
                 preserveAspectRatio="none"
                 className={`pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 ${z}`}
                 style={{ left, top, width: pct(r.w * d.w, W), height: pct(r.h * d.h, H) }}
@@ -1064,12 +1065,10 @@ function RoomMap({
               <Prop
                 art={d.art}
                 className="h-12 w-12 sm:h-14 sm:w-14"
-                style={{
-                  transform: `scale(${d.flip ? -s : s}, ${s})`,
-                  // Standing props cast a shadow; flat decals are painted on the
-                  // floor, so no shadow (it would muddy thin shapes like the logo).
-                  filter: d.flat ? undefined : "drop-shadow(0 2px 3px rgba(0,0,0,0.4))",
-                }}
+                style={{ transform: `scale(${d.flip ? -s : s}, ${s})` }}
+                // Standing props cast a shadow (via SVG feDropShadow, not a CSS filter
+                // — see Prop); flat decals are painted on the floor, so no shadow.
+                shadow={!d.flat}
               />
             </div>
           );
@@ -1125,16 +1124,12 @@ function RoomMap({
               key={n.id}
               onClick={() => setOpenNote(n.id)}
               className={`absolute z-20 h-8 w-8 -translate-x-1/2 -translate-y-1/2 outline-none transition focus-visible:outline-none sm:h-9 sm:w-9 ${ringed ? "scale-110" : ""}`}
-              style={{
-                left: pct(x, W),
-                top: pct(y, H),
-                filter: ringed
-                  ? "drop-shadow(0 0 5px rgba(248,113,113,0.95)) drop-shadow(0 2px 2px rgba(0,0,0,0.3))"
-                  : "drop-shadow(0 2px 2px rgba(0,0,0,0.3))",
-              }}
+              style={{ left: pct(x, W), top: pct(y, H) }}
               title="Read the note"
             >
-              <Prop art="note" className="h-full w-full" />
+              {/* shadow + coral glow both via the Prop's SVG feDropShadow — no CSS
+                  filter, so no zoom-clip and no compositing-layer drift */}
+              <Prop art="note" className="h-full w-full" glow={ringed} shadow />
             </button>
           );
         })}
@@ -1146,7 +1141,7 @@ function RoomMap({
             style={{ left: pct(sinkPt.x, W), top: pct(sinkPt.y, H) }}
             title="Wash sink"
           >
-            <Prop art="sink" className="h-10 w-10 sm:h-12 sm:w-12" style={{ filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.35))" }} />
+            <Prop art="sink" className="h-10 w-10 sm:h-12 sm:w-12" shadow />
             <span className="-mt-1 rounded-full bg-slate-900/60 px-1.5 font-fun text-[8px] font-700 text-white sm:text-[10px]">Wash</span>
           </div>
         )}
@@ -1156,7 +1151,7 @@ function RoomMap({
             style={{ left: pct(depositPt.x, W), top: pct(depositPt.y, H) }}
             title="Recycler"
           >
-            <Prop art="recycler" className="h-10 w-10 sm:h-12 sm:w-12" style={{ filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.35))" }} />
+            <Prop art="recycler" className="h-10 w-10 sm:h-12 sm:w-12" shadow />
             <span className="-mt-1 rounded-full bg-slate-900/60 px-1.5 font-fun text-[8px] font-700 text-white sm:text-[10px]">Recycle</span>
           </div>
         )}
@@ -1290,15 +1285,12 @@ function RoomMap({
             <button
               onClick={() => exitReady && performAction(near?.kind === "exit" ? near : { key: "exit", kind: "exit", id: layout.exit, label: "", x: pin.x, y: pin.y, enabled: true })}
               className={`absolute z-20 h-12 w-10 outline-none transition focus-visible:outline-none sm:h-16 sm:w-12 ${exitReady ? "animate-pulse" : ""}`}
-              style={{
-                left: pct(pin.x, W),
-                top: pct(pin.y, H),
-                transform,
-                filter: exitReady ? "drop-shadow(0 0 6px rgba(251,191,36,0.9))" : "drop-shadow(0 2px 2px rgba(0,0,0,0.35))",
-              }}
+              style={{ left: pct(pin.x, W), top: pct(pin.y, H), transform }}
               title={exitReady ? "Open the door" : "Locked — finish the room first"}
             >
-              <Prop art={exitReady ? door.open : door.locked} className="h-full w-full" />
+              {/* shadow + (amber, when ready) glow via SVG feDropShadow — no CSS
+                  filter, so no zoom-clip / compositing drift */}
+              <Prop art={exitReady ? door.open : door.locked} className="h-full w-full" shadow glow={exitReady} glowColor="#fbbf24" />
             </button>
           );
         })()}
@@ -2203,13 +2195,25 @@ const THEMED_ART: Record<string, React.ReactNode> = {
       <rect x="22.8" y="29" width="2.4" height="4.5" rx="1" fill="#7f1d1d" />
     </>
   ),
+  // Solved state of the exit lock panel — green with the padlock shackle swung open.
+  lockpanelOpen: (
+    <>
+      <rect x="12" y="11" width="24" height="30" rx="4" fill="#16a34a" stroke="#14532d" strokeWidth="1.6" />
+      <circle cx="24" cy="8" r="2" fill="#86efac" />
+      {/* open shackle — pivots on the left leg and swings up to the right */}
+      <path d="M19 23v-3a5 5 0 0 1 9-3.4" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" />
+      <rect x="15.5" y="22.5" width="17" height="13" rx="2.5" fill="#fff" />
+      <circle cx="24" cy="28" r="2.2" fill="#14532d" />
+      <rect x="22.8" y="29" width="2.4" height="4.5" rx="1" fill="#14532d" />
+    </>
+  ),
   // Lazy river with an otter.
   river: (
     <>
-      <ellipse cx="24" cy="22" rx="6" ry="4.5" fill="#78350f" />
-      <circle cx="24" cy="17" r="4" fill="#92400e" />
-      <circle cx="22" cy="15" r="1.5" fill="#78350f" />
-      <circle cx="26" cy="15" r="1.5" fill="#78350f" />
+      <ellipse cx="24" cy="22" rx="7" ry="5.5" fill="#78350f" />
+      <circle cx="24" cy="17" r="5" fill="#92400e" />
+      <circle cx="20" cy="15" r="1.5" fill="#78350f" />
+      <circle cx="28" cy="15" r="1.5" fill="#78350f" />
       <circle cx="22.5" cy="16.8" r="0.7" fill="#0f172a" />
       <circle cx="25.5" cy="16.8" r="0.7" fill="#0f172a" />
       <circle cx="24" cy="18.2" r="0.8" fill="#0f172a" />
@@ -2271,7 +2275,9 @@ const THEMED_ART: Record<string, React.ReactNode> = {
 /** Renders a themed station object with solved (✓) / locked (padlock) states. */
 function ThemedDevice({ device, tone, glow }: { device: string; tone: "idle" | "solved" | "gated"; glow?: boolean }) {
   const fid = useId().replace(/:/g, "");
-  const art = THEMED_ART[device];
+  // The exit lock panel has a distinct solved look (open, green) — swap arts by tone.
+  const key = device === "lockpanel" && tone === "solved" ? "lockpanelOpen" : device;
+  const art = THEMED_ART[key];
   if (!art) return null;
   return (
     <div className="relative h-full w-full">
@@ -3051,6 +3057,25 @@ const PROP_ART: Record<string, React.ReactNode> = {
       <rect x="31.7" y="17" width="2" height="6.5" rx="0.6" fill="#7c4a1e" />
     </>
   ),
+  // An ornate festival pedestal (carnival Grand Hall) — gold/amber tiers with a
+  // festive red band + gold studs, for the crossword station to sit on. Decor is
+  // z-10, so the machine (z-20) renders on the top cap. Place under the station,
+  // nudged down so the board rests on the cap.
+  festivalPedestal: (
+    <>
+      <ellipse cx="20" cy="33" rx="12" ry="2.8" fill="#000" opacity="0.16" />
+      <path d="M8 32 L10 27 H30 L32 32 Z" fill="#b45309" stroke="#7c2d12" strokeWidth="0.6" />
+      <ellipse cx="20" cy="27" rx="10" ry="2.6" fill="#d97706" />
+      <rect x="13.5" y="18" width="13" height="9" fill="#f59e0b" stroke="#b45309" strokeWidth="0.5" />
+      <rect x="13.5" y="21" width="13" height="3.2" fill="#dc2626" />
+      {[15.5, 18.3, 21.1, 23.9].map((x, i) => (
+        <circle key={i} cx={x} cy="22.6" r="0.8" fill="#fde047" />
+      ))}
+      <path d="M11 18 L13 14 H27 L29 18 Z" fill="#b45309" stroke="#7c2d12" strokeWidth="0.5" />
+      <ellipse cx="20" cy="14.3" rx="9" ry="2.4" fill="#f59e0b" />
+      <ellipse cx="20" cy="14.3" rx="6.5" ry="1.6" fill="#fbbf24" opacity="0.8" />
+    </>
+  ),
   // A wooden trailhead sign stand (nature-trail style) — an A-frame with splayed
   // legs, a cross brace and a top mount rail the map board sits on. Decor is z-10,
   // so the map machine (z-20) renders mounted on the rail. Place it under the
@@ -3068,20 +3093,126 @@ const PROP_ART: Record<string, React.ReactNode> = {
       <rect x="12.5" y="5" width="15" height="12" rx="0.6" fill="#6b4423" />
     </>
   ),
-  // A still pond (flat ground detail) — an irregular oval sharing the `stream`'s
-  // exact water palette + blue wet edge, so a stream overlapping it reads as one
-  // continuous body of water. Deeper far side, sky-reflection highlight, ripple
-  // rings and a lily pad.
-  pond: (
+  // A stream feeding into a still pond, drawn as ONE continuous body of water
+  // (flat ground detail). Drawn in a WIDE 160×44 coordinate space (see its decor
+  // entry's vw/vh) so that when it's stretched across two rooms it renders roughly
+  // undistorted — the pond stays a round-ish oval, not a flattened lens. The
+  // meandering band runs in from the far LEFT edge (lining up with the stream in
+  // the neighbouring room) and opens into a pond on the RIGHT. Shares the `stream`
+  // water palette: deeper channel, current highlights, ripple rings, stones, pad.
+  pond: (() => {
+    const cx = 118, cy = 22, RX = 20, RY = 16; // pond oval on the right
+    // stream centreline from the far-left edge to the pond, a gentle meander
+    const sx = Array.from({ length: 25 }, (_, i) => -4 + (i * (cx - 12 - -4)) / 24);
+    const cyOf = (x: number) => cy + 4.5 * Math.sin((2 * Math.PI * x) / 82);
+    const band = (half: number) => {
+      const top = sx.map((x, i) => `${i ? "L" : "M"}${x.toFixed(1)} ${(cyOf(x) - half).toFixed(1)}`).join(" ");
+      const bot = [...sx].reverse().map((x) => `L${x.toFixed(1)} ${(cyOf(x) + half).toFixed(1)}`).join(" ");
+      return `${top} ${bot} Z`;
+    };
+    const ripple = (off: number) =>
+      "M" + sx.map((x, i) => `${i ? "L" : ""}${x.toFixed(1)} ${(cyOf(x) + off).toFixed(1)}`).join(" ");
+    return (
+      <>
+        {/* Soft stepped wet edge (faded, widened copies of pond + stream) instead of a
+            hard dark rim — fades into the grass, using the same blue as `stream`. */}
+        <ellipse cx={cx} cy={cy} rx={RX + 4} ry={RY + 4} fill="#38bdf8" opacity="0.28" />
+        <path d={band(12)} fill="#38bdf8" opacity="0.28" />
+        <ellipse cx={cx} cy={cy} rx={RX + 1.8} ry={RY + 1.8} fill="#38bdf8" opacity="0.6" />
+        <path d={band(9.6)} fill="#38bdf8" opacity="0.6" />
+        {/* water body — pond + stream in one blue */}
+        <ellipse cx={cx} cy={cy} rx={RX} ry={RY} fill="#38bdf8" />
+        <path d={band(8.2)} fill="#38bdf8" />
+        {/* deeper water — pond centre + a channel down the stream */}
+        <ellipse cx={cx - 2} cy={cy} rx={RX - 7} ry={RY - 6} fill="#0ea5e9" opacity="0.45" />
+        <path d={band(4.2)} fill="#0ea5e9" opacity="0.45" />
+        {/* current highlights along the stream + a ripple ring in the pond */}
+        <path d={ripple(-5)} fill="none" stroke="#bae6fd" strokeWidth="1.4" strokeLinecap="round" opacity="0.4" />
+        <path d={ripple(4.6)} fill="none" stroke="#7dd3fc" strokeWidth="1.2" strokeLinecap="round" opacity="0.35" />
+        <ellipse cx={cx - 2} cy={cy} rx={RX - 11} ry={RY - 9} fill="none" stroke="#bae6fd" strokeWidth="1.3" opacity="0.38" />
+        {/* stepping stones peeking through the stream current */}
+        <ellipse cx="24" cy={cyOf(24).toFixed(1)} rx="4" ry="2.8" fill="#94a3b8" stroke="#64748b" strokeWidth="0.8" />
+        <ellipse cx="66" cy={cyOf(66).toFixed(1)} rx="3.4" ry="2.4" fill="#a8b2c0" stroke="#64748b" strokeWidth="0.8" />
+        {/* lily pad on the pond */}
+        <g transform={`translate(${cx + 9} ${cy + 8})`}>
+          <ellipse cx="0" cy="0" rx="5.2" ry="4" fill="#4d9e5a" stroke="#3f7d47" strokeWidth="0.6" />
+          <line x1="0" y1="0" x2="5.2" y2="-1.2" stroke="#2f5d37" strokeWidth="1" />
+        </g>
+      </>
+    );
+  })(),
+  // A wooden picket fence section (garden fencing) — six pointed pickets on two
+  // rails. Place left/right of a gate; scale/flip to fit.
+  fence: (
     <>
-      <path d="M4 21 Q3 11 20 9 Q36 10 37 20 Q38 29 21 31.5 Q5 32 4 21 Z" fill="#0369a1" opacity="0.28" />
-      <path d="M6 21 Q5 13 20 11.5 Q33 12 34 20 Q35 28 21 29.5 Q7 30 6 21 Z" fill="#38bdf8" />
-      <g transform="translate(26 25)">
-        <ellipse cx="0" cy="0" rx="2.6" ry="2" fill="#4d9e5a" stroke="#3f7d47" strokeWidth="0.3" />
-        <line x1="0" y1="0" x2="2.6" y2="-0.6" stroke="#2f5d37" strokeWidth="0.5" />
-      </g>
+      <rect x="2" y="19" width="36" height="2" rx="0.5" fill="#8a5a2b" />
+      <rect x="2" y="26" width="36" height="2" rx="0.5" fill="#7c4a1e" />
+      {[3, 9.2, 15.4, 21.6, 27.8, 34].map((x, i) => (
+        <path key={i} d={`M${x} 32 V16 L${x + 1.6} 13 L${x + 3.2} 16 V32 Z`} fill="#a1622c" stroke="#7c4a1e" strokeWidth="0.5" />
+      ))}
     </>
   ),
+  // A vertical packed-dirt path (flat ground detail) — the up/down counterpart of
+  // `dirtTrail`; a faded earth band winding along the Y axis.
+  dirtPathV: (() => {
+    const W = 40,
+      cx = 20,
+      amp = 2.5,
+      periods = 2;
+    const c = (y: number) => cx + amp * Math.sin((Math.PI * periods * y) / W);
+    const ys = Array.from({ length: 25 }, (_, i) => -2 + ((W + 4) * i) / 24);
+    const band = (half: number) => {
+      const left = ys.map((y, i) => `${i ? "L" : "M"}${(c(y) - half).toFixed(1)} ${y.toFixed(1)}`).join(" ");
+      const right = [...ys].reverse().map((y) => `L${(c(y) + half).toFixed(1)} ${y.toFixed(1)}`).join(" ");
+      return `${left} ${right} Z`;
+    };
+    const gravel: [number, number][] = [[-3, 6], [2, 13], [-2, 20], [3, 27], [-3, 34], [4, 10], [4, 24]];
+    return (
+      <>
+        <path d={band(9)} fill="#6f5836" opacity="0.44" />
+        <path d={band(7.5)} fill="#c2a06a" opacity="0.9" />
+        <path d={band(4)} fill="#e0cfa0" opacity="0.72" />
+        {gravel.map(([dx, y], i) => (
+          <circle key={i} cx={(c(y) + dx).toFixed(1)} cy={y} r="0.7" fill="#8a6d42" opacity="0.4" />
+        ))}
+      </>
+    );
+  })(),
+  // A single WIDE dirt path (flat) — the whole winding path in one prop, stretched
+  // across a room via a flat `w`/`h` decor entry. One shape = no tile seams at any
+  // zoom, while staying faded (grass shows through). Drawn in a WIDE 286×40 space
+  // (its decor entry sets vw:286, vh:40 to match the ~7:1 box) so it renders
+  // undistorted — the gravel pebbles stay round rather than smearing into ovals.
+  dirtPathWide: (() => {
+    const VW = 286,
+      cy = 20,
+      amp = 6,
+      periods = 3;
+    const c = (x: number) => cy + amp * Math.sin((Math.PI * periods * x) / VW);
+    const xs = Array.from({ length: 49 }, (_, i) => -7 + ((VW + 14) * i) / 48);
+    const band = (half: number) => {
+      const t = xs.map((x, i) => `${i ? "L" : "M"}${x.toFixed(1)} ${(c(x) - half).toFixed(1)}`).join(" ");
+      const b = [...xs].reverse().map((x) => `L${x.toFixed(1)} ${(c(x) + half).toFixed(1)}`).join(" ");
+      return `${t} ${b} Z`;
+    };
+    // Gravel speckles scattered along the path: [x, y-offset from centreline, radius].
+    const gravel: [number, number, number][] = [
+      [10, -4, 1.5], [26, 3, 1.3], [44, -2, 1.7], [62, 5, 1.4], [80, -5, 1.6],
+      [98, 2, 1.4], [116, -3, 1.8], [134, 4, 1.3], [152, -4, 1.5], [170, 3, 1.7],
+      [188, -2, 1.4], [206, 5, 1.6], [224, -5, 1.3], [242, 2, 1.7], [260, -3, 1.5],
+      [278, 4, 1.4],
+    ];
+    return (
+      <>
+        <path d={band(11)} fill="#6f5836" opacity="0.44" />
+        <path d={band(8.5)} fill="#c2a06a" opacity="0.8" />
+        <path d={band(4.5)} fill="#e0cfa0" opacity="0.72" />
+        {gravel.map(([x, dy, r], i) => (
+          <circle key={i} cx={x} cy={(c(x) + dy).toFixed(1)} r={r} fill="#8a6d42" opacity="0.42" />
+        ))}
+      </>
+    );
+  })(),
   // A packed-dirt trail (flat ground detail) — a gently winding earth path with
   // gravel speckles and a trodden lighter centre. Low amplitude (nearly straight).
   // Phase-aligned sine band, so tiles in a row join into one continuous trail.
@@ -3146,8 +3277,9 @@ const PROP_ART: Record<string, React.ReactNode> = {
     const W = 40,
       cy = 20,
       amp = 5,
+      periods = 2,
       N = 24;
-    const c = (x: number) => cy + amp * Math.sin((2 * Math.PI * x) / W);
+    const c = (x: number) => cy + amp * Math.sin((periods *Math.PI * x) / W);
     const xs = Array.from({ length: N + 1 }, (_, i) => -2 + ((W + 4) * i) / N);
     // A constant-thickness band around the centreline: top edge L→R, bottom R→L.
     const band = (half: number) => {
@@ -3159,16 +3291,18 @@ const PROP_ART: Record<string, React.ReactNode> = {
       "M" + xs.map((x, i) => `${i ? "L" : ""}${x.toFixed(1)} ${(c(x) + off).toFixed(1)}`).join(" ");
     return (
       <>
-        {/* wet bank edge — a wider, darker band under the water */}
-        <path d={band(8)} fill="#0369a1" opacity="0.28" />
+        {/* soft stepped edge (faded outer bands) instead of a hard dark rim — fades
+            into the grass and blends where it flows into the `pond` */}
+        <path d={band(8.5)} fill="#38bdf8" opacity="0.28" />
+        <path d={band(7)} fill="#38bdf8" opacity="0.62" />
         {/* water body */}
-        <path d={band(6.5)} fill="#38bdf8" />
+        <path d={band(6.2)} fill="#38bdf8" />
         {/* deeper channel down the middle */}
-        <path d={band(3.3)} fill="#0ea5e9" opacity="0.5" />
-        {/* waterline highlight + current ripples, all following the meander */}
-        <path d={ripple(-5)} fill="none" stroke="#bae6fd" strokeWidth="1" strokeLinecap="round" opacity="0.85" />
-        <path d={ripple(-1)} fill="none" stroke="#e0f2fe" strokeWidth="0.8" strokeLinecap="round" opacity="0.7" />
-        <path d={ripple(3)} fill="none" stroke="#7dd3fc" strokeWidth="0.9" strokeLinecap="round" opacity="0.7" />
+        <path d={band(3.3)} fill="#0ea5e9" opacity="0.45" />
+        {/* subtle current highlights following the meander (kept faint so they read
+            as gentle ripples, not stark white stripes) */}
+        <path d={ripple(-3.5)} fill="none" stroke="#bae6fd" strokeWidth="0.8" strokeLinecap="round" opacity="0.4" />
+        <path d={ripple(3)} fill="none" stroke="#7dd3fc" strokeWidth="0.7" strokeLinecap="round" opacity="0.35" />
         {/* stepping stones peeking through the current, sitting on the curve */}
         <ellipse cx="12" cy={c(12).toFixed(1)} rx="2.5" ry="1.8" fill="#94a3b8" stroke="#64748b" strokeWidth="0.4" />
         <ellipse cx="30" cy={c(30).toFixed(1)} rx="2.1" ry="1.5" fill="#a8b2c0" stroke="#64748b" strokeWidth="0.4" />
@@ -3397,10 +3531,24 @@ const FLOOR_GRID: Record<
 };
 
 /** Renders a small themed prop SVG (carriable / sink / door / note). */
-function Prop({ art, className, style }: { art: string; className?: string; style?: React.CSSProperties }) {
+function Prop({ art, className, style, glow, glowColor = "#f87171", shadow }: { art: string; className?: string; style?: React.CSSProperties; glow?: boolean; glowColor?: string; shadow?: boolean }) {
+  const fid = useId().replace(/:/g, "");
+  const fx = glow || shadow;
   return (
-    <svg viewBox="0 0 40 40" className={className} style={style}>
-      {PROP_ART[art]}
+    // Shadow/glow are SVG feDropShadow (inside the svg), NOT a CSS `filter` on the
+    // element — a CSS filter promotes it to its own compositing layer that snaps to
+    // the pixel grid at fractional page zoom, drifting from unfiltered props. An SVG
+    // filter renders within the svg's raster, so props stay aligned at any zoom.
+    <svg viewBox="0 0 40 40" className={fx ? `${className ?? ""} overflow-visible` : className} style={style}>
+      {fx && (
+        <defs>
+          <filter id={fid} x="-50%" y="-50%" width="200%" height="200%">
+            {shadow && <feDropShadow dx="0" dy="1.5" stdDeviation="1.2" floodColor="#000" floodOpacity="0.4" />}
+            {glow && <feDropShadow dx="0" dy="0" stdDeviation="1.4" floodColor={glowColor} floodOpacity="0.95" />}
+          </filter>
+        </defs>
+      )}
+      <g filter={fx ? `url(#${fid})` : undefined}>{PROP_ART[art]}</g>
     </svg>
   );
 }
@@ -3856,8 +4004,11 @@ function CrosswordPuzzle({ puzzle, solved, onSolved }: PuzzleProps<Extract<Escap
       {puzzle.emoji && <div className="text-4xl">{puzzle.emoji}</div>}
       <p className="mt-2 font-fun text-base font-700 text-slate-800">{puzzle.prompt}</p>
 
-      <div className="mt-4 flex justify-center overflow-x-auto">
-        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}>
+      {/* overflow-x-auto + mx-auto/w-max: the grid centres when it fits the modal,
+          and scrolls from the left when it's wider (a wide DURIAN↔ORCHID board on a
+          narrow screen) — `flex justify-center` would clip the overflow unreachably. */}
+      <div className="mt-4 overflow-x-auto">
+        <div className="mx-auto grid w-max gap-1" style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}>
           {rows.map((row, r) => (
             <Fragment key={r}>
               {Array.from({ length: gridCols }).map((_, c) => {
@@ -5462,8 +5613,8 @@ function PuzzleReview({
     return (
       <div className="mt-3 text-center">
         <p className="font-fun font-700 text-slate-800">Crossword solved! 🎉</p>
-        <div className="mt-3 flex justify-center overflow-x-auto">
-          <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}>
+        <div className="mt-3 overflow-x-auto">
+          <div className="mx-auto grid w-max gap-1" style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}>
             {puzzle.rows.map((row, r) => (
               <Fragment key={r}>
                 {Array.from({ length: gridCols }).map((_, c) => {

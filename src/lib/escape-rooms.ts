@@ -424,6 +424,11 @@ export type RoomDecor = {
    *  (e.g. a cable conduit running across the room). Both must be set. */
   w?: number;
   h?: number;
+  /** Override the stretched-decal viewBox (default 40×40). Set these to the box's
+   *  aspect ratio for a wide/short decal so the art isn't distorted — e.g. a decal
+   *  2 rooms wide but half a room tall uses vw≈160, vh≈44. Only affects w/h decals. */
+  vw?: number;
+  vh?: number;
   /** Hang it from the ceiling: no collision, and it draws ABOVE the player when
    *  you're in the room (e.g. lanterns). Stretched runs (w/h) are ceiling by
    *  default; this opts a point prop in too. */
@@ -1310,12 +1315,12 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
         // Each room gets its own floor: the carnival hall + hawker/India stalls
         // are ceramic tile (tinted per theme), the fruit market is wood boards,
         // the Gardens are grass.
-        { id: "hall", label: "Grand Hall", gx: 1, gy: 1, stationId: "crossword", role: "spawn", requiresAll: ["food", "festival", "flower", "fruit"], mx: 0.5, my: 0.44, floor: "from-rose-200 via-amber-200 to-rose-300", floorKind: "tile" },
+        { id: "hall", label: "Grand Hall", gx: 1, gy: 1, stationId: "crossword", role: "spawn", requiresAll: ["food", "festival", "flower", "fruit"], mx: 0.5, my: 0.35, floor: "from-rose-200 via-amber-200 to-rose-300", floorKind: "tile" },
         { id: "food", label: "Hawker Stall", gx: 1, gy: 0, stationId: "food", role: "puzzle", mx: 0.66, my: 0.56, floor: "from-amber-100 via-stone-200 to-amber-200", floorKind: "tile" },
         { id: "festival", label: "Little India", gx: 0, gy: 1, stationId: "festival", role: "puzzle", mx: 0.62, my: 0.4, floor: "from-orange-300 via-amber-300 to-orange-400", floorKind: "tile" },
         { id: "flower", label: "Gardens", gx: 2, gy: 1, stationId: "flower", role: "puzzle", mx: 0.42, my: 0.36, floor: "from-green-200 via-emerald-100 to-lime-200", floorKind: "grass" },
         { id: "fruit", label: "Fruit Stall", gx: 1, gy: 2, stationId: "fruit", role: "puzzle", mx: 0.4, my: 0.48, floor: "from-amber-300 via-amber-400 to-orange-300", floorKind: "wood" },
-        { id: "exit", label: "Exit Panel", gx: 2, gy: 2, stationId: "lockpad", role: "exit", requires: "crossword", mx: 0.5, my: 0.6, floor: "from-rose-200 via-fuchsia-200 to-rose-300", floorKind: "tile" },
+        { id: "exit", label: "Exit Panel", gx: 2, gy: 2, stationId: "lockpad", role: "exit", mx: 0.5, my: 0.4, requires: "crossword", floor: "from-rose-200 via-fuchsia-200 to-rose-300", floorKind: "tile" },
       ],
       doors: [
         ["hall", "food"],
@@ -1326,6 +1331,7 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
       ],
       spawn: "hall",
       exit: "exit",
+      exitDoorAlong: 0.3, 
       decor: [
         // Grand Hall — bunting strung overhead + hanging lanterns, stools tucked
         // into the corners (off the four doorways).
@@ -1334,6 +1340,9 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
         { room: "hall", art: "lantern", x: 0.78, y: 0.26, scale: 0.9, ceiling: true },
         { room: "hall", art: "stool", x: 0.2, y: 0.78, scale: 0.9 },
         { room: "hall", art: "stool", x: 0.8, y: 0.78, scale: 0.9 },
+        // Festival pedestal under the crossword (machine at my 0.44; pedestal nudged
+        // down so the board rests on its cap). Flat = no collision near the spawn.
+        { room: "hall", art: "festivalPedestal", x: 0.5, y: 0.56, scale: 2, flat: true },
         // Hawker Stall — a food cart + stool, lantern above.
         { room: "food", art: "foodCart", x: 0.3, y: 0.34, scale: 1.2 },
         { room: "food", art: "stool", x: 0.72, y: 0.4, scale: 0.9 },
@@ -1505,7 +1514,7 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
         { id: "exit", label: "Garden Gate", gx: 3, gy: 0, role: "exit" },
         { id: "river", label: "Lazy River", gx: 0, gy: 1, stationId: "river", role: "puzzle" },
         { id: "ranger", label: "Ranger's Code", gx: 1, gy: 1, stationId: "ranger", role: "puzzle", my: 0.2 },
-        { id: "trail", label: "The Trail", gx: 2, gy: 1, stationId: "trail", role: "puzzle", my: 0.3, mx: 0.44 },
+        { id: "trail", label: "The Trail", gx: 2, gy: 1, stationId: "trail", role: "puzzle", my: 0.3, mx: 0.54 },
         { id: "trailmap", label: "Trail Map", gx: 3, gy: 1, stationId: "trailmap", role: "puzzle", mx: 0.8, my: 0.2 },
       ],
       doors: [
@@ -1522,18 +1531,17 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
       exit: "exit",
       exitDoorSide: "top",
       decor: [
-        // Lazy River — a stream flowing across the lower half of the room (three
-        // full-bleed `stream` tiles in a row read as one continuous river). Flat,
-        // so the child walks over it; kept below the otter station (room centre).
-        { room: "river", art: "stream", x: 0.22, y: 0.56, scale: 2, flat: true },
-        { room: "river", art: "stream", x: 0.78, y: 0.54, scale: 2, flat: true },
+
+        // One wide dirt path across the meadow (single prop → no tile seams at any
+        // zoom). w/h are fractions of the room; flat = a floor decal.
+        { room: "meadow", art: "dirtPathWide", x: 0.25, y: 0.6, w: 1.5, h: 0.42, vw: 286, vh: 40, flat: true }, 
+
+
         // Trail Start (entrance) — a wooden signpost: right arm → Meadow, down-right
         // arm → Lazy River (the room's two doorways). Kept upper-left of the doors.
-        { room: "start", art: "dirtTrail", x: 0.27, y: 0.6, scale: 2, flat: true },
-        { room: "start", art: "dirtTrail", x: 0.58, y: 0.6, scale: 2, flat: true },
         { room: "start", art: "trailSign", x: 0.4, y: 0.35, scale: 1.8 },
         { room: "start", art: "flower", x: 0.74, y: 0.3, scale: 0.8, flat: true },
-        { room: "start", art: "rock", x: 0.26, y: 0.69, scale: 1.5, flat: true },
+        { room: "start", art: "rock", x: 0.26, y: 0.69, scale: 1.5 },
 
         // Boulders on the banks (solid props) + flowers on the grassy edges above
         // and below the stream (which runs through the middle, y≈0.55).
@@ -1542,30 +1550,32 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
         { room: "river", art: "flower", x: 0.3, y: 0.24, scale: 0.85, flat: true },
         { room: "river", art: "daisy", x: 0.66, y: 0.22, scale: 0.8, flat: true },
         { room: "river", art: "flower", x: 0.5, y: 0.9, scale: 0.8, flat: true, flip: true },
+        
+        // ONE continuous watercourse — a single stream+pond decal spanning BOTH the
+        // Lazy River and Ranger's Code rooms (adjacent, same row). Anchored in the
+        // river room, centred on the shared wall (x=1) and 2 rooms wide (w=2): the
+        // stream runs in from the far-left wall of Lazy River and pools into the pond
+        // on the Ranger side. It's ONE shape — the per-room fog only reveals the slice
+        // you're standing in, so the doorway handoff is seamless (no segments). Flat,
+        // so the child walks over it.
+        { room: "river", art: "pond", x: 1, y: 0.54, w: 2, h: 0.55, vw: 160, vh: 44, flat: true },
+        { room: "ranger", art: "rock", x: 0.84, y: 0.3, scale: 1.2 },
+
         // Meadow hub — flowers + a boulder in the upper half, clear of the three
         // doorways along the bottom edge.
-        { room: "meadow", art: "dirtTrail", x: 0.08, y: 0.6, scale: 2, flat: true },
-        { room: "meadow", art: "dirtTrail", x: 0.37, y: 0.6, scale: 2, flat: true },
-        { room: "meadow", art: "dirtTrail", x: 0.87, y: 0.63, scale: 2, flat: true, flip:true },
-        { room: "meadow", art: "dirtTrail", x: 0.66, y: 0.6, scale: 2, flat: true },
-        
         { room: "meadow", art: "flower", x: 0.34, y: 0.28, scale: 0.85, flat: true },
         { room: "meadow", art: "daisy", x: 0.5, y: 0.80, scale: 0.85, flat: true },
         { room: "meadow", art: "flower", x: 0.88, y: 0.3, scale: 0.8, flat: true, flip: true },
-        { room: "meadow", art: "rock", x: 0.77, y: 0.66, scale: 1.1 },
+        { room: "meadow", art: "rock", x: 0.87, y: 0.71, scale: 1.1 },
         { room: "meadow", art: "lamppost", x: 0.64, y: 0.34, scale: 1 },
         { room: "meadow", art: "bench", x: 0.16, y: 0.36, scale: 0.95 },
 
-        // Ranger's Code — a stream entering from the left that flows INTO a pond on
-        // the right (share one water palette so they read as one body).
-                { room: "ranger", art: "pond", x: 0.77, y: 0.52, scale: 2, flat: true },
-        { room: "ranger", art: "stream", x: 0.35, y: 0.54, scale: 1.9, flat: true },
         // The Trail — a winding stone path across the room (two tiles join into one
         // continuous trail), echoing the trail-maze puzzle: walk the path to the key.
         { room: "trail", art: "trailPath", x: 0.28, y: 0.52, scale: 1.5, flat: true },
         { room: "trail", art: "trailPath", x: 0.72, y: 0.5, scale: 1.8, flat: true },
-        { room: "trail", art: "daisy", x: 0.3, y: 0.80, scale: 0.85, flat: true },
         { room: "trail", art: "trailPath", x: 0.67, y: 0.76, scale: 1.8, flat: true, flip:true },
+        { room: "trail", art: "daisy", x: 0.3, y: 0.80, scale: 0.85, flat: true },
         // Trail Map — the stone path continues in from The Trail (same grass floor),
         // so the two read as one continuous trail. Nudge x/y to line up the doorway.
         { room: "trailmap", art: "trailPath", x: 0.25, y: 0.48, scale: 1.8, flat: true },
@@ -1573,13 +1583,15 @@ export const ESCAPE_ROOMS: EscapeRoom[] = [
         // Trail Map station sits on a wooden trailhead sign stand (centred under the
         // machine at mx/my 0.5; nudged down so the map rests on the mount rail).
         { room: "trailmap", art: "signStand", x: 0.8, y: 0.32, scale: 1.8 },
-        { room: "trailmap", art: "flower", x: 0.28, y: 0.3, scale: 0.8, flat: true, flip: true },
-
+        { room: "trailmap", art: "flower", x: 0.23, y: 0.3, scale: 0.8, flat: true, flip: true },
+        // Garden Gate — a dirt path leading up to the gate (two tiles stacked), and
+        // a picket fence flanking the gate on the left and right.
+        { room: "exit", art: "dirtPathV", x: 0.47, y: 0.51, w: 0.5, h: 1, flat: true },
         // Garden Gate — a pair of park lampposts flanking the exit door.
-        { room: "exit", art: "lamppost", x: 0.16, y: 0.34, scale: 1 },
-        { room: "exit", art: "lamppost", x: 0.84, y: 0.34, scale: 1 },
-        
-        
+        { room: "exit", art: "fence", x: 0.22, y: 0.14, scale: 1.5 },
+        { room: "exit", art: "fence", x: 0.78, y: 0.14, scale: 1.5 },
+        { room: "exit", art: "lamppost", x: 0.26, y: 0.44, scale: 1 },
+        { room: "exit", art: "lamppost", x: 0.74, y: 0.74, scale: 1 },
       ],
       // Walking The Trail (the maze) frees the gate key in that room; carry it to
       // the Garden Gate (the exit) and place it to unlock the door.
