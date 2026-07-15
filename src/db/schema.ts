@@ -467,6 +467,24 @@ export const learnerArtworks = pgTable(
   (t) => [index("learner_artworks_learner_idx").on(t.learnerId)],
 );
 
+// Branching stories a learner built + saved in the Story Builder (/learn/storytelling).
+// `pages` holds the finished path they read: [{ text, image }] — image is an R2
+// URL (or an inline data-URL in dev before R2 is configured), or null when a
+// page wasn't illustrated.
+export const learnerStories = pgTable(
+  "learner_stories",
+  {
+    id: serial("id").primaryKey(),
+    learnerId: integer("learner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 200 }).notNull(),
+    pages: jsonb("pages").notNull(), // [{ text: string, image: string | null }]
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("learner_stories_learner_idx").on(t.learnerId)],
+);
+
 // Talking Buddy chat log — every turn, kept for cross-session memory AND parent
 // review. Children can start a "new chat" (see learnerBuddyMeta) but cannot
 // delete these rows.

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useReadAloud } from "@/lib/use-read-aloud";
 import {
   HEROES,
   PLACES,
@@ -80,6 +81,30 @@ function WriteMode({ onBack }: { onBack: () => void }) {
   const [story, setStory] = useState<SceneStory | null>(null);
   const [score, setScore] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const { speak } = useReadAloud();
+
+  // Keep the finished tale in "My Stories" so the child can read it again.
+  async function saveStory() {
+    if (!story || saving || saved) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/learn/story/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: story.title.slice(0, 200),
+          pages: story.scenes.map((s) => ({ text: s.text, image: s.image ?? null, emojis: s.emojis ?? null })),
+        }),
+      });
+      if (res.ok) setSaved(true);
+    } catch {
+      /* keep the button active so the child can retry */
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function generate() {
     if (!prompt.trim()) return;
@@ -87,6 +112,7 @@ function WriteMode({ onBack }: { onBack: () => void }) {
     setError("");
     setStory(null);
     setScore(null);
+    setSaved(false);
     try {
       const res = await fetch("/api/learn/storytelling", {
         method: "POST",
@@ -160,18 +186,40 @@ function WriteMode({ onBack }: { onBack: () => void }) {
                   <div className="text-5xl">{s.emojis}</div>
                 )}
                 <p className="mt-2 font-round text-lg text-slate-700">{s.text}</p>
+                <button
+                  onClick={() => speak(s.text)}
+                  className="mt-2 rounded-full bg-amber-100 px-3 py-1 font-fun text-sm font-700 text-amber-700 transition hover:bg-amber-200"
+                >
+                  🔊 Read to me
+                </button>
               </div>
             ))}
           </div>
-          <button
-            onClick={() => {
-              setStory(null);
-              setPrompt("");
-            }}
-            className="mt-6 rounded-full bg-sky-500 px-6 py-3 font-fun font-700 text-white shadow"
-          >
-            Write another! ✏️
-          </button>
+          <div className="mt-6 flex flex-wrap gap-3">
+            {saved ? (
+              <Link href="/learn/stories" className="rounded-full bg-mint/30 px-6 py-3 font-fun font-700 text-emerald-700 shadow">
+                Saved! View My Stories 📚
+              </Link>
+            ) : (
+              <button
+                onClick={saveStory}
+                disabled={saving}
+                className="rounded-full bg-grape px-6 py-3 font-fun font-700 text-white shadow disabled:opacity-60"
+              >
+                {saving ? "Saving…" : "Save my story 📖"}
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setStory(null);
+                setPrompt("");
+                setSaved(false);
+              }}
+              className="rounded-full bg-sky-500 px-6 py-3 font-fun font-700 text-white shadow"
+            >
+              Write another! ✏️
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -194,20 +242,32 @@ function BuildMode({ onBack }: { onBack: () => void }) {
   const [picked, setPicked] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
+  const [awarded, setAwarded] = useState(false); // did *this* finish grant points, or is it a replay?
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  const [images, setImages] = useState<Record<number, string | null>>({});
-  const [imgBusy, setImgBusy] = useState(false);
-  const requested = useRef<Set<number>>(new Set());
+  // Illustrations are cached by page *text* (not index) so a page prefetched at
+  // the fork — before we know which branch is chosen — is reused on arrival.
+  const [images, setImages] = useState<Record<string, string | null>>({});
+  const [seed, setSeed] = useState(0);
+  const requested = useRef<Set<string>>(new Set());
+  const scored = useRef(false); // award the finish bonus once, even if the child replays the other ending
+
+  const { speak, prefetch, stop } = useReadAloud();
+  const [autoRead, setAutoRead] = useState(false);
 
   const ready = hero != null && place != null && obj != null && mood != null;
   const heroC = hero != null ? HEROES[hero] : null;
   const placeC = place != null ? PLACES[place] : null;
   const objC = obj != null ? OBJECTS[obj] : null;
+  // Repeated on every illustration so the hero looks the same page to page.
+  const characterAnchor = heroC && mood != null ? `a ${MOODS[mood].name} ${heroC.name} ${heroC.emoji}` : undefined;
 
   const atChoice = story != null && !picked && pageIndex === story.pre.length;
   const pageCount = story ? (picked ? pages.length : story.pre.length + 1 + story.choiceA.pages.length) : 0;
 
   function restart() {
+    stop();
     setStory(null);
     setPages([]);
     setPageIndex(0);
@@ -228,6 +288,9 @@ function BuildMode({ onBack }: { onBack: () => void }) {
     setPicked(false);
     setImages({});
     requested.current = new Set();
+    scored.current = false;
+    setSaved(false);
+    setSeed(Math.floor(Math.random() * 1_000_000)); // pins the character look for this story
   }
 
   const makeStory = useCallback(async (h: number, p: number, o: number, m: number) => {
@@ -262,6 +325,7 @@ function BuildMode({ onBack }: { onBack: () => void }) {
 
   function choose(useA: boolean) {
     if (!story) return;
+    stop();
     const branch = useA ? story.choiceA : story.choiceB;
     setPages([...story.pre, story.problem, ...branch.pages]);
     setPicked(true);
@@ -272,36 +336,107 @@ function BuildMode({ onBack }: { onBack: () => void }) {
     if (pageIndex < pages.length - 1) {
       setPageIndex((i) => i + 1);
     } else {
-      fetch("/api/learn/score", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ activitySlug: "ai-storytelling", score: 60, metadata: { mode: "build", pages: pages.length } }),
-      }).catch(() => {});
+      stop();
+      const first = !scored.current;
+      if (first) {
+        scored.current = true;
+        fetch("/api/learn/score", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ activitySlug: "ai-storytelling", score: 60, metadata: { mode: "build", pages: pages.length } }),
+        }).catch(() => {});
+      }
+      setAwarded(first);
       setCelebrate(true);
     }
   }
 
-  // Fetch the current page's illustration once (skip the fork/problem page).
-  useEffect(() => {
-    if (pages.length === 0) return;
-    const idx = pageIndex;
-    if (atChoice) return;
-    if (requested.current.has(idx)) return;
-    requested.current.add(idx);
-    const text = pages[idx];
-    setImgBusy(true);
-    fetch("/api/learn/story-image", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    })
-      .then((r) => r.json())
-      .then((d) => setImages((m) => ({ ...m, [idx]: (d.url as string | null) ?? null })))
-      .catch(() => setImages((m) => ({ ...m, [idx]: null })))
-      .finally(() => setImgBusy(false));
-  }, [pageIndex, pages, atChoice]);
+  // Jump back to the fork so the child can try the branch they didn't pick. The
+  // story + illustrations are cached (images are keyed by text), so it's instant.
+  function replayFork() {
+    if (!story) return;
+    stop();
+    setSaved(false); // the other ending is a new tale the child can save too
+    setCelebrate(false);
+    setPicked(false);
+    setPages([...story.pre, story.problem]);
+    setPageIndex(story.pre.length);
+  }
 
-  const img = images[pageIndex];
+  // Save the finished story (title + each page's text and cached illustration)
+  // to the learner's "My Stories" gallery so they can read it again later.
+  async function saveStory() {
+    if (saving || saved) return;
+    setSaving(true);
+    const title = heroC && mood != null ? `A ${MOODS[mood].name} ${heroC.name} ${heroC.emoji} Adventure` : "My Story";
+    const payload = { title, pages: pages.map((text) => ({ text, image: images[text] ?? null })) };
+    try {
+      const res = await fetch("/api/learn/story/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) setSaved(true);
+    } catch {
+      /* keep the button active so the child can retry */
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Illustrate a page by its text, once. Every call carries the same character
+  // anchor + seed so the hero stays visually consistent across the whole story.
+  const fetchImageFor = useCallback(
+    (text: string | undefined) => {
+      if (!text || requested.current.has(text)) return;
+      requested.current.add(text);
+      fetch("/api/learn/story-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, characterAnchor, seed }),
+      })
+        .then((r) => r.json())
+        .then((d) => setImages((m) => ({ ...m, [text]: (d.url as string | null) ?? null })))
+        .catch(() => setImages((m) => ({ ...m, [text]: null })));
+    },
+    [characterAnchor, seed],
+  );
+
+  // Fetch the current page and prefetch what comes next so the picture is ready
+  // before the child taps through. The fork/problem page stays illustration-free;
+  // at the fork we prefetch BOTH branches' first page so either pick feels instant.
+  useEffect(() => {
+    if (pages.length === 0 || !story) return;
+    const forkIdx = story.pre.length;
+    if (pageIndex !== forkIdx) fetchImageFor(pages[pageIndex]);
+    if (pageIndex + 1 !== forkIdx) fetchImageFor(pages[pageIndex + 1]);
+    if (atChoice) {
+      fetchImageFor(story.choiceA.pages[0]);
+      fetchImageFor(story.choiceB.pages[0]);
+    }
+  }, [pageIndex, pages, atChoice, story, fetchImageFor]);
+
+  // Auto-narrate each new page once "read to me" is on (skips the silent fork).
+  useEffect(() => {
+    if (!autoRead || pages.length === 0 || atChoice || celebrate) return;
+    speak(pages[pageIndex]);
+  }, [pageIndex, pages, autoRead, atChoice, celebrate, speak]);
+
+  // Narration takes ~1.5-2s to generate, so warm the next page's audio while the
+  // child is still on this one — the same trick as the illustration prefetch.
+  useEffect(() => {
+    if (!autoRead || !story || pages.length === 0) return;
+    const forkIdx = story.pre.length;
+    if (pageIndex + 1 !== forkIdx) prefetch(pages[pageIndex + 1]);
+    if (atChoice) {
+      prefetch(story.choiceA.pages[0]);
+      prefetch(story.choiceB.pages[0]);
+    }
+  }, [autoRead, pageIndex, pages, atChoice, story, prefetch]);
+
+  const currentText = pages[pageIndex];
+  const img = currentText != null ? images[currentText] : undefined;
+  const imgBusy = currentText != null && !atChoice && !(currentText in images);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -339,10 +474,30 @@ function BuildMode({ onBack }: { onBack: () => void }) {
         </div>
       ) : celebrate ? (
         <div className="mt-3 rounded-[2rem] bg-white p-10 text-center shadow-sm ring-1 ring-amber-100">
-          <div className="text-7xl">🎉</div>
-          <h2 className="mt-3 font-fun text-3xl font-700 text-slate-900">What a story! ⭐⭐⭐</h2>
-          <p className="mt-1 font-round text-slate-500">You earned +60 points!</p>
-          <div className="mt-6 flex justify-center gap-3">
+          <div className="text-7xl">{awarded ? "🎉" : "🌈"}</div>
+          <h2 className="mt-3 font-fun text-3xl font-700 text-slate-900">
+            {awarded ? "What a story! ⭐⭐⭐" : "Another great ending!"}
+          </h2>
+          <p className="mt-1 font-round text-slate-500">
+            {awarded ? "You earned +60 points!" : "You explored the other path — nice work! 🌟"}
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <button onClick={replayFork} className="rounded-full bg-grape px-6 py-3 font-fun font-700 text-white shadow">
+              Try the other path 🔀
+            </button>
+            {saved ? (
+              <Link href="/learn/stories" className="rounded-full bg-mint/30 px-6 py-3 font-fun font-700 text-emerald-700 shadow">
+                Saved! View My Stories 📚
+              </Link>
+            ) : (
+              <button
+                onClick={saveStory}
+                disabled={saving}
+                className="rounded-full bg-sky-500 px-6 py-3 font-fun font-700 text-white shadow disabled:opacity-60"
+              >
+                {saving ? "Saving…" : "Save my storybook 📖"}
+              </button>
+            )}
             <button onClick={restart} className="rounded-full bg-coral px-6 py-3 font-fun font-700 text-white shadow">
               Build another 🔁
             </button>
@@ -356,7 +511,7 @@ function BuildMode({ onBack }: { onBack: () => void }) {
           <div className="flex min-h-[9rem] w-full items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50 to-white ring-1 ring-amber-100">
             {img ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={img} alt="Story illustration" className="max-h-72 w-full object-cover" />
+              <img src={img} alt={pages[pageIndex]} className="max-h-72 max-w-full w-auto object-contain" />
             ) : (
               <div className={`py-6 text-6xl ${imgBusy && !atChoice ? "animate-pulse" : ""}`}>
                 {heroC?.emoji}
@@ -367,6 +522,23 @@ function BuildMode({ onBack }: { onBack: () => void }) {
           </div>
 
           <p className="min-h-[5rem] whitespace-pre-line text-center font-round text-xl font-600 text-slate-700">{pages[pageIndex]}</p>
+
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button
+              onClick={() => speak(pages[pageIndex])}
+              className="rounded-full bg-amber-100 px-4 py-1.5 font-fun text-sm font-700 text-amber-700 transition hover:bg-amber-200"
+            >
+              🔊 Read to me
+            </button>
+            <button
+              onClick={() => setAutoRead((v) => !v)}
+              className={`rounded-full px-4 py-1.5 font-fun text-sm font-700 transition ${
+                autoRead ? "bg-mint/30 text-emerald-700" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+              }`}
+            >
+              {autoRead ? "🔁 Auto-read on" : "Auto-read off"}
+            </button>
+          </div>
 
           {atChoice && story ? (
             <div className="flex w-full flex-col gap-3">
