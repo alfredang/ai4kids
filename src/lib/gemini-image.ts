@@ -34,14 +34,27 @@ export type ArtStyle = keyof typeof ART_STYLES;
 
 export type GeneratedImage = { base64: string; mime: string };
 
-function buildPrompt(prompt: string, style: ArtStyle): string {
+function buildPrompt(prompt: string, style: ArtStyle, characterAnchor?: string): string {
   const styleHint = ART_STYLES[style] ?? ART_STYLES.cartoon;
+  // When a story illustrates page after page, anchor the recurring hero so it
+  // reads as the SAME character each time instead of a new look per picture.
+  const consistency = characterAnchor
+    ? `The main character is ${characterAnchor}, drawn exactly the same way in every picture — same colours, same design, same friendly face. `
+    : "";
   return (
     `A ${styleHint} picture of: ${prompt}. ` +
-    `Child-friendly, wholesome, cheerful, no text or words in the image, ` +
-    `nothing scary, violent or unsafe. Suitable for young children.`
+    consistency +
+    `Child-friendly, wholesome, cheerful, nothing scary, violent or unsafe. Suitable for young children. ` +
+    // Flux especially tends to render the narration as gibberish caption text —
+    // state the no-text rule forcefully so the illustration stays purely visual.
+    `IMPORTANT: a purely visual illustration with absolutely NO text — do not draw any letters, words, captions, labels, numbers, signs or writing anywhere in the image.`
   );
 }
+
+/** Optional generation controls. `characterAnchor` keeps a recurring hero
+ *  consistent across images; `seed` makes the Cloudflare/Flux path deterministic
+ *  so the same character + seed reproduces a matching look page to page. */
+export type ImageOpts = { characterAnchor?: string; seed?: number };
 
 type GeminiResponse = {
   candidates?: { content?: { parts?: { inlineData?: { mimeType?: string; data?: string } }[] } }[];
@@ -78,7 +91,7 @@ async function generateWithGemini(fullPrompt: string): Promise<Attempt> {
 type CloudflareResponse = { result?: { image?: string }; success?: boolean };
 
 /** Cloudflare Workers AI (Flux-1-schnell), free tier. */
-async function generateWithCloudflare(fullPrompt: string): Promise<Attempt> {
+async function generateWithCloudflare(fullPrompt: string, seed?: number): Promise<Attempt> {
   const [accountId, token] = await Promise.all([
     getCredential("r2_account_id"),
     getCredential("cloudflare_ai_token"),
@@ -91,7 +104,7 @@ async function generateWithCloudflare(fullPrompt: string): Promise<Attempt> {
       {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: fullPrompt, steps: 4 }),
+        body: JSON.stringify({ prompt: fullPrompt, steps: 4, ...(seed != null ? { seed } : {}) }),
       },
     );
     if (!res.ok) {
@@ -116,15 +129,16 @@ async function generateWithCloudflare(fullPrompt: string): Promise<Attempt> {
 export async function generateKidImage(
   prompt: string,
   style: ArtStyle,
+  opts: ImageOpts = {},
 ): Promise<{ image: GeneratedImage | null; debug: string[] }> {
-  const fullPrompt = buildPrompt(prompt, style);
+  const fullPrompt = buildPrompt(prompt, style, opts.characterAnchor);
   const debug: string[] = [];
 
   const gemini = await generateWithGemini(fullPrompt);
   debug.push(gemini.note);
   if (gemini.image) return { image: gemini.image, debug };
 
-  const cloudflare = await generateWithCloudflare(fullPrompt);
+  const cloudflare = await generateWithCloudflare(fullPrompt, opts.seed);
   debug.push(cloudflare.note);
   for (const note of debug) console.error("[gemini-image]", note);
   return { image: cloudflare.image, debug };
@@ -140,8 +154,9 @@ export async function generateAndStoreKidImage(
   prompt: string,
   style: ArtStyle,
   keyPrefix: string,
+  opts: ImageOpts = {},
 ): Promise<string | null> {
-  const { image } = await generateKidImage(prompt, style);
+  const { image } = await generateKidImage(prompt, style, opts);
   if (!image) return null;
   // Inline data URL — used directly as a dev fallback when R2 isn't configured,
   // and as a safety net if an R2 upload fails. Production configures R2 so this

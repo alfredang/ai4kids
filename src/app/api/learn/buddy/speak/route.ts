@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getPortalSession } from "@/lib/portal-session";
 import { generateKidSpeech } from "@/lib/gemini-tts";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 30;
 const schema = z.object({ text: z.string().min(1).max(1000) });
@@ -10,6 +11,8 @@ const schema = z.object({ text: z.string().min(1).max(1000) });
 export async function POST(req: Request) {
   const session = await getPortalSession();
   if (!session || session.role !== "learner") return NextResponse.json({ error: "Learners only" }, { status: 403 });
+  // Over the limit → just skip the voice (buddy stays silent, no error).
+  if (!rateLimit(`speak:${session.id}`, 30, 60_000)) return NextResponse.json({ audio: null });
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ audio: null });
 

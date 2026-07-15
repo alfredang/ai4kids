@@ -88,12 +88,19 @@ async function speakWithCloudflare(text: string): Promise<Attempt> {
   return { audio: null, note: "cloudflare: 5xx after retries" };
 }
 
+/** Aura first, Gemini as fallback. Measured on a 2-sentence page: Aura ≈ 1.5–2.3s
+ *  returning a 41KB MP3, vs Gemini TTS ≈ 8–10s and a ~600KB WAV. Gemini's voice is
+ *  richer, but the latency is too high for both the buddy's replies and
+ *  page-by-page story narration, so it only covers Aura being unavailable. */
 export async function generateKidSpeech(text: string): Promise<Speech | null> {
   const clean = stripForSpeech(text);
   if (!clean) return null; // nothing speakable (e.g. an emoji-only reply)
-  const g = await speakWithGemini(clean);
-  if (g.audio) return g.audio;
-  const c = await speakWithCloudflare(clean);
-  for (const n of [g.note, c.note]) console.error("[gemini-tts]", n);
-  return c.audio;
+  const notes: string[] = [];
+  for (const provider of [speakWithCloudflare, speakWithGemini]) {
+    const r = await provider(clean);
+    if (r.audio) return r.audio;
+    notes.push(r.note);
+  }
+  for (const n of notes) console.error("[gemini-tts]", n);
+  return null;
 }

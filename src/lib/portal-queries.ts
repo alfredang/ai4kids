@@ -8,6 +8,7 @@ import {
   learnerAchievements,
   achievements,
   learnerArtworks,
+  learnerStories,
 } from "@/db/schema";
 import { eq, desc, inArray, sql, and } from "drizzle-orm";
 
@@ -33,6 +34,47 @@ export async function getLearnerArtworks(learnerId: number, style?: string, limi
     .where(style ? and(eq(learnerArtworks.learnerId, learnerId), eq(learnerArtworks.style, style)) : eq(learnerArtworks.learnerId, learnerId))
     .orderBy(desc(learnerArtworks.createdAt))
     .limit(limit);
+}
+
+// `emojis` is the Write-mode illustration fallback, shown when a scene has no
+// generated image. Build-mode pages leave it unset.
+export type StoryPage = { text: string; image: string | null; emojis?: string | null };
+export type SavedStory = {
+  id: number;
+  title: string;
+  pages: StoryPage[];
+  createdAt: Date;
+};
+
+/** All stories a learner has saved from the Story Builder, newest first. */
+export async function getLearnerStories(learnerId: number, limit = 60): Promise<SavedStory[]> {
+  const rows = await db
+    .select({
+      id: learnerStories.id,
+      title: learnerStories.title,
+      pages: learnerStories.pages,
+      createdAt: learnerStories.createdAt,
+    })
+    .from(learnerStories)
+    .where(eq(learnerStories.learnerId, learnerId))
+    .orderBy(desc(learnerStories.createdAt))
+    .limit(limit);
+  return rows as SavedStory[];
+}
+
+/** One saved story, only if it belongs to this learner (else null). */
+export async function getLearnerStory(learnerId: number, id: number): Promise<SavedStory | null> {
+  const [row] = await db
+    .select({
+      id: learnerStories.id,
+      title: learnerStories.title,
+      pages: learnerStories.pages,
+      createdAt: learnerStories.createdAt,
+    })
+    .from(learnerStories)
+    .where(and(eq(learnerStories.id, id), eq(learnerStories.learnerId, learnerId)))
+    .limit(1);
+  return (row as SavedStory) ?? null;
 }
 
 export type Kid = {

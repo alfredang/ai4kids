@@ -45,9 +45,17 @@ export default async function ChildrenPage() {
                 </div>
               </div>
             </div>
-            <div className="text-right font-fun">
-              <div className="text-coral font-700">{s.totalScore} pts</div>
-              <div className="text-xs text-slate-400">{s.activitiesDone} activities</div>
+            <div className="flex items-center gap-4">
+              <div className="text-right font-fun">
+                <div className="text-coral font-700">{s.totalScore} pts</div>
+                <div className="text-xs text-slate-400">{s.activitiesDone} activities</div>
+              </div>
+              <Link
+                href={`/parent/buddy/${k.id}`}
+                className="rounded-full bg-sky/15 px-4 py-2 font-fun text-sm font-700 text-sky-600 transition hover:bg-sky/25"
+              >
+                💬 Buddy chats
+              </Link>
             </div>
           </div>
         ))}

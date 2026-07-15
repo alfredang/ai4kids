@@ -24,6 +24,7 @@ export default async function LearnLayout({
             <Link href="/learn" className="hover:text-coral">Activities</Link>
             <Link href="/learn/leaderboard" className="hover:text-coral">🏆 Leaderboard</Link>
             <Link href="/learn/gallery" className="hover:text-coral">🖼️ My Art</Link>
+            <Link href="/learn/stories" className="hover:text-coral">📚 My Stories</Link>
             <SignOutButton />
           </nav>
         </div>

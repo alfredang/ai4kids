@@ -467,6 +467,53 @@ export const learnerArtworks = pgTable(
   (t) => [index("learner_artworks_learner_idx").on(t.learnerId)],
 );
 
+// Branching stories a learner built + saved in the Story Builder (/learn/storytelling).
+// `pages` holds the finished path they read: [{ text, image }] — image is an R2
+// URL (or an inline data-URL in dev before R2 is configured), or null when a
+// page wasn't illustrated.
+export const learnerStories = pgTable(
+  "learner_stories",
+  {
+    id: serial("id").primaryKey(),
+    learnerId: integer("learner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 200 }).notNull(),
+    pages: jsonb("pages").notNull(), // [{ text: string, image: string | null }]
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("learner_stories_learner_idx").on(t.learnerId)],
+);
+
+// Talking Buddy chat log — every turn, kept for cross-session memory AND parent
+// review. Children can start a "new chat" (see learnerBuddyMeta) but cannot
+// delete these rows.
+export const learnerBuddyMessages = pgTable(
+  "learner_buddy_messages",
+  {
+    id: serial("id").primaryKey(),
+    learnerId: integer("learner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").notNull(), // 'user' | 'buddy'
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("buddy_msg_learner_idx").on(t.learnerId, t.createdAt)],
+);
+
+// Per-learner Talking Buddy state. `clearedAt` marks the last "new chat": the
+// buddy's context + the child's view only include messages after it, but parent
+// review ignores it (shows the full log).
+export const learnerBuddyMeta = pgTable("learner_buddy_meta", {
+  learnerId: integer("learner_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  clearedAt: timestamp("cleared_at"),
+  buddyName: text("buddy_name"), // kid-chosen name for their buddy
+  buddyColor: text("buddy_color"), // kid-chosen head colour (hex)
+});
+
 // Relations
 export const postsRelations = relations(posts, ({ one, many }) => ({
   author: one(users, { fields: [posts.authorId], references: [users.id] }),
