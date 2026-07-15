@@ -467,6 +467,35 @@ export const learnerArtworks = pgTable(
   (t) => [index("learner_artworks_learner_idx").on(t.learnerId)],
 );
 
+// Talking Buddy chat log — every turn, kept for cross-session memory AND parent
+// review. Children can start a "new chat" (see learnerBuddyMeta) but cannot
+// delete these rows.
+export const learnerBuddyMessages = pgTable(
+  "learner_buddy_messages",
+  {
+    id: serial("id").primaryKey(),
+    learnerId: integer("learner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").notNull(), // 'user' | 'buddy'
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("buddy_msg_learner_idx").on(t.learnerId, t.createdAt)],
+);
+
+// Per-learner Talking Buddy state. `clearedAt` marks the last "new chat": the
+// buddy's context + the child's view only include messages after it, but parent
+// review ignores it (shows the full log).
+export const learnerBuddyMeta = pgTable("learner_buddy_meta", {
+  learnerId: integer("learner_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  clearedAt: timestamp("cleared_at"),
+  buddyName: text("buddy_name"), // kid-chosen name for their buddy
+  buddyColor: text("buddy_color"), // kid-chosen head colour (hex)
+});
+
 // Relations
 export const postsRelations = relations(posts, ({ one, many }) => ({
   author: one(users, { fields: [posts.authorId], references: [users.id] }),

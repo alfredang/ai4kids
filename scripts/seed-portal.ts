@@ -202,6 +202,7 @@ async function main() {
     { slug: "first-steps", title: "First Steps", emoji: "👟", description: "Completed your first activity!" },
     { slug: "storyteller", title: "Storyteller", emoji: "📚", description: "Wrote an AI story." },
     { slug: "word-wizard", title: "Word Wizard", emoji: "🪄", description: "Played AI Phonics." },
+    { slug: "chatterbox", title: "Chatterbox", emoji: "🗣️", description: "Chatted with the Talking Buddy." },
   ];
   for (const b of badgeSeed) {
     await db.insert(achievements).values(b).onConflictDoNothing();

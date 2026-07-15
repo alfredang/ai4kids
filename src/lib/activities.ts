@@ -61,6 +61,7 @@ export async function recordCompletion(opts: {
   if ((counts?.total ?? 0) >= 1) await awardBadge(opts.learnerId, "first-steps");
   if (opts.activitySlug.includes("story")) await awardBadge(opts.learnerId, "storyteller");
   if (opts.activitySlug.includes("phonics")) await awardBadge(opts.learnerId, "word-wizard");
+  if (opts.activitySlug.includes("buddy")) await awardBadge(opts.learnerId, "chatterbox");
 
   const [agg] = await db
     .select({ total: sql<number>`coalesce(sum(${activityCompletions.score}),0)::int` })
@@ -72,4 +73,30 @@ export async function recordCompletion(opts: {
       ),
     );
   return { ok: true, totalScore: agg?.total ?? 0 };
+}
+
+/**
+ * Award a small, capped number of points for a Talking Buddy turn: `perTurn`
+ * points up to `dailyCap` turns per day. Keeps chatting rewarding without
+ * letting it be farmed. No-op once the daily cap is reached.
+ */
+export async function awardBuddyPointsCapped(
+  learnerId: number,
+  perTurn = 5,
+  dailyCap = 20,
+): Promise<void> {
+  const activity = await getActivityBySlug("ai-buddy");
+  if (!activity) return;
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(activityCompletions)
+    .where(
+      and(
+        eq(activityCompletions.learnerId, learnerId),
+        eq(activityCompletions.activityId, activity.id),
+        sql`${activityCompletions.completedAt} >= date_trunc('day', now())`,
+      ),
+    );
+  if ((row?.n ?? 0) >= dailyCap) return;
+  await recordCompletion({ learnerId, activitySlug: "ai-buddy", score: perTurn });
 }

@@ -22,6 +22,20 @@
       "when": 1782703851635,
       "tag": "0002_famous_butterfly",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784020630268,
+      "tag": "0003_large_ultimo",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784080869898,
+      "tag": "0004_outstanding_jazinda",
+      "breakpoints": true
     }
   ]
 }

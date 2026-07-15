@@ -3,7 +3,19 @@ import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { stripForSpeech } from "@/lib/strip-emoji";
 
-export function TalkingBuddy({ audioUrl, fallbackText }: { audioUrl: string | null; fallbackText?: string }) {
+type Mood = "idle" | "happy" | "thinking" | "listening";
+
+export function TalkingBuddy({
+  audioUrl,
+  fallbackText,
+  color = "#bae6fd",
+  mood = "happy",
+}: {
+  audioUrl: string | null;
+  fallbackText?: string;
+  color?: string;
+  mood?: Mood;
+}) {
   const [mouth, setMouth] = useState(0.1); // 0..1 openness
   const [blink, setBlink] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -73,6 +85,11 @@ export function TalkingBuddy({ audioUrl, fallbackText }: { audioUrl: string | nu
 
   const talking = mouth > 0.25;
 
+  // UI-state moods: listening → wide eyes, thinking → eyes glance up.
+  const eyeOpen = mood === "listening" ? 27 : 24;
+  const pupilDX = mood === "thinking" ? 4 : 0;
+  const pupilDY = mood === "thinking" ? -6 : 0;
+
   return (
     <motion.div
       className="mx-auto w-56"
@@ -88,18 +105,18 @@ export function TalkingBuddy({ audioUrl, fallbackText }: { audioUrl: string | nu
         <motion.circle cx="136" cy="13" r="7" fill="#ff6b6b"
           animate={{ scale: talking ? [1, 1.35, 1] : 1 }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.3 }} />
 
-        {/* Head — soft baby blue */}
-        <rect x="24" y="36" width="152" height="150" rx="48" fill="#bae6fd" />
+        {/* Head — kid-chosen colour (defaults to soft baby blue) */}
+        <rect x="24" y="36" width="152" height="150" rx="48" fill={color} />
         <rect x="24" y="36" width="152" height="72" rx="40" fill="#fff" opacity="0.35" />
         {/* Side bolts / ears */}
         <circle cx="22" cy="112" r="10" fill="#7dd3fc" />
         <circle cx="178" cy="112" r="10" fill="#7dd3fc" />
 
-        {/* Eyes — white base squashes shut on blink */}
-        <motion.ellipse cx="76" cy="100" rx="22" fill="#fff" animate={{ ry: blink ? 3 : 24 }} transition={{ duration: 0.08 }} />
-        <motion.ellipse cx="124" cy="100" rx="22" fill="#fff" animate={{ ry: blink ? 3 : 24 }} transition={{ duration: 0.08 }} />
-        {/* Pupils + catchlights, hidden during the blink */}
-        <motion.g animate={{ opacity: blink ? 0 : 1 }} transition={{ duration: 0.05 }}>
+        {/* Eyes — white base squashes shut on blink; widens when listening */}
+        <motion.ellipse cx="76" cy="100" rx="22" fill="#fff" initial={{ ry: 24 }} animate={{ ry: blink ? 3 : eyeOpen }} transition={{ duration: 0.12 }} />
+        <motion.ellipse cx="124" cy="100" rx="22" fill="#fff" initial={{ ry: 24 }} animate={{ ry: blink ? 3 : eyeOpen }} transition={{ duration: 0.12 }} />
+        {/* Pupils + catchlights — hidden on blink, glance up when thinking */}
+        <motion.g initial={{ opacity: 1, x: 0, y: 0 }} animate={{ opacity: blink ? 0 : 1, x: pupilDX, y: pupilDY }} transition={{ duration: 0.2 }}>
           <circle cx="80" cy="102" r="10" fill="#1e293b" />
           <circle cx="120" cy="102" r="10" fill="#1e293b" />
           <circle cx="84" cy="98" r="3.5" fill="#fff" />
@@ -112,9 +129,11 @@ export function TalkingBuddy({ audioUrl, fallbackText }: { audioUrl: string | nu
 
         {/* Friendly mouth — a soft warm pill that opens when talking (drawn first = the cavity) */}
         <motion.rect x="80" width="40" rx="14" fill="#8b3a52"
+          initial={{ y: 140, height: 10 }}
           animate={{ y: 140 - mouth * 9, height: 10 + mouth * 34 }} transition={{ duration: 0.06 }} />
         {/* Little tongue sits in front, peeking out when the mouth is open */}
         <motion.ellipse cx="100" rx="10" fill="#ff8fab"
+          initial={{ cy: 150, ry: 3, opacity: 0 }}
           animate={{ cy: 150 + mouth * 14, ry: 3 + mouth * 6, opacity: mouth > 0.3 ? 1 : 0 }} transition={{ duration: 0.06 }} />
       </svg>
     </motion.div>
