@@ -91,7 +91,7 @@ So a table added to `schema.ts` + `db:push`ed works locally and **500s in prod**
 - New column on a table the script already creates → `CREATE TABLE IF NOT EXISTS` **silently skips existing tables**, so you must ALSO add `ALTER TABLE <t> ADD COLUMN IF NOT EXISTS <col> <type>`. This is exactly how `buddy_name`/`buddy_color` went missing in prod.
 - Only nullable columns or ones with a `DEFAULT` — `ADD COLUMN ... NOT NULL` fails on tables with rows, and the boot script swallows errors, so it fails silently.
 - `npm run check:schema` catches both table and column drift statically (no DB needed). It must pass before committing schema work.
-- `db:push` is currently broken (spurious `DROP CONSTRAINT ..._not_null` on PK columns → `column "id" is in a primary key`); fall back to direct SQL locally.
+- `db:push` is broken here — use `npm run db:generate && npm run db:migrate` for local schema changes. Local Postgres is 18.x, which catalogues `NOT NULL` constraints as `<table>_<col>_not_null`; drizzle-kit 0.30.6 predates PG 18 and tries to `DROP` them, aborting with `column "id" is in a primary key`. Don't force it — those statements strip `NOT NULL`. `db:generate` diffs against the snapshot rather than the live DB, so it's unaffected.
 
 ### Authoring blog posts — always load the `blog-post` skill first
 

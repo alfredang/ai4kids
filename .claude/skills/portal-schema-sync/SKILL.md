@@ -24,7 +24,7 @@ already shipped three times: `learner_artworks`, `learner_buddy_messages` /
 
 ## Required workflow for any `schema.ts` change
 
-1. Make the `schema.ts` change and `db:push` (or direct SQL) for local dev.
+1. Make the `schema.ts` change, then apply it **locally** with `npm run db:generate && npm run db:migrate` — **not** `db:push`, which is broken here (see Gotchas).
 2. **Add matching DDL to `scripts/ensure-portal-schema.cjs`** (see rules below).
 3. Run the drift check — it must pass:
    ```bash
@@ -61,7 +61,11 @@ already shipped three times: `learner_artworks`, `learner_buddy_messages` /
 
 ## Gotchas
 
-- **`db:push` is currently broken here** — it emits spurious `DROP CONSTRAINT ... _not_null` statements on primary-key columns and aborts with `column "id" is in a primary key`. Fall back to direct SQL against the local DB, and remember that does nothing for prod.
+- **`db:push` is broken here — use `db:generate` + `db:migrate` instead.** Local Postgres is **18.x**, which records `NOT NULL` constraints in the catalog under generated names (`<table>_<col>_not_null`). **drizzle-kit 0.30.6 predates PG 18**, doesn't recognise those rows, and emits a `DROP CONSTRAINT` for each — aborting with `column "id" is in a primary key`.
+  - **Don't force it past that error.** Those statements strip `NOT NULL`; on non-PK columns they could actually succeed, silently drifting the local DB from `schema.ts`. The abort is protecting you.
+  - `db:generate` diffs `schema.ts` against `drizzle/meta/*_snapshot.json` and **never introspects the live DB**, so the PG 18 catalog change can't affect it (verified working on PG 18.4).
+  - Fixing `push` means upgrading drizzle-kit, which drags `drizzle-orm` with it (they're version-paired, and installs here already need `--legacy-peer-deps`) — a broad regression risk across every query for a command that now has a working substitute. Not worth it without a separate reason.
+- **`db:push`/`db:generate`/`db:migrate` only ever touch the LOCAL database.** None of them reach production — prod has no Drizzle in the loop at all. Local schema work and prod schema work are two separate jobs; step 2 above is the prod half.
 - **The `*.sql` gitignore looks accidental** — it sits beside `wp-*.sql` / `tertiar2_*.sql` and appears aimed at WordPress dumps, catching Drizzle migrations as collateral. Don't "fix" it casually; un-ignoring migrations without adding a migrate step changes nothing, and adding one needs care against a DB that was provisioned by other means.
 - **`BASE_TABLES` in the checker** lists the original CMS/portal tables that predate the boot script and already exist in prod. Adding a **new** table there to silence the check is almost always wrong — it will not exist in production.
 - The boot script **logs failures but never blocks startup** (the app is meant to degrade, not die). So a broken DDL shows up as a running app that 500s on one feature — check deploy logs for `[ensure-schema] portal schema + activities ensured`.
@@ -70,8 +74,10 @@ already shipped three times: `learner_artworks`, `learner_buddy_messages` /
 ## Quick reference
 
 ```bash
-npm run check:schema                                  # drift check (no DB needed)
-node --env-file=.env scripts/ensure-portal-schema.cjs # run the boot script locally
+npm run db:generate                                   # local: write a migration from schema.ts (NOT db:push)
+npm run db:migrate                                    # local: apply it
+npm run check:schema                                  # drift check schema.ts <-> boot script (no DB needed)
+node --env-file=.env scripts/ensure-portal-schema.cjs # run the boot script locally (what prod does)
 ```
 
 Files: [src/db/schema.ts](../../../src/db/schema.ts) (source of truth) ·
