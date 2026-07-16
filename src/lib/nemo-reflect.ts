@@ -15,7 +15,7 @@ import { query } from "@anthropic-ai/claude-agent-sdk";
 import { db } from "@/db";
 import { settings } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { buildClaudeEnv } from "@/lib/anthropic-auth";
+import { buildClaudeEnv, SDK_ISOLATION } from "@/lib/anthropic-auth";
 import { getCredential } from "@/lib/secrets";
 
 export type NemoLesson = {
@@ -108,6 +108,7 @@ export async function reflectOnLead(input: {
       options: {
         env: buildClaudeEnv(token),
         maxTurns: 1,
+        ...SDK_ISOLATION, // keeps CLAUDE.md / skills / memory out of the prompt
         allowedTools: [],
         disallowedTools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebSearch", "WebFetch"],
       },

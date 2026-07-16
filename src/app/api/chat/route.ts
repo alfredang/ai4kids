@@ -7,7 +7,7 @@ import {
   getCmsKnowledgeSnippet,
   renderSystemPrompt,
 } from "@/lib/chatbot-settings";
-import { buildClaudeEnv } from "@/lib/anthropic-auth";
+import { buildClaudeEnv, SDK_ISOLATION } from "@/lib/anthropic-auth";
 import {
   buildCaptureState,
   buildLeadMessageFromHistory,
@@ -174,6 +174,11 @@ export async function POST(req: Request) {
           model: "haiku",
           fallbackModel: "sonnet",
           maxTurns: 1,
+          // REQUIRED here — this chatbot is public and anonymous. Without it the
+          // SDK loads CLAUDE.md, skills and the developer's memory into context,
+          // where a prompt injection could surface them to a stranger. Nemo needs
+          // only `systemPrompt`.
+          ...SDK_ISOLATION,
           allowedTools: [],
           disallowedTools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebSearch", "WebFetch"],
         },

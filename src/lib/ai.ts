@@ -5,7 +5,7 @@
  */
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { getCredential } from "@/lib/secrets";
-import { buildClaudeEnv } from "@/lib/anthropic-auth";
+import { buildClaudeEnv, SDK_ISOLATION } from "@/lib/anthropic-auth";
 
 export async function isAiConfigured(): Promise<boolean> {
   return (await getCredential("anthropic_auth_token")) !== null;
@@ -24,6 +24,7 @@ export async function askClaude(
       prompt,
       options: {
         env: buildClaudeEnv(token),
+        ...SDK_ISOLATION, // keeps CLAUDE.md / skills / memory out of the prompt
         systemPrompt: opts.system,
         model: opts.model ?? "haiku",
         fallbackModel: "sonnet",

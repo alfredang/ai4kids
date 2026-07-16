@@ -1,6 +1,6 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { getCredential } from "@/lib/secrets";
-import { buildClaudeEnv } from "@/lib/anthropic-auth";
+import { buildClaudeEnv, SDK_ISOLATION } from "@/lib/anthropic-auth";
 
 const SYSTEM_PROMPTS: Record<string, string> = {
   generate_full_post: `You are a senior content writer and SEO specialist for Tertiary Infotech Academy, a Singapore B2B training-tech company. Audience: training providers, L&D managers, and tech leaders in Singapore.
@@ -132,6 +132,7 @@ async function runWithPrompt(
       model: "opus",
       fallbackModel: "sonnet",
       maxTurns: 4,
+      ...SDK_ISOLATION, // keeps CLAUDE.md / skills / memory out of the prompt
       allowedTools: [],
       disallowedTools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebSearch", "WebFetch"],
     },
