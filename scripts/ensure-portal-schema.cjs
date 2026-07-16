@@ -72,6 +72,17 @@ const STATEMENTS = [
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS card_session_players_uq ON card_session_players (session_id, learner_id)`,
   `CREATE INDEX IF NOT EXISTS card_session_players_session_idx ON card_session_players (session_id)`,
+  // Stories saved from the Story Builder into "My Stories" (/learn/stories).
+  // Mirrors learner_stories in schema.ts; `pages` holds the finished path as
+  // [{ text, image, emojis }].
+  `CREATE TABLE IF NOT EXISTS learner_stories (
+    id serial PRIMARY KEY,
+    learner_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title varchar(200) NOT NULL,
+    pages jsonb NOT NULL,
+    created_at timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS learner_stories_learner_idx ON learner_stories (learner_id)`,
   // Security: never let a user inserted without an explicit role default to
   // 'admin'. Idempotent — safe to re-run on every boot. Mirrors schema.ts.
   `ALTER TABLE users ALTER COLUMN role SET DEFAULT 'parent'`,
