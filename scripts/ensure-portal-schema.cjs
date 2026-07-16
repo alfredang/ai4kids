@@ -72,6 +72,38 @@ const STATEMENTS = [
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS card_session_players_uq ON card_session_players (session_id, learner_id)`,
   `CREATE INDEX IF NOT EXISTS card_session_players_session_idx ON card_session_players (session_id)`,
+  // AI Art Studio gallery (/learn/art, /learn/gallery). Mirrors learner_artworks.
+  `CREATE TABLE IF NOT EXISTS learner_artworks (
+    id serial PRIMARY KEY,
+    learner_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    original_prompt text NOT NULL,
+    prompt text NOT NULL,
+    style text NOT NULL,
+    r2_url text NOT NULL,
+    created_at timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS learner_artworks_learner_idx ON learner_artworks (learner_id)`,
+  // Talking Buddy chat log + per-learner buddy state (/learn/buddy). Mirrors
+  // learner_buddy_messages / learner_buddy_meta in schema.ts.
+  `CREATE TABLE IF NOT EXISTS learner_buddy_messages (
+    id serial PRIMARY KEY,
+    learner_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role text NOT NULL,
+    content text NOT NULL,
+    created_at timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS buddy_msg_learner_idx ON learner_buddy_messages (learner_id, created_at)`,
+  `CREATE TABLE IF NOT EXISTS learner_buddy_meta (
+    learner_id integer PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    cleared_at timestamp,
+    buddy_name text,
+    buddy_color text
+  )`,
+  // The kid-chosen name/colour landed after the table did, so a DB created by an
+  // earlier deploy has the table but not these columns — CREATE ... IF NOT EXISTS
+  // would skip it. Both are nullable, so adding them is safe with rows present.
+  `ALTER TABLE learner_buddy_meta ADD COLUMN IF NOT EXISTS buddy_name text`,
+  `ALTER TABLE learner_buddy_meta ADD COLUMN IF NOT EXISTS buddy_color text`,
   // Stories saved from the Story Builder into "My Stories" (/learn/stories).
   // Mirrors learner_stories in schema.ts; `pages` holds the finished path as
   // [{ text, image, emojis }].
