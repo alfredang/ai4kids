@@ -16,6 +16,7 @@ npm run build          # Production build
 npm run start          # Run the production build locally on http://localhost:3080
 npm run lint           # Next lint (note: ESLint isn't configured at the root; Next's wrapper is what's used)
 
+npm run check:schema   # Verify schema.ts matches ensure-portal-schema.cjs (what creates prod tables)
 npm run db:push        # Apply src/db/schema.ts to local Postgres (dev only)
 npm run db:migrate     # Run generated migrations (prod-safe)
 npm run db:generate    # Generate migrations from schema changes
@@ -77,6 +78,20 @@ The production DB isn't directly reachable. To push local CMS data (menus, setti
 - **Slash command**: `/push-to-remote [resource...|all]` — wraps the CLI with a preview + confirmation flow. See [.claude/commands/push-to-remote.md](.claude/commands/push-to-remote.md).
 
 To extend the sync surface to a new table, follow the pattern in [.claude/skills/remote-db-sync/SKILL.md](.claude/skills/remote-db-sync/SKILL.md): natural-key upsert, Zod-bounded payload, register the resource in `scripts/push-to-remote.ts` in the correct FK-dependency order.
+
+### Production schema — `schema.ts` alone does NOT reach production
+
+**Any change to [src/db/schema.ts](src/db/schema.ts) must load the [.claude/skills/portal-schema-sync/SKILL.md](.claude/skills/portal-schema-sync/SKILL.md) skill before committing.**
+
+Production runs **no Drizzle migration step** — the image's CMD is `node ensure-portal-schema.cjs && node server.js` — and `.gitignore` has `*.sql`, so every `drizzle/*.sql` migration is gitignored and never leaves a dev machine (only `drizzle/meta/*.json` snapshots are committed, and snapshots apply nothing). That makes [scripts/ensure-portal-schema.cjs](scripts/ensure-portal-schema.cjs) the **only** thing that creates tables in production.
+
+So a table added to `schema.ts` + `db:push`ed works locally and **500s in prod** with `relation "x" does not exist`. This has already shipped three times (`learner_artworks`, the buddy tables, nearly `learner_stories`). The non-obvious parts:
+
+- New table → add idempotent `CREATE TABLE IF NOT EXISTS` DDL to the boot script **in the same commit**.
+- New column on a table the script already creates → `CREATE TABLE IF NOT EXISTS` **silently skips existing tables**, so you must ALSO add `ALTER TABLE <t> ADD COLUMN IF NOT EXISTS <col> <type>`. This is exactly how `buddy_name`/`buddy_color` went missing in prod.
+- Only nullable columns or ones with a `DEFAULT` — `ADD COLUMN ... NOT NULL` fails on tables with rows, and the boot script swallows errors, so it fails silently.
+- `npm run check:schema` catches both table and column drift statically (no DB needed). It must pass before committing schema work.
+- `db:push` is broken here — use `npm run db:generate && npm run db:migrate` for local schema changes. Local Postgres is 18.x, which catalogues `NOT NULL` constraints as `<table>_<col>_not_null`; drizzle-kit 0.30.6 predates PG 18 and tries to `DROP` them, aborting with `column "id" is in a primary key`. Don't force it — those statements strip `NOT NULL`. `db:generate` diffs against the snapshot rather than the live DB, so it's unaffected.
 
 ### Authoring blog posts — always load the `blog-post` skill first
 

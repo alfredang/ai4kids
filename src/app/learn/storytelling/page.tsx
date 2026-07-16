@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useReadAloud } from "@/lib/use-read-aloud";
 import {
@@ -10,6 +10,7 @@ import {
   MOODS,
   buildStory,
   type Choice,
+  type Branch,
   type Story as BranchStory,
 } from "@/lib/story-builder/templates";
 
@@ -230,6 +231,37 @@ function WriteMode({ onBack }: { onBack: () => void }) {
 
 const randIndex = (n: number) => Math.floor(Math.random() * n);
 
+/** A node that can pose a fork — the story root, or any branch with a follow-up. */
+type ForkNode = { problem?: string; choiceA?: Branch; choiceB?: Branch };
+
+/**
+ * Flatten the story along the path chosen so far. The tale forks up to twice, so
+ * the page list grows as the child decides: `forks[k]` is the page index of the
+ * k-th fork, and it's answered by `chosen[k]`. The first unanswered fork is
+ * therefore `forks[chosen.length]` — that's where the child is deciding now.
+ */
+function buildTimeline(story: BranchStory, chosen: Branch[]): { pages: string[]; forks: number[] } {
+  const pages = [...story.pre, story.problem];
+  const forks = [story.pre.length];
+  for (const b of chosen) {
+    pages.push(...b.pages);
+    if (b.problem && b.choiceA && b.choiceB) {
+      pages.push(b.problem);
+      forks.push(pages.length - 1);
+    }
+  }
+  return { pages, forks };
+}
+
+/** Pages still to come if the child keeps picking A — used only to show a total.
+ *  Both branches are the same length in generated stories; an AI story may differ
+ *  slightly, so this is an estimate (as the single-fork version was too). */
+function remainingFrom(node: ForkNode | null): number {
+  const b = node?.choiceA;
+  if (!b) return 0;
+  return b.pages.length + (b.problem && b.choiceA && b.choiceB ? 1 + remainingFrom(b) : 0);
+}
+
 function BuildMode({ onBack }: { onBack: () => void }) {
   const [hero, setHero] = useState<number | null>(null);
   const [place, setPlace] = useState<number | null>(null);
@@ -237,9 +269,10 @@ function BuildMode({ onBack }: { onBack: () => void }) {
   const [mood, setMood] = useState<number | null>(null);
 
   const [story, setStory] = useState<BranchStory | null>(null);
-  const [pages, setPages] = useState<string[]>([]);
   const [pageIndex, setPageIndex] = useState(0);
-  const [picked, setPicked] = useState(false);
+  // The branches picked so far — one per resolved fork. Replaces a `picked`
+  // boolean, which couldn't express a path once the story forks twice.
+  const [chosen, setChosen] = useState<Branch[]>([]);
   const [generating, setGenerating] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   const [awarded, setAwarded] = useState(false); // did *this* finish grant points, or is it a replay?
@@ -263,15 +296,23 @@ function BuildMode({ onBack }: { onBack: () => void }) {
   // Repeated on every illustration so the hero looks the same page to page.
   const characterAnchor = heroC && mood != null ? `a ${MOODS[mood].name} ${heroC.name} ${heroC.emoji}` : undefined;
 
-  const atChoice = story != null && !picked && pageIndex === story.pre.length;
-  const pageCount = story ? (picked ? pages.length : story.pre.length + 1 + story.choiceA.pages.length) : 0;
+  const { pages, forks } = useMemo(
+    () => (story ? buildTimeline(story, chosen) : { pages: [] as string[], forks: [] as number[] }),
+    [story, chosen],
+  );
+  const isFork = useCallback((i: number) => forks.includes(i), [forks]);
+  // The node whose fork is unanswered: the root until a pick, then the last branch.
+  const pendingNode: ForkNode | null = story ? (chosen.length === 0 ? story : chosen[chosen.length - 1]) : null;
+  const optionA = pendingNode?.choiceA;
+  const optionB = pendingNode?.choiceB;
+  const atChoice = pageIndex === forks[chosen.length] && !!optionA && !!optionB;
+  const pageCount = story ? pages.length + remainingFrom(atChoice ? pendingNode : null) : 0;
 
   function restart() {
     stop();
     setStory(null);
-    setPages([]);
     setPageIndex(0);
-    setPicked(false);
+    setChosen([]);
     setCelebrate(false);
     setImages({});
     requested.current = new Set();
@@ -283,9 +324,8 @@ function BuildMode({ onBack }: { onBack: () => void }) {
 
   function showStory(s: BranchStory) {
     setStory(s);
-    setPages([...s.pre, s.problem]);
     setPageIndex(0);
-    setPicked(false);
+    setChosen([]);
     setImages({});
     requested.current = new Set();
     scored.current = false;
@@ -324,11 +364,10 @@ function BuildMode({ onBack }: { onBack: () => void }) {
   }
 
   function choose(useA: boolean) {
-    if (!story) return;
+    const branch = useA ? optionA : optionB;
+    if (!branch) return;
     stop();
-    const branch = useA ? story.choiceA : story.choiceB;
-    setPages([...story.pre, story.problem, ...branch.pages]);
-    setPicked(true);
+    setChosen((c) => [...c, branch]); // pages re-derive; the next page is the branch's first
     setPageIndex((i) => i + 1);
   }
 
@@ -351,16 +390,16 @@ function BuildMode({ onBack }: { onBack: () => void }) {
     }
   }
 
-  // Jump back to the fork so the child can try the branch they didn't pick. The
+  // Rewind one decision so the child can try the branch they didn't pick. The
   // story + illustrations are cached (images are keyed by text), so it's instant.
   function replayFork() {
-    if (!story) return;
+    if (!story || chosen.length === 0) return;
     stop();
     setSaved(false); // the other ending is a new tale the child can save too
     setCelebrate(false);
-    setPicked(false);
-    setPages([...story.pre, story.problem]);
-    setPageIndex(story.pre.length);
+    const next = chosen.slice(0, -1);
+    setChosen(next);
+    setPageIndex(buildTimeline(story, next).forks[next.length]);
   }
 
   // Save the finished story (title + each page's text and cached illustration)
@@ -403,40 +442,39 @@ function BuildMode({ onBack }: { onBack: () => void }) {
   );
 
   // Fetch the current page and prefetch what comes next so the picture is ready
-  // before the child taps through. The fork/problem page stays illustration-free;
-  // at the fork we prefetch BOTH branches' first page so either pick feels instant.
+  // before the child taps through. Fork/problem pages stay illustration-free; at
+  // a fork we prefetch BOTH branches' first page so either pick feels instant.
   useEffect(() => {
-    if (pages.length === 0 || !story) return;
-    const forkIdx = story.pre.length;
-    if (pageIndex !== forkIdx) fetchImageFor(pages[pageIndex]);
-    if (pageIndex + 1 !== forkIdx) fetchImageFor(pages[pageIndex + 1]);
+    if (pages.length === 0) return;
+    if (!isFork(pageIndex)) fetchImageFor(pages[pageIndex]);
+    if (!isFork(pageIndex + 1)) fetchImageFor(pages[pageIndex + 1]);
     if (atChoice) {
-      fetchImageFor(story.choiceA.pages[0]);
-      fetchImageFor(story.choiceB.pages[0]);
+      fetchImageFor(optionA?.pages[0]);
+      fetchImageFor(optionB?.pages[0]);
     }
-  }, [pageIndex, pages, atChoice, story, fetchImageFor]);
+  }, [pageIndex, pages, atChoice, optionA, optionB, isFork, fetchImageFor]);
 
-  // Auto-narrate each new page once "read to me" is on (skips the silent fork).
+  // Auto-narrate each new page once "read to me" is on (fork pages stay silent).
   useEffect(() => {
-    if (!autoRead || pages.length === 0 || atChoice || celebrate) return;
+    if (!autoRead || pages.length === 0 || isFork(pageIndex) || celebrate) return;
     speak(pages[pageIndex]);
-  }, [pageIndex, pages, autoRead, atChoice, celebrate, speak]);
+  }, [pageIndex, pages, autoRead, isFork, celebrate, speak]);
 
   // Narration takes ~1.5-2s to generate, so warm the next page's audio while the
   // child is still on this one — the same trick as the illustration prefetch.
   useEffect(() => {
-    if (!autoRead || !story || pages.length === 0) return;
-    const forkIdx = story.pre.length;
-    if (pageIndex + 1 !== forkIdx) prefetch(pages[pageIndex + 1]);
+    if (!autoRead || pages.length === 0) return;
+    if (!isFork(pageIndex + 1)) prefetch(pages[pageIndex + 1]);
     if (atChoice) {
-      prefetch(story.choiceA.pages[0]);
-      prefetch(story.choiceB.pages[0]);
+      prefetch(optionA?.pages[0]);
+      prefetch(optionB?.pages[0]);
     }
-  }, [autoRead, pageIndex, pages, atChoice, story, prefetch]);
+  }, [autoRead, pageIndex, pages, atChoice, optionA, optionB, isFork, prefetch]);
 
   const currentText = pages[pageIndex];
   const img = currentText != null ? images[currentText] : undefined;
-  const imgBusy = currentText != null && !atChoice && !(currentText in images);
+  // Fork pages are never fetched, so they must not show the loading pulse.
+  const imgBusy = currentText != null && !isFork(pageIndex) && !(currentText in images);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -540,13 +578,13 @@ function BuildMode({ onBack }: { onBack: () => void }) {
             </button>
           </div>
 
-          {atChoice && story ? (
+          {atChoice && optionA && optionB ? (
             <div className="flex w-full flex-col gap-3">
               <button onClick={() => choose(true)} className="w-full rounded-full bg-grape py-3 font-fun font-700 text-white shadow transition hover:scale-[1.02]">
-                {story.choiceA.emoji} {story.choiceA.label}
+                {optionA.emoji} {optionA.label}
               </button>
               <button onClick={() => choose(false)} className="w-full rounded-full bg-sky-500 py-3 font-fun font-700 text-white shadow transition hover:scale-[1.02]">
-                {story.choiceB.emoji} {story.choiceB.label}
+                {optionB.emoji} {optionB.label}
               </button>
             </div>
           ) : (
