@@ -467,10 +467,12 @@ export const learnerArtworks = pgTable(
   (t) => [index("learner_artworks_learner_idx").on(t.learnerId)],
 );
 
-// Branching stories a learner built + saved in the Story Builder (/learn/storytelling).
-// `pages` holds the finished path they read: [{ text, image }] — image is an R2
-// URL (or an inline data-URL in dev before R2 is configured), or null when a
-// page wasn't illustrated.
+// Stories a learner saved from the Story Builder (/learn/storytelling), in either
+// Build or Write mode. `pages` holds the finished path they read:
+// [{ text, image, emojis }] — image is an R2 URL (or an inline data-URL in dev
+// before R2 is configured), or null when a page wasn't illustrated; `emojis` is
+// the Write-mode fallback illustration. Kept in sync with the DDL in
+// scripts/ensure-portal-schema.cjs, which is what creates this table in prod.
 export const learnerStories = pgTable(
   "learner_stories",
   {
