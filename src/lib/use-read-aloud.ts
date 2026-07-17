@@ -5,8 +5,8 @@ import { stripForSpeech } from "@/lib/strip-emoji";
 
 /**
  * Read-aloud for young/emerging readers. Speaks a line via the shared kid TTS
- * route (warm `luna` Aura voice), falling back to the on-device browser voice if
- * the server returns no audio. Only one line plays at a time per hook instance.
+ * route (warm `thalia` Aura voice), falling back to the on-device browser voice
+ * if the server returns no audio. Only one line plays at a time per hook instance.
  *
  * Narration takes ~1-2s to generate, so results are cached by text and in-flight
  * requests are deduped — `prefetch` a line while the child reads the previous one

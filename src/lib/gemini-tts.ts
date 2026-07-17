@@ -1,16 +1,25 @@
 /**
- * Kid-safe text-to-speech for the Talking Buddy. Same auto-fallback shape as
- * gemini-image.ts: Gemini TTS first (prod), Cloudflare Deepgram Aura fallback
- * (free-tier / dev). Returns { base64, mime } playable in an <audio>, or null.
+ * Kid-safe text-to-speech for the Talking Buddy and story narration.
+ *
+ * Auto-fallback chain — same shape as gemini-image.ts but the priority is
+ * INVERTED, so don't pattern-match the two:
+ *   1. Cloudflare Deepgram Aura (Workers AI) — the production path. Fast enough
+ *      to speak on demand.
+ *   2. Gemini TTS — a richer voice, but far slower and much heavier, so it only
+ *      covers Aura being unavailable. See `generateKidSpeech` for the numbers.
+ *
+ * Returns { base64, mime } playable in an <audio>, or null when nothing is
+ * speakable or both providers fail — callers then fall back to the on-device
+ * browser voice.
  */
 import { getCredential } from "@/lib/secrets";
 import { stripForSpeech } from "@/lib/strip-emoji";
 
 const GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts";
 // Deepgram Aura on Workers AI — supports named voices via `speaker` and returns
-// binary MP3. `luna` is a warm, gentle voice suited to a kids buddy.
-const CF_TTS_MODEL = "@cf/deepgram/aura-1";
-const CF_TTS_VOICE = "luna";
+// binary MP3. `thalia` is a warm, gentle voice suited to a kids buddy.
+const CF_TTS_MODEL = "@cf/deepgram/aura-2";
+const CF_TTS_VOICE = "thalia";
 
 export type Speech = { base64: string; mime: string };
 type Attempt = { audio: Speech | null; note: string };
