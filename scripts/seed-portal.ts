@@ -156,7 +156,7 @@ async function main() {
     { slug: "ai-storytelling", title: "Story Time", category: "storytelling", emoji: "📖", live: true, desc: "Build a branching tale or write your own — illustrated by AI." },
     { slug: "ai-art", title: "AI Art Studio", category: "art", emoji: "🎨", live: true, desc: "Turn your ideas into pictures with AI." },
     { slug: "ai-phonics", title: "Phonics Quest", category: "phonics", emoji: "🔤", live: true, desc: "Travel the worlds and master every sound!" },
-    { slug: "ai-coding", title: "AI Code Quest", category: "coding", emoji: "💻", live: false, desc: "Build with code blocks (coming soon)." },
+    { slug: "ai-coding", title: "AI Code Quest", category: "coding", emoji: "💻", live: true, desc: "Plan the robot's path to the star!" },
     { slug: "ai-game-dev", title: "AI Game Maker", category: "game-dev", emoji: "🎮", live: false, desc: "Make your own game (coming soon)." },
     { slug: "ai-jigsaw", title: "AI Jigsaw", category: "art", emoji: "🧩", live: true, desc: "Turn your art into a puzzle!" },
     { slug: "ai-buddy", title:"Talking Buddy", category: "storytelling", emoji: "🤖", live: true, desc: "Chat with an AI friend!" },

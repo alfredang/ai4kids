@@ -118,6 +118,21 @@ const STATEMENTS = [
   // Security: never let a user inserted without an explicit role default to
   // 'admin'. Idempotent — safe to re-run on every boot. Mirrors schema.ts.
   `ALTER TABLE users ALTER COLUMN role SET DEFAULT 'parent'`,
+  // Code Quest (/learn/code-puzzles) went live after seed-portal.ts had already
+  // created its row as a "coming soon" placeholder. That row pre-exists in prod,
+  // so the ACTIVITY_SEED insert below can't reach it (ON CONFLICT DO NOTHING),
+  // there's no admin activities editor, and `activities` isn't in the sync API —
+  // this UPDATE is the only path to flipping it live. Guarded on live = false so
+  // it's a one-time correction, not a per-boot overwrite; wrapped in a table
+  // check because this script doesn't create `activities` (seed-portal.ts does),
+  // and a throw here would abort the statements after it.
+  `DO $$
+   BEGIN
+     IF to_regclass('public.activities') IS NOT NULL THEN
+       UPDATE activities SET live = true, description = 'Plan the robot''s path to the star!'
+         WHERE slug = 'ai-coding' AND live = false;
+     END IF;
+   END $$`,
 ];
 
 // Activity catalogue rows that aren't synced from elsewhere. Idempotent: new
