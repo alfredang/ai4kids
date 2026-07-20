@@ -361,16 +361,17 @@ function BuildMode({ onBack }: { onBack: () => void }) {
     }
   }
 
-  // Rewind one decision so the child can try the branch they didn't pick. The
-  // story + illustrations are cached (images are keyed by text), so it's instant.
+  // Rewind all the way to the FIRST fork so the child can retake every decision
+  // — from there they can reach any of the four endings. (Dropping just the last
+  // choice only ever flipped the second fork.) The story + illustrations are
+  // cached (images are keyed by text), so it's instant.
   function replayFork() {
     if (!story || chosen.length === 0) return;
     stop();
     setSaved(false); // the other ending is a new tale the child can save too
     setCelebrate(false);
-    const next = chosen.slice(0, -1);
-    setChosen(next);
-    setPageIndex(buildTimeline(story, next).forks[next.length]);
+    setChosen([]);
+    setPageIndex(forks[0]);
   }
 
   // Save the finished story (title + each page's text and cached illustration)

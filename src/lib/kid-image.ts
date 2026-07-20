@@ -1,12 +1,13 @@
 /**
  * Kid-safe image generation for the AI Art Studio (/learn/art).
  *
- * Auto-fallback chain:
- *   1. NVIDIA NIM (FLUX.1-dev) — the production path via build.nvidia.com. Free
- *      tier, no billing required. Needs an `nvidia_api_key`.
- *   2. Cloudflare Workers AI (Flux) — free-tier fallback. Reuses the Cloudflare
- *      account id stored as `r2_account_id`, plus a Workers AI token
- *      (`cloudflare_ai_token`).
+ * Auto-fallback chain (ordered fastest-first — these illustrate a kids' story
+ * page by page, so speed beats fidelity):
+ *   1. Cloudflare Workers AI (Flux-1-schnell) — a distilled 4-step turbo model,
+ *      several times faster than FLUX.1-dev. Reuses the Cloudflare account id
+ *      stored as `r2_account_id`, plus a Workers AI token (`cloudflare_ai_token`).
+ *   2. NVIDIA NIM (FLUX.1-dev) — slower but higher-fidelity fallback via
+ *      build.nvidia.com. Free tier, no billing required. Needs an `nvidia_api_key`.
  *
  * Both are the sanctioned non-Anthropic image path, scoped to the children's
  * games — the CMS chatbot + admin AI Assist still go through the Claude Agent
@@ -33,20 +34,41 @@ export type ArtStyle = keyof typeof ART_STYLES;
 
 export type GeneratedImage = { base64: string; mime: string };
 
+/** Emoji + variation selectors / ZWJ. Stripped from every prompt: the story
+ *  prose and hero anchor carry emoji (🦊🗝️✨) that contradict the no-text rule
+ *  below, and the schnell model tends to render them as literal glyphs. */
+const stripEmoji = (s: string): string =>
+  s.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "").replace(/\s+/g, " ").trim();
+
 function buildPrompt(prompt: string, style: ArtStyle, characterAnchor?: string): string {
   const styleHint = ART_STYLES[style] ?? ART_STYLES.cartoon;
   // When a story illustrates page after page, anchor the recurring hero so it
   // reads as the SAME character each time instead of a new look per picture.
-  const consistency = characterAnchor
-    ? `The main character is ${characterAnchor}, drawn exactly the same way in every picture — same colours, same design, same friendly face. `
+  // Pure txt2img (no reference image on the free NVIDIA/Cloudflare endpoints)
+  // can't guarantee identity, so we lean on the two levers it does have: an
+  // identical, byte-for-byte anchor clause placed FIRST — Flux weights the
+  // leading tokens most, and the varying scene would otherwise dominate — plus
+  // the same seed across pages (passed by the caller).
+  const anchor = characterAnchor ? stripEmoji(characterAnchor) : undefined;
+  const consistency = anchor
+    ? `The main character is always ${anchor} — drawn in the exact same way in every picture: same colours, same design, same friendly face. `
     : "";
   return (
-    `A ${styleHint} picture of: ${prompt}. ` +
     consistency +
-    `Child-friendly, wholesome, cheerful, nothing scary, violent or unsafe. Suitable for young children. ` +
-    // Flux especially tends to render the narration as gibberish caption text —
-    // state the no-text rule forcefully so the illustration stays purely visual.
-    `IMPORTANT: a purely visual illustration with absolutely NO text — do not draw any letters, words, captions, labels, numbers, signs or writing anywhere in the image.`
+    `A ${styleHint} picture of: ${stripEmoji(prompt)}. ` +
+    // Positive framing ONLY. Naming the banned concepts — even to forbid them
+    // ("nothing scary, violent or unsafe") — trips FLUX.1-dev's keyword safety
+    // filter, which returns a blank frame (finishReason CONTENT_FILTERED).
+    // Confirmed on the Android port (device logcat); the idea is already vetted
+    // upstream, so the wrapper only steers toward a wholesome look.
+    //
+    // No-text rule: keep it TERSE. Diffusion text encoders don't encode negation
+    // well, so enumerating "letters, words, captions, signs, numbers…" makes a
+    // distilled model like Cloudflare's schnell *draw* those nouns rather than omit
+    // them (FLUX.1-dev was big enough to obey the long forceful version; schnell is
+    // not). This short phrasing matches the Android port, which never had the
+    // text-in-image regression.
+    `Child-friendly, wholesome, cheerful, gentle and sweet, with no text or words in the image. Suitable for young children.`
   );
 }
 
@@ -68,9 +90,11 @@ async function generateWithNvidia(fullPrompt: string, seed?: number): Promise<At
     const res = await fetch(NVIDIA_ENDPOINT, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", Accept: "application/json" },
-      // 1024² base mode; 30 steps trades a little quality for latency on a kids
-      // art request. FLUX returns the image as base64 in `artifacts[0].base64`.
-      body: JSON.stringify({ prompt: fullPrompt, mode: "base", cfg_scale: 5, width: 1024, height: 1024, steps: 30, ...(seed != null ? { seed } : {}) }),
+      // NVIDIA is now the *fallback* (Cloudflare schnell paints first when
+      // configured), so favour quality over raw speed: full 1024² and 20 steps —
+      // fewer than the 30 a hero image would use, but enough to avoid the soft,
+      // smeared look 768² produced. FLUX returns base64 in `artifacts[0].base64`.
+      body: JSON.stringify({ prompt: fullPrompt, mode: "base", cfg_scale: 5, width: 1024, height: 1024, steps: 20, ...(seed != null ? { seed } : {}) }),
     });
     if (!res.ok) {
       const body = (await res.text().catch(() => "")).slice(0, 300);
@@ -101,7 +125,10 @@ async function generateWithCloudflare(fullPrompt: string, seed?: number): Promis
       {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: fullPrompt, steps: 4, ...(seed != null ? { seed } : {}) }),
+        // 8 steps is schnell's documented max — 4 (its default) paints in a couple
+        // of seconds but comes out soft/smeared; 8 is meaningfully sharper for barely
+        // more time, which matters when this is the primary story painter.
+        body: JSON.stringify({ prompt: fullPrompt, steps: 8, ...(seed != null ? { seed } : {}) }),
       },
     );
     if (!res.ok) {
@@ -119,9 +146,9 @@ async function generateWithCloudflare(fullPrompt: string, seed?: number): Promis
 
 /**
  * Generate a single kid-safe image from a (already safety-checked) prompt and
- * an allowlisted style. Tries NVIDIA FLUX first, then the Cloudflare free
- * fallback. Returns the image plus a `debug` trail of each provider attempt
- * (surfaced in dev to diagnose failures; never shown to children).
+ * an allowlisted style. Tries the fast Cloudflare schnell path first, then the
+ * slower NVIDIA FLUX.1-dev fallback. Returns the image plus a `debug` trail of
+ * each provider attempt (surfaced in dev to diagnose failures; never shown to children).
  */
 export async function generateKidImage(
   prompt: string,
@@ -131,14 +158,16 @@ export async function generateKidImage(
   const fullPrompt = buildPrompt(prompt, style, opts.characterAnchor);
   const debug: string[] = [];
 
-  const nvidia = await generateWithNvidia(fullPrompt, opts.seed);
-  debug.push(nvidia.note);
-  if (nvidia.image) return { image: nvidia.image, debug };
-
+  // Fast path first: Cloudflare's 4-step schnell answers in a few seconds. Only
+  // fall back to the slower NVIDIA FLUX.1-dev when it's unconfigured or errors.
   const cloudflare = await generateWithCloudflare(fullPrompt, opts.seed);
   debug.push(cloudflare.note);
+  if (cloudflare.image) return { image: cloudflare.image, debug };
+
+  const nvidia = await generateWithNvidia(fullPrompt, opts.seed);
+  debug.push(nvidia.note);
   for (const note of debug) console.error("[kid-image]", note);
-  return { image: cloudflare.image, debug };
+  return { image: nvidia.image, debug };
 }
 
 /**

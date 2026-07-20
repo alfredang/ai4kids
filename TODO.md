@@ -33,6 +33,27 @@ its behaviour drift independently, and only one of them is easy to diff.
 - [ ] If you change an **`/api/learn/*` Zod schema or response shape**, treat it
       as a breaking change to a deployed client — Android must ship in step.
 
+## Resolved
+
+- **AI art returned a blank image (`finishReason: CONTENT_FILTERED`).** The
+  `buildPrompt` wrapper in [src/lib/kid-image.ts] named the banned concepts to
+  forbid them ("nothing scary, violent or unsafe"), which trips FLUX.1-dev's
+  keyword safety filter — it then returns a ~6 KB solid frame instead of the
+  picture. Diagnosed on the Android port (device logcat: HTTP 200,
+  `CONTENT_FILTERED`, 6428-byte JPEG) and fixed on **both** sides by switching to
+  positive-only framing. This is the first concrete payoff of tracking the
+  never-verified NVIDIA path here.
+
+- **"Try the other path" only rewound to the second fork.** `replayFork` dropped
+  just the last choice (`chosen.slice(0, -1)`), so from a finished tale the child
+  could flip the second decision but never reach either ending under the first
+  choice without a full rebuild. Now resets `chosen` to `[]` and jumps to
+  `forks[0]`, so a replay retakes both decisions and all four endings are
+  reachable. Pure UI/interaction change — no `/api/learn/*` contract or
+  `buildTimeline` change. Ported to Android's `StoryBuilderScreen.kt` in step
+  (`compileDebugKotlin` + `StoryEngineTest` green; the test's `rewoundTwice` case
+  already covered the full-rewind primitive).
+
 ## Outstanding drift
 
 ### 1. Story Builder has no guard here, but does on Android
@@ -98,6 +119,21 @@ mentioned Android nowhere until this file was added. Nothing warns someone editi
       `/api/learn/*` contract being load-bearing for a released app.
       (Done as the CLAUDE.md "The Android app is a downstream consumer of
       `/learn`" section — covers all three points.)
+
+### 5. "Write your own" sends the child's free text to the model with no gate
+
+`/api/learn/storytelling` passes the typed `prompt` straight into `askClaudeJson`
+— relying on Claude's own refusal for anything unsafe. The Android port added a
+pre-gate: it runs the idea through a kid-safety classifier
+(`GeminiClient.classifyStoryIdea`) *before* generating, and blocks with a kind
+message if it comes back unsafe. This is the one spot where a child's free text
+(not menu picks) reaches a model, so a belt-and-braces check is cheap insurance.
+
+Android is **ahead** here; web should adopt the same gate rather than the reverse.
+
+- [ ] Add a lightweight safety classify step to the storytelling route (mirror
+      the art route's existing `classify`-style check), blocking unsafe ideas
+      before the story call.
 
 ## Deliberate divergences — Android is NOT behind, don't "port" these
 
