@@ -9,8 +9,11 @@ import {
   OBJECTS,
   MOODS,
   buildStory,
+  buildTimeline,
+  remainingFrom,
   type Choice,
   type Branch,
+  type ForkNode,
   type Story as BranchStory,
 } from "@/lib/story-builder/templates";
 
@@ -230,37 +233,6 @@ function WriteMode({ onBack }: { onBack: () => void }) {
 /* ============================ Build mode ============================ */
 
 const randIndex = (n: number) => Math.floor(Math.random() * n);
-
-/** A node that can pose a fork — the story root, or any branch with a follow-up. */
-type ForkNode = { problem?: string; choiceA?: Branch; choiceB?: Branch };
-
-/**
- * Flatten the story along the path chosen so far. The tale forks up to twice, so
- * the page list grows as the child decides: `forks[k]` is the page index of the
- * k-th fork, and it's answered by `chosen[k]`. The first unanswered fork is
- * therefore `forks[chosen.length]` — that's where the child is deciding now.
- */
-function buildTimeline(story: BranchStory, chosen: Branch[]): { pages: string[]; forks: number[] } {
-  const pages = [...story.pre, story.problem];
-  const forks = [story.pre.length];
-  for (const b of chosen) {
-    pages.push(...b.pages);
-    if (b.problem && b.choiceA && b.choiceB) {
-      pages.push(b.problem);
-      forks.push(pages.length - 1);
-    }
-  }
-  return { pages, forks };
-}
-
-/** Pages still to come if the child keeps picking A — used only to show a total.
- *  Both branches are the same length in generated stories; an AI story may differ
- *  slightly, so this is an estimate (as the single-fork version was too). */
-function remainingFrom(node: ForkNode | null): number {
-  const b = node?.choiceA;
-  if (!b) return 0;
-  return b.pages.length + (b.problem && b.choiceA && b.choiceB ? 1 + remainingFrom(b) : 0);
-}
 
 function BuildMode({ onBack }: { onBack: () => void }) {
   const [hero, setHero] = useState<number | null>(null);
