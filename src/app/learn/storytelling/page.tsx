@@ -9,8 +9,11 @@ import {
   OBJECTS,
   MOODS,
   buildStory,
+  buildTimeline,
+  remainingFrom,
   type Choice,
   type Branch,
+  type ForkNode,
   type Story as BranchStory,
 } from "@/lib/story-builder/templates";
 
@@ -231,37 +234,6 @@ function WriteMode({ onBack }: { onBack: () => void }) {
 
 const randIndex = (n: number) => Math.floor(Math.random() * n);
 
-/** A node that can pose a fork — the story root, or any branch with a follow-up. */
-type ForkNode = { problem?: string; choiceA?: Branch; choiceB?: Branch };
-
-/**
- * Flatten the story along the path chosen so far. The tale forks up to twice, so
- * the page list grows as the child decides: `forks[k]` is the page index of the
- * k-th fork, and it's answered by `chosen[k]`. The first unanswered fork is
- * therefore `forks[chosen.length]` — that's where the child is deciding now.
- */
-function buildTimeline(story: BranchStory, chosen: Branch[]): { pages: string[]; forks: number[] } {
-  const pages = [...story.pre, story.problem];
-  const forks = [story.pre.length];
-  for (const b of chosen) {
-    pages.push(...b.pages);
-    if (b.problem && b.choiceA && b.choiceB) {
-      pages.push(b.problem);
-      forks.push(pages.length - 1);
-    }
-  }
-  return { pages, forks };
-}
-
-/** Pages still to come if the child keeps picking A — used only to show a total.
- *  Both branches are the same length in generated stories; an AI story may differ
- *  slightly, so this is an estimate (as the single-fork version was too). */
-function remainingFrom(node: ForkNode | null): number {
-  const b = node?.choiceA;
-  if (!b) return 0;
-  return b.pages.length + (b.problem && b.choiceA && b.choiceB ? 1 + remainingFrom(b) : 0);
-}
-
 function BuildMode({ onBack }: { onBack: () => void }) {
   const [hero, setHero] = useState<number | null>(null);
   const [place, setPlace] = useState<number | null>(null);
@@ -300,7 +272,6 @@ function BuildMode({ onBack }: { onBack: () => void }) {
     () => (story ? buildTimeline(story, chosen) : { pages: [] as string[], forks: [] as number[] }),
     [story, chosen],
   );
-  const isFork = useCallback((i: number) => forks.includes(i), [forks]);
   // The node whose fork is unanswered: the root until a pick, then the last branch.
   const pendingNode: ForkNode | null = story ? (chosen.length === 0 ? story : chosen[chosen.length - 1]) : null;
   const optionA = pendingNode?.choiceA;
@@ -442,39 +413,40 @@ function BuildMode({ onBack }: { onBack: () => void }) {
   );
 
   // Fetch the current page and prefetch what comes next so the picture is ready
-  // before the child taps through. Fork/problem pages stay illustration-free; at
-  // a fork we prefetch BOTH branches' first page so either pick feels instant.
+  // before the child taps through. Fork/problem pages are illustrated too — they
+  // carry story, not just buttons. At a fork we also prefetch BOTH branches'
+  // first page so either pick lands on a ready picture.
   useEffect(() => {
     if (pages.length === 0) return;
-    if (!isFork(pageIndex)) fetchImageFor(pages[pageIndex]);
-    if (!isFork(pageIndex + 1)) fetchImageFor(pages[pageIndex + 1]);
+    fetchImageFor(pages[pageIndex]);
+    fetchImageFor(pages[pageIndex + 1]);
     if (atChoice) {
       fetchImageFor(optionA?.pages[0]);
       fetchImageFor(optionB?.pages[0]);
     }
-  }, [pageIndex, pages, atChoice, optionA, optionB, isFork, fetchImageFor]);
+  }, [pageIndex, pages, atChoice, optionA, optionB, fetchImageFor]);
 
-  // Auto-narrate each new page once "read to me" is on (fork pages stay silent).
+  // Auto-narrate each page once "read to me" is on — including the fork, so an
+  // emerging reader hears the problem and the question before choosing.
   useEffect(() => {
-    if (!autoRead || pages.length === 0 || isFork(pageIndex) || celebrate) return;
+    if (!autoRead || pages.length === 0 || celebrate) return;
     speak(pages[pageIndex]);
-  }, [pageIndex, pages, autoRead, isFork, celebrate, speak]);
+  }, [pageIndex, pages, autoRead, celebrate, speak]);
 
   // Narration takes ~1.5-2s to generate, so warm the next page's audio while the
   // child is still on this one — the same trick as the illustration prefetch.
   useEffect(() => {
     if (!autoRead || pages.length === 0) return;
-    if (!isFork(pageIndex + 1)) prefetch(pages[pageIndex + 1]);
+    prefetch(pages[pageIndex + 1]);
     if (atChoice) {
       prefetch(optionA?.pages[0]);
       prefetch(optionB?.pages[0]);
     }
-  }, [autoRead, pageIndex, pages, atChoice, optionA, optionB, isFork, prefetch]);
+  }, [autoRead, pageIndex, pages, atChoice, optionA, optionB, prefetch]);
 
   const currentText = pages[pageIndex];
   const img = currentText != null ? images[currentText] : undefined;
-  // Fork pages are never fetched, so they must not show the loading pulse.
-  const imgBusy = currentText != null && !isFork(pageIndex) && !(currentText in images);
+  const imgBusy = currentText != null && !(currentText in images);
 
   return (
     <div className="mx-auto max-w-2xl">

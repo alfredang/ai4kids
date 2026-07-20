@@ -14,6 +14,7 @@ const ALLOWED: CredentialKey[] = [
   "firecrawl_api_key",
   "tavily_api_key",
   "gemini_api_key",
+  "nvidia_api_key",
   "gmail_user",
   "gmail_client_id",
   "gmail_client_secret",

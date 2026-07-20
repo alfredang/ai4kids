@@ -35,6 +35,7 @@ export type CredentialKey =
   | "firecrawl_api_key"
   | "tavily_api_key"
   | "gemini_api_key"
+  | "nvidia_api_key"
   | "gmail_user"
   | "gmail_client_id"
   | "gmail_client_secret"
@@ -79,6 +80,7 @@ export async function getCredential(key: CredentialKey): Promise<string | null> 
     firecrawl_api_key: process.env.FIRECRAWL_API_KEY,
     tavily_api_key: process.env.TAVILY_API_KEY,
     gemini_api_key: process.env.GEMINI_API_KEY,
+    nvidia_api_key: process.env.NVIDIA_API_KEY,
     gmail_user: process.env.GMAIL_USER,
     gmail_client_id: process.env.GMAIL_CLIENT_ID,
     gmail_client_secret: process.env.GMAIL_CLIENT_SECRET,
@@ -147,6 +149,7 @@ export async function getCredentialSource(key: CredentialKey): Promise<Credentia
     firecrawl_api_key: process.env.FIRECRAWL_API_KEY,
     tavily_api_key: process.env.TAVILY_API_KEY,
     gemini_api_key: process.env.GEMINI_API_KEY,
+    nvidia_api_key: process.env.NVIDIA_API_KEY,
     gmail_user: process.env.GMAIL_USER,
     gmail_client_id: process.env.GMAIL_CLIENT_ID,
     gmail_client_secret: process.env.GMAIL_CLIENT_SECRET,

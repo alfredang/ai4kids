@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getPortalSession } from "@/lib/portal-session";
 import { askClaudeJson } from "@/lib/ai";
-import { generateAndStoreKidImage } from "@/lib/gemini-image";
+import { generateAndStoreKidImage } from "@/lib/kid-image";
 import { recordCompletion } from "@/lib/activities";
 
 export const maxDuration = 60;

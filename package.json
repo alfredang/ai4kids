@@ -8,6 +8,8 @@
     "start": "next start -p 3080",
     "lint": "next lint",
     "check:schema": "node scripts/check-portal-schema-drift.cjs",
+    "check:code-puzzles": "tsx scripts/check-code-puzzles.ts",
+    "check:story-builder": "tsx scripts/check-story-builder.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",

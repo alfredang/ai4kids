@@ -59,23 +59,23 @@ AI storytelling · coding · game design · phonics · escape rooms — a gamifi
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                         Browser (clients)                          │
-│   Public site  ·  Kid playground  ·  Parent dash  ·  Admin CMS     │
+│                         Browser (clients)                        │
+│   Public site  ·  Kid playground  ·  Parent dash  ·  Admin CMS   │
 └───────────────┬───────────────────────────────┬──────────────────┘
-                │  Next.js App Router (RSC + Server Actions)         │
-┌───────────────▼───────────────────────────────▼──────────────────┐
+                │  Next.js App Router (RSC + Server Actions)         
+┌───────────────▼───────────────────────────────▼────────────────────┐
 │  Auth.js v5 (role guard: learner / parent / admin)                 │
-│  ┌──────────────┬───────────────┬───────────────┬──────────────┐  │
+│  ┌──────────────┬────────────────┬───────────────┬───────────────┐ │
 │  │  Booking +   │  AI activities │  Gamification │  Admin CRUD   │ │
 │  │  PayNow QR   │  (Claude SDK)  │  scores/badge │  programs/... │ │
 │  │  + agentic   │                │  leaderboard  │               │ │
 │  │  auto-close  │                │               │               │ │
-│  └──────┬───────┴───────┬───────┴───────┬───────┴──────┬───────┘  │
-└─────────┼───────────────┼───────────────┼──────────────┼──────────┘
+│  └──────┬───────┴───────┬────────┴──────┬────────┴─────┬─────────┘ │
+└─────────┼───────────────┼───────────────┼──────────────┼───────────┘
           │               │               │              │
    ┌──────▼──────┐  ┌─────▼──────┐  ┌─────▼──────┐ ┌─────▼───────┐
-   │ PostgreSQL  │  │ Claude     │  │  Gmail     │ │  PayNow QR   │
-   │ (Drizzle)   │  │ Agent SDK  │  │  OAuth     │ │  (SGQR)      │
+   │ PostgreSQL  │  │ Claude     │  │  Gmail     │ │  PayNow QR  │
+   │ (Drizzle)   │  │ Agent SDK  │  │  OAuth     │ │  (SGQR)     │
    └─────────────┘  └────────────┘  └────────────┘ └─────────────┘
 ```
 
