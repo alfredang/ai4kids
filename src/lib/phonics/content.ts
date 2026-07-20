@@ -3,7 +3,10 @@
  *
  * A map of phonics "worlds", each a bite-size mini-game with gamified star
  * progression. Ported from the ai4kids Android app (PhonicsContent.kt); ideas
- * adapted from the PhonixQuest concept. Whole *words* are spoken with the
+ * adapted from the PhonixQuest concept. That "ported from Android" is *origin,
+ * not direction*: under the web-first flow (2026-07-17) new phonics changes land
+ * HERE first, then port to Android — don't read it as "keep sending edits back".
+ * Whole *words* are spoken with the
  * browser's SpeechSynthesis (it reads words fine), but isolated *sounds* play
  * pre-recorded clips from `public/phonics/phonemes` — TTS reads text as words
  * and so mangles a bare phoneme ("ah" ≠ /æ/). An optional Claude "Buddy" adds

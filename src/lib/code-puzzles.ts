@@ -6,7 +6,9 @@
  *
  * Ported from the Android app's `CodePuzzlesEngine.kt` (the source of truth for
  * this game — see that repo's `web-parity` skill). Keep the rules and LEVELS in
- * step with it.
+ * step with it. This is the *deliberate exception* to the web-first flow: unlike
+ * the other games, Code Puzzles changes originate on Android — edit
+ * CodePuzzlesEngine.kt first, then mirror here and re-run npm run check:code-puzzles.
  */
 
 /** A single arrow move. `glyph` is used only for on-screen rendering. */
