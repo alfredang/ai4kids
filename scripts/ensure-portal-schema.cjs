@@ -118,6 +118,18 @@ const STATEMENTS = [
   // Security: never let a user inserted without an explicit role default to
   // 'admin'. Idempotent — safe to re-run on every boot. Mirrors schema.ts.
   `ALTER TABLE users ALTER COLUMN role SET DEFAULT 'parent'`,
+  // Ensure the program_category enum has every value the app uses. Enum
+  // additions never reached prod (migrations aren't run on deploy), so seeding
+  // an activity with category 'art' failed with "invalid input value for enum
+  // program_category". ADD VALUE IF NOT EXISTS is idempotent; each runs in its
+  // own autocommit statement so the new value is usable by later inserts.
+  `ALTER TYPE program_category ADD VALUE IF NOT EXISTS 'storytelling'`,
+  `ALTER TYPE program_category ADD VALUE IF NOT EXISTS 'art'`,
+  `ALTER TYPE program_category ADD VALUE IF NOT EXISTS 'coding'`,
+  `ALTER TYPE program_category ADD VALUE IF NOT EXISTS 'game-dev'`,
+  `ALTER TYPE program_category ADD VALUE IF NOT EXISTS 'phonics'`,
+  `ALTER TYPE program_category ADD VALUE IF NOT EXISTS 'escape-room'`,
+  `ALTER TYPE program_category ADD VALUE IF NOT EXISTS 'free-games'`,
   // Code Quest (/learn/code-puzzles) went live after seed-portal.ts had already
   // created its row as a "coming soon" placeholder. That row pre-exists in prod,
   // so the ACTIVITY_SEED insert below can't reach it (ON CONFLICT DO NOTHING),
@@ -137,14 +149,25 @@ const STATEMENTS = [
 
 // Activity catalogue rows that aren't synced from elsewhere. Idempotent: new
 // deploys add missing rows but never overwrite admin edits (ON CONFLICT DO
-// NOTHING). Keep in sync with src/lib/card-games/meta.ts.
+// NOTHING). Keep the learn activities in sync with scripts/seed-portal.ts and
+// the card games with src/lib/card-games/meta.ts.
 const ACTIVITY_SEED = [
-  { slug: "cards-memory-match", title: "Memory Match", emoji: "🧠", desc: "Flip and find the pairs", order: 50 },
-  { slug: "cards-tower-tumble", title: "Tower Tumble", emoji: "🃏", desc: "Climb the piles, empty your hand", order: 51 },
-  { slug: "cards-number-hunt", title: "Number Hunt", emoji: "🔢", desc: "Make the target number", order: 52 },
-  { slug: "cards-beat-the-die", title: "Beat the Die", emoji: "🎲", desc: "Roll, then beat it", order: 53 },
-  { slug: "cards-card-showdown", title: "Card Showdown", emoji: "⭐", desc: "Clash for victory stars", order: 54 },
-  { slug: "cards-matching-colours", title: "Matching Colours", emoji: "🌈", desc: "Quick! Tap the right colour", order: 55 },
+  // Core learn activities (were previously only in the manual seed-portal run,
+  // so freshly-deployed prod DBs were missing e.g. the AI Art Studio card).
+  { slug: "ai-storytelling", title: "Story Time", category: "storytelling", emoji: "📖", desc: "Build a branching tale or write your own — illustrated by AI.", live: true, order: 0 },
+  { slug: "ai-art", title: "AI Art Studio", category: "art", emoji: "🎨", desc: "Turn your ideas into pictures with AI.", live: true, order: 1 },
+  { slug: "ai-phonics", title: "Phonics Quest", category: "phonics", emoji: "🔤", desc: "Travel the worlds and master every sound!", live: true, order: 2 },
+  { slug: "ai-coding", title: "AI Code Quest", category: "coding", emoji: "💻", desc: "Build with code blocks (coming soon).", live: false, order: 3 },
+  { slug: "ai-game-dev", title: "AI Game Maker", category: "game-dev", emoji: "🎮", desc: "Make your own game (coming soon).", live: false, order: 4 },
+  { slug: "ai-jigsaw", title: "AI Jigsaw", category: "art", emoji: "🧩", desc: "Turn your art into a puzzle!", live: true, order: 5 },
+  { slug: "ai-buddy", title: "Talking Buddy", category: "storytelling", emoji: "🤖", desc: "Chat with an AI friend!", live: true, order: 6 },
+  // Brain Arcade card games.
+  { slug: "cards-memory-match", title: "Memory Match", category: "free-games", emoji: "🧠", desc: "Flip and find the pairs", live: true, order: 50 },
+  { slug: "cards-tower-tumble", title: "Tower Tumble", category: "free-games", emoji: "🃏", desc: "Climb the piles, empty your hand", live: true, order: 51 },
+  { slug: "cards-number-hunt", title: "Number Hunt", category: "free-games", emoji: "🔢", desc: "Make the target number", live: true, order: 52 },
+  { slug: "cards-beat-the-die", title: "Beat the Die", category: "free-games", emoji: "🎲", desc: "Roll, then beat it", live: true, order: 53 },
+  { slug: "cards-card-showdown", title: "Card Showdown", category: "free-games", emoji: "⭐", desc: "Clash for victory stars", live: true, order: 54 },
+  { slug: "cards-matching-colours", title: "Matching Colours", category: "free-games", emoji: "🌈", desc: "Quick! Tap the right colour", live: true, order: 55 },
 ];
 
 (async () => {
@@ -160,9 +183,9 @@ const ACTIVITY_SEED = [
     for (const a of ACTIVITY_SEED) {
       await client.query(
         `INSERT INTO activities (slug, title, category, emoji, description, live, leaderboard_enabled, sort_order)
-         VALUES ($1, $2, 'free-games', $3, $4, true, true, $5)
+         VALUES ($1, $2, $3, $4, $5, $6, true, $7)
          ON CONFLICT (slug) DO NOTHING`,
-        [a.slug, a.title, a.emoji, a.desc, a.order],
+        [a.slug, a.title, a.category, a.emoji, a.desc, a.live, a.order],
       );
     }
     console.log("[ensure-schema] portal schema + activities ensured");
