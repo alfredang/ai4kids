@@ -137,6 +137,19 @@ Every public form (contact form, SSG ATO consultation form, etc.) POSTs to `/api
 
 All UI work in this repo should follow [.claude/skills/frontend-design/SKILL.md](.claude/skills/frontend-design/SKILL.md), which is locked to the bright kids/public theme (with a note on the admin-only dark theme).
 
+### The Android app is a downstream consumer of `/learn` — this repo is the origin
+
+**`ai4kids_android`** (sibling checkout, typically `../ai4kids_android`) is a native port that mirrors the `/learn/*` games' **behaviour** and hand-parses the `/api/learn/*` **contract**. As of **2026-07-17** the flow is **web first, then port to Android**: key changes land here, then get carried over. Nothing in this repo enforces that, so it only holds if you know it.
+
+Two consequences that aren't visible from any single file here:
+
+- **An `/api/learn/*` schema change is a breaking change to a *shipped* client.** Android parses those responses by hand with `org.json` — no compile-time check, no type error. Rename a field in a Zod schema or a `NextResponse.json({...})` and the Android app reads `null` in production. Android has to ship in step.
+- **A game's data and its behaviour drift independently.** `src/lib/<game>/*.ts` (word lists, levels, story beats) and `src/app/learn/<game>/*.tsx` (how a round is actually played) are separate layers, and only the first is easy to diff. `src/lib/phonics/content.ts` once sat byte-identical to its Kotlin counterpart while [src/app/learn/phonics/PhonicsQuest.tsx](src/app/learn/phonics/PhonicsQuest.tsx) had gained an entire tap-to-arm mechanic Android lacked. **Matching data files prove nothing about behaviour.**
+
+Before starting new work under `/learn/*` or `/api/learn/*`, read [TODO.md](TODO.md) — it tracks the outstanding parity drift, and the divergences that are deliberate so you don't "fix" them. Android's own porting checklist lives in that repo's `.claude/skills/web-parity/SKILL.md`.
+
+**Real exception:** Code Puzzles is an *Android original* ported to the web. `CodePuzzlesEngine.kt` — not [src/lib/code-puzzles.ts](src/lib/code-puzzles.ts) — is the source of truth for its rules and `LEVELS`; `npm run check:code-puzzles` stands in for the Kotlin test on this side.
+
 ## Deployment
 
 Production runs on Coolify with the multi-stage [Dockerfile](Dockerfile) (Node 22 Alpine, Next `standalone` output). Pushing to `main` on GitHub triggers an auto-redeploy. Environment variables are managed in Coolify's UI, **not** committed.
