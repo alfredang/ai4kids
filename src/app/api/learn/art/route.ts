@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getPortalSession } from "@/lib/portal-session";
 import { askClaudeJson } from "@/lib/ai";
-import { generateAndStoreKidImage, ART_STYLES, type ArtStyle } from "@/lib/gemini-image";
+import { generateAndStoreKidImage, ART_STYLES, type ArtStyle } from "@/lib/kid-image";
 import { recordCompletion } from "@/lib/activities";
 import { db } from "@/db";
 import { learnerArtworks } from "@/db/schema";
@@ -44,7 +44,7 @@ Mark unsafe anything violent, scary, sexual, hateful, or otherwise not for kids.
   }
   const cleanedPrompt = check?.cleanedPrompt?.trim() || prompt;
 
-  // 2. Generate + store the image (Nano Banana → Cloudflare; R2 when configured,
+  // 2. Generate + store the image (NVIDIA FLUX → Cloudflare; R2 when configured,
   //    inline data URL as a dev fallback). Provider failures are logged inside.
   const imageUrl = await generateAndStoreKidImage(cleanedPrompt, style, `learn/art/${session.id}`);
   if (!imageUrl) {

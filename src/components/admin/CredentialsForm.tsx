@@ -7,6 +7,7 @@ type Key =
   | "firecrawl_api_key"
   | "tavily_api_key"
   | "gemini_api_key"
+  | "nvidia_api_key"
   | "gmail_user"
   | "gmail_client_id"
   | "gmail_client_secret"
@@ -51,9 +52,14 @@ const FIELDS: Record<
     placeholder: "tvly-…",
   },
   gemini_api_key: {
-    label: "Google Gemini — API key (kids AI Art Studio)",
-    hint: "From Google AI Studio → Get API key. Powers Nano Banana image generation in the /learn AI Art Studio. Used only for the children's games, not the CMS chatbot. Image generation needs billing enabled on the key's Google Cloud project.",
+    label: "Google Gemini — API key (kids Talking Buddy)",
+    hint: "From Google AI Studio → Get API key. Powers the /learn Talking Buddy's text replies (Gemini Flash) and a richer TTS voice fallback. Used only for the children's games, not the CMS chatbot.",
     placeholder: "AIza…",
+  },
+  nvidia_api_key: {
+    label: "NVIDIA NIM — API key (kids AI Art Studio, free image fallback)",
+    hint: "From build.nvidia.com → any model → Get API Key (starts nvapi-). Powers FLUX.1-dev image generation in the /learn AI Art Studio as a free fallback when Nano Banana has no quota. Used only for the children's games, not the CMS chatbot.",
+    placeholder: "nvapi-…",
   },
   cloudflare_ai_token: {
     label: "Cloudflare Workers AI — API token (free image fallback)",
@@ -167,7 +173,7 @@ const GROUPS: Group[] = [
   {
     title: "AI integrations",
     description: "API keys for Claude, research, and content tooling.",
-    keys: ["anthropic_auth_token", "firecrawl_api_key", "tavily_api_key", "gemini_api_key", "cloudflare_ai_token"],
+    keys: ["anthropic_auth_token", "firecrawl_api_key", "tavily_api_key", "gemini_api_key", "nvidia_api_key", "cloudflare_ai_token"],
   },
   {
     title: "Gmail OAuth (lead notification email)",

@@ -2,11 +2,11 @@
  * Kid-safe image generation for the AI Art Studio (/learn/art).
  *
  * Auto-fallback chain:
- *   1. Nano Banana (Gemini 2.5 Flash Image) — the production path once the
- *      Gemini key has image quota (billing enabled).
- *   2. Cloudflare Workers AI (Flux) — free-tier fallback used in dev / before
- *      Gemini billing is on. Reuses the Cloudflare account id stored as
- *      `r2_account_id`, plus a Workers AI token (`cloudflare_ai_token`).
+ *   1. NVIDIA NIM (FLUX.1-dev) — the production path via build.nvidia.com. Free
+ *      tier, no billing required. Needs an `nvidia_api_key`.
+ *   2. Cloudflare Workers AI (Flux) — free-tier fallback. Reuses the Cloudflare
+ *      account id stored as `r2_account_id`, plus a Workers AI token
+ *      (`cloudflare_ai_token`).
  *
  * Both are the sanctioned non-Anthropic image path, scoped to the children's
  * games — the CMS chatbot + admin AI Assist still go through the Claude Agent
@@ -17,8 +17,7 @@
 import { getCredential } from "@/lib/secrets";
 import { getR2Config, uploadToR2 } from "@/lib/r2";
 
-const GEMINI_MODEL = "gemini-2.5-flash-image";
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const NVIDIA_ENDPOINT = "https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-dev";
 const CF_MODEL = "@cf/black-forest-labs/flux-1-schnell";
 
 /** Allowlisted art styles. The value is server-side templated into the prompt. */
@@ -56,35 +55,33 @@ function buildPrompt(prompt: string, style: ArtStyle, characterAnchor?: string):
  *  so the same character + seed reproduces a matching look page to page. */
 export type ImageOpts = { characterAnchor?: string; seed?: number };
 
-type GeminiResponse = {
-  candidates?: { content?: { parts?: { inlineData?: { mimeType?: string; data?: string } }[] } }[];
-};
-
 /** Result of one provider attempt — the image, or a human-readable reason it failed. */
 type Attempt = { image: GeneratedImage | null; note: string };
 
-/** Nano Banana (Gemini 2.5 Flash Image). */
-async function generateWithGemini(fullPrompt: string): Promise<Attempt> {
-  const key = await getCredential("gemini_api_key");
-  if (!key) return { image: null, note: "gemini: no key" };
+type NvidiaResponse = { artifacts?: { base64?: string; finishReason?: string }[] };
+
+/** NVIDIA NIM FLUX.1-dev (build.nvidia.com), free tier — no billing required. */
+async function generateWithNvidia(fullPrompt: string, seed?: number): Promise<Attempt> {
+  const key = await getCredential("nvidia_api_key");
+  if (!key) return { image: null, note: "nvidia: no key" };
   try {
-    const res = await fetch(`${GEMINI_ENDPOINT}?key=${encodeURIComponent(key)}`, {
+    const res = await fetch(NVIDIA_ENDPOINT, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt }] }] }),
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", Accept: "application/json" },
+      // 1024² base mode; 30 steps trades a little quality for latency on a kids
+      // art request. FLUX returns the image as base64 in `artifacts[0].base64`.
+      body: JSON.stringify({ prompt: fullPrompt, mode: "base", cfg_scale: 5, width: 1024, height: 1024, steps: 30, ...(seed != null ? { seed } : {}) }),
     });
     if (!res.ok) {
       const body = (await res.text().catch(() => "")).slice(0, 300);
-      return { image: null, note: `gemini: HTTP ${res.status} ${body}` };
+      return { image: null, note: `nvidia: HTTP ${res.status} ${body}` };
     }
-    const data = (await res.json()) as GeminiResponse;
-    for (const part of data.candidates?.[0]?.content?.parts ?? []) {
-      const inline = part.inlineData;
-      if (inline?.data) return { image: { base64: inline.data, mime: inline.mimeType || "image/png" }, note: "gemini: ok" };
-    }
-    return { image: null, note: "gemini: no image in response" };
+    const data = (await res.json()) as NvidiaResponse;
+    const b64 = data.artifacts?.[0]?.base64;
+    if (typeof b64 === "string" && b64.length > 0) return { image: { base64: b64, mime: "image/jpeg" }, note: "nvidia: ok" };
+    return { image: null, note: "nvidia: no image in response" };
   } catch (e) {
-    return { image: null, note: `gemini: threw ${e instanceof Error ? e.message : String(e)}` };
+    return { image: null, note: `nvidia: threw ${e instanceof Error ? e.message : String(e)}` };
   }
 }
 
@@ -122,7 +119,7 @@ async function generateWithCloudflare(fullPrompt: string, seed?: number): Promis
 
 /**
  * Generate a single kid-safe image from a (already safety-checked) prompt and
- * an allowlisted style. Tries Nano Banana first, then the Cloudflare free
+ * an allowlisted style. Tries NVIDIA FLUX first, then the Cloudflare free
  * fallback. Returns the image plus a `debug` trail of each provider attempt
  * (surfaced in dev to diagnose failures; never shown to children).
  */
@@ -134,13 +131,13 @@ export async function generateKidImage(
   const fullPrompt = buildPrompt(prompt, style, opts.characterAnchor);
   const debug: string[] = [];
 
-  const gemini = await generateWithGemini(fullPrompt);
-  debug.push(gemini.note);
-  if (gemini.image) return { image: gemini.image, debug };
+  const nvidia = await generateWithNvidia(fullPrompt, opts.seed);
+  debug.push(nvidia.note);
+  if (nvidia.image) return { image: nvidia.image, debug };
 
   const cloudflare = await generateWithCloudflare(fullPrompt, opts.seed);
   debug.push(cloudflare.note);
-  for (const note of debug) console.error("[gemini-image]", note);
+  for (const note of debug) console.error("[kid-image]", note);
   return { image: cloudflare.image, debug };
 }
 
@@ -169,7 +166,7 @@ export async function generateAndStoreKidImage(
   try {
     return await uploadToR2(cfg, key, Buffer.from(image.base64, "base64"), image.mime);
   } catch (e) {
-    console.error("[gemini-image] store failed, returning inline", e);
+    console.error("[kid-image] store failed, returning inline", e);
     return dataUrl;
   }
 }

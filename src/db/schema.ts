@@ -459,7 +459,7 @@ export const learnerArtworks = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     originalPrompt: text("original_prompt").notNull(), // the child's raw words (for parent review)
-    prompt: text("prompt").notNull(), // safety-cleaned prompt sent to Nano Banana
+    prompt: text("prompt").notNull(), // safety-cleaned prompt sent to the image model
     style: text("style").notNull(), // one of the allowlisted art styles
     r2Url: text("r2_url").notNull(), // generated image stored in R2
     createdAt: timestamp("created_at").defaultNow().notNull(),

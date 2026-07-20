@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getPortalSession } from "@/lib/portal-session";
-import { generateAndStoreKidImage } from "@/lib/gemini-image";
+import { generateAndStoreKidImage } from "@/lib/kid-image";
 
 export const maxDuration = 60;
 

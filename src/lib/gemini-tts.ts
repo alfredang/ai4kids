@@ -1,7 +1,7 @@
 /**
  * Kid-safe text-to-speech for the Talking Buddy and story narration.
  *
- * Auto-fallback chain — same shape as gemini-image.ts but the priority is
+ * Auto-fallback chain — same shape as kid-image.ts but the priority is
  * INVERTED, so don't pattern-match the two:
  *   1. Cloudflare Deepgram Aura (Workers AI) — the production path. Fast enough
  *      to speak on demand.
