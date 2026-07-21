@@ -19,9 +19,19 @@ AI storytelling · coding · game design · phonics · escape rooms — a gamifi
 
 </div>
 
-## Screenshot
+## Screenshots
 
-![Screenshot](screenshot.png)
+<div align="center">
+
+| Homepage | Kids' Dashboard | Kid Login |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/homepage/homepage-1.png" width="260" /> | <img src="docs/screenshots/kids-dashboard.png" width="260" /> | <img src="docs/screenshots/login/kids-login.png" width="260" /> |
+| **Story Builder** | **Talking Buddy** | **AI Art Studio** |
+| <img src="docs/screenshots/story/story-builder.png" width="260" /> | <img src="docs/screenshots/talking-buddy.png" width="260" /> | <img src="docs/screenshots/art/art-studio.png" width="260" /> |
+| **AI Phonics** | **AI Escape Rooms** | **Brain Arcade** |
+| <img src="docs/screenshots/phonics.png" width="260" /> | <img src="docs/screenshots/escape-rooms.png" width="260" /> | <img src="docs/screenshots/card-games.png" width="260" /> |
+
+</div>
 
 ## About
 
@@ -32,7 +42,7 @@ AI storytelling · coding · game design · phonics · escape rooms — a gamifi
 | Area | What it does |
 |------|--------------|
 | 🎭 **Three roles** | **Learners** (kids) log in with a username + password; **Parents** & **Admins** sign in with Google (or credentials). Each role lands on its own dashboard. |
-| 🧩 **AI activities** | **AI Storytelling** (writes & illustrates a story) and **AI Phonics** (listen-and-match word game) are fully playable; AI Coding, Game Dev, Escape Rooms & Free Games are scaffolded. |
+| 🧩 **AI activities** | Seven play-at-home games in the kid playground: **Story Builder** (branching, AI-illustrated tales + "write your own"), **AI Phonics** (listen-and-match), **Talking Buddy** (voice/text AI chat), **AI Art Studio** (paint an idea, then jigsaw it), **Code Puzzles**, **AI Escape Rooms** and **Brain Arcade** card games — each awarding points and badges. |
 | 🏆 **Gamification** | Every activity awards a score; kids collect badges and climb an opt-in **leaderboard**. |
 | 👨‍👩‍👧 **Parent dashboard** | Link multiple kids, see activities completed, total scores, badges, and recent activity per child. |
 | 📅 **Online booking** | Parents book a class seat for a child in seconds. |
@@ -50,7 +60,7 @@ AI storytelling · coding · game design · phonics · escape rooms — a gamifi
 | **Styling** | Tailwind CSS 4 (bright kids theme + dark admin theme), Framer Motion, Fredoka / Nunito fonts |
 | **Database** | PostgreSQL 16 + Drizzle ORM |
 | **Auth** | Auth.js v5 (Credentials + Google OAuth), JWT sessions, role-based access |
-| **AI/LLM** | Anthropic Claude Agent SDK (stories, phonics word-sets, agentic class-close) |
+| **AI/LLM** | **Claude Agent SDK** (CMS chatbot, admin AI Assist, agentic class-close) · **Google Gemini** for the kids-games text & chat · **NVIDIA FLUX** + **Cloudflare Flux** for kid-safe image generation |
 | **Payments** | PayNow QR generation (EMVCo SGQR via `qrcode`) |
 | **Email** | Gmail OAuth (transactional booking emails) |
 | **Security** | bcrypt password hashing, AES-256-GCM encrypted credential store |
@@ -92,10 +102,17 @@ ai-kids/
 │   │   ├── book/[classId]/          # Booking flow
 │   │   ├── parent/                  # Parent dashboard (kids, bookings, add child)
 │   │   ├── learn/                   # Kid playground (activities, leaderboard)
-│   │   │   ├── storytelling/        #   live AI activity
-│   │   │   └── phonics/             #   live AI activity
+│   │   │   ├── storytelling/        #   Story Builder + write-your-own
+│   │   │   ├── phonics/             #   listen-and-match phonics games
+│   │   │   ├── buddy/               #   Talking Buddy (AI voice/text chat)
+│   │   │   ├── art/                 #   AI Art Studio → jigsaw
+│   │   │   ├── code-puzzles/        #   robot path puzzles
+│   │   │   ├── escape-room/         #   top-down escape rooms
+│   │   │   ├── cards/               #   Brain Arcade card games
+│   │   │   ├── stories/  gallery/   #   saved storybooks + artwork
+│   │   │   └── leaderboard/         #   opt-in scores
 │   │   ├── admin/                   # Back-office (programs/classes/bookings/people)
-│   │   └── api/learn/               # Activity APIs (storytelling, phonics, score)
+│   │   └── api/learn/               # Activity APIs (storytelling, phonics, buddy, art, cards, story-image, score)
 │   ├── components/
 │   │   ├── public/                  # SiteHeader, SiteFooter
 │   │   ├── portal/                  # SignOutButton, shared portal UI
@@ -135,9 +152,10 @@ cp .env.example .env
 #   set DATABASE_URL, AUTH_SECRET (openssl rand -base64 32),
 #   GOOGLE_CLIENT_ID/SECRET, ADMIN_EMAIL/PASSWORD, PAYNOW_UEN, WHATSAPP_NUMBER
 
-# 4. Create the schema
+# 4. Create the schema  (db:push is broken on local PG 18 — generate + migrate instead)
 createdb ai_kids
-npm run db:push           # or: psql ai_kids -f drizzle/0000_init_ai_kids.sql
+npm run db:generate       # generate a migration from src/db/schema.ts
+npm run db:migrate        # apply it
 
 # 5. Seed demo data (admin, parent, kids, programs, classes, activities)
 npm run seed:portal

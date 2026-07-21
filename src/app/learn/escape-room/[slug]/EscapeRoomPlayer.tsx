@@ -4541,7 +4541,7 @@ function CipherPuzzle({
           disabled={solved}
           placeholder="Type the word"
           aria-label="Type the decoded word"
-          className={`w-44 rounded-full border-2 px-5 py-2.5 text-center font-fun text-lg font-700 uppercase tracking-widest text-slate-800 outline-none transition ${
+          className={`w-44 rounded-full border-2 px-5 py-2.5 text-center font-fun text-lg font-700 uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal text-slate-800 outline-none transition ${
             shake ? "animate-pulse border-coral" : "border-amber-200 focus:border-coral"
           }`}
         />
@@ -5952,7 +5952,7 @@ function CipherExitKeypad({
                 disabled={!ready}
                 placeholder={ready ? "Type the word" : "Power all 3 machines"}
                 aria-label="Type the decoded word"
-                className={`w-48 rounded-full border-2 px-5 py-2.5 text-center font-fun text-lg font-700 uppercase tracking-widest text-slate-800 outline-none transition disabled:bg-slate-50 disabled:text-slate-300 ${
+                className={`w-48 rounded-full border-2 px-5 py-2.5 text-center font-fun text-lg font-700 uppercase tracking-widest placeholder:text-sm placeholder:normal-case placeholder:tracking-normal text-slate-800 outline-none transition disabled:bg-slate-50 disabled:text-slate-300 ${
                   shake ? "animate-pulse border-coral" : "border-amber-200 focus:border-coral"
                 }`}
               />
@@ -6079,7 +6079,7 @@ function UnscrambleExitKeypad({
                             }
                             placeholder="Unscramble"
                             aria-label={`Unscramble ${w.core}`}
-                            className={`w-36 rounded-full border-2 px-4 py-2 text-center font-fun text-base font-700 uppercase tracking-widest text-slate-800 outline-none transition ${
+                            className={`w-36 rounded-full border-2 px-4 py-2 text-center font-fun text-base font-700 uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal text-slate-800 outline-none transition ${
                               shake === i ? "animate-pulse border-coral" : "border-amber-200 focus:border-coral"
                             }`}
                           />
