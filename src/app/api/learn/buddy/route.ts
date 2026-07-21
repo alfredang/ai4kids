@@ -15,6 +15,11 @@ const schema = z.object({ message: z.string().min(1).max(500) });
 const KID_SYSTEM =
   "You are a friendly, cheerful buddy for a young child (ages 5-10) having an ongoing chat. Reply in 1-3 short, simple, positive sentences. Remember what was said earlier in the conversation. Never discuss anything scary, violent, sexual, or unsafe. If asked something inappropriate, gently redirect to something fun. No links, no complex words.";
 
+/** Leading "Buddy:" / "Child:" role labels the model sometimes echoes from the
+ *  replayed transcript. Stripped on write (so they aren't stored) and on read (so
+ *  any already-saved ones don't keep seeding the pattern). */
+const LEADING_LABEL = /^(?:\s*(?:buddy|child)\s*:\s*)+/i;
+
 export async function POST(req: Request) {
   const session = await getPortalSession();
   if (!session || session.role !== "learner") return NextResponse.json({ error: "Learners only" }, { status: 403 });
@@ -41,11 +46,16 @@ export async function POST(req: Request) {
   await saveBuddyMessage(learnerId, "user", parsed.data.message);
   const history = await getBuddyHistory(learnerId, 10);
   const conversation = history
-    .map((m) => `${m.role === "user" ? "Child" : "Buddy"}: ${m.content.trim()}`)
+    .map((m) => `${m.role === "user" ? "Child" : "Buddy"}: ${m.content.trim().replace(LEADING_LABEL, "")}`)
     .join("\n\n");
 
-  const reply = (await generateKidReply(conversation, system))
-    ?? "Hmm, my ears are sleepy! Can you say that again?";
+  const fallbackReply = "Hmm, my ears are sleepy! Can you say that again?";
+  const raw = (await generateKidReply(conversation, system)) ?? fallbackReply;
+  // The history is replayed to the model as a "Child:/Buddy:" transcript, so the
+  // model sometimes continues the pattern and prefixes its answer with "Buddy:".
+  // Strip any leading role label BEFORE saving — otherwise the prefixed reply is
+  // stored and the transcript grows "Buddy: Buddy: …", reinforcing it every turn.
+  const reply = raw.replace(LEADING_LABEL, "").trim() || fallbackReply;
   await saveBuddyMessage(learnerId, "buddy", reply);
   await awardBuddyPointsCapped(learnerId); // small points, capped per day
 
