@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { slugify } from "@/lib/slugify";
 import { CategoriesAdminTabs } from "@/components/admin/CategoriesAdminTabs";
+import { requireStaff } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,7 @@ export default async function CategoriesAdmin({
 
   async function add(formData: FormData) {
     "use server";
+    await requireStaff();
     const name = String(formData.get("name") ?? "").trim();
     const type = String(formData.get("type") ?? "post") as "page" | "post";
     if (!name) return;
@@ -57,6 +59,7 @@ export default async function CategoriesAdmin({
 
   async function update(formData: FormData) {
     "use server";
+    await requireStaff();
     const id = Number(formData.get("id"));
     const name = String(formData.get("name") ?? "").trim();
     const slug = String(formData.get("slug") ?? "").trim();
@@ -73,6 +76,7 @@ export default async function CategoriesAdmin({
 
   async function remove(formData: FormData) {
     "use server";
+    await requireStaff();
     const id = Number(formData.get("id"));
     if (!id) return;
     // Unlink from pages and posts first to avoid FK violation.

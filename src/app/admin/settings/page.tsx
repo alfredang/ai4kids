@@ -3,6 +3,7 @@ import { settings } from "@/db/schema";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { SavedToast } from "@/app/admin/_components/SavedToast";
+import { requireStaff } from "@/lib/admin-guard";
 
 export default async function SettingsGeneral() {
   const all = await db.select().from(settings);
@@ -10,6 +11,7 @@ export default async function SettingsGeneral() {
 
   async function save(formData: FormData) {
     "use server";
+    await requireStaff();
     const entries: Array<[string, string]> = [
       ["site_title", String(formData.get("site_title") ?? "").trim()],
       ["tagline", String(formData.get("tagline") ?? "").trim()],

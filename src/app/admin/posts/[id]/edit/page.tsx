@@ -9,6 +9,7 @@ import { getAdminSession } from "@/lib/admin-role";
 import { createDraftSocialPosts } from "@/lib/social/draft";
 import { dispatchDueSocialPosts } from "@/lib/social/dispatch";
 import { getSocialAutoPublish } from "@/lib/social/settings";
+import { requireStaff } from "@/lib/admin-guard";
 
 function slugify(input: string): string {
   return input
@@ -122,6 +123,7 @@ export default async function EditPost({
 
   async function save(data: PostFormData) {
     "use server";
+    await requireStaff();
     const categoryId = data.suggestedCategorySlug
       ? await resolveCategoryId(data.suggestedCategorySlug)
       : undefined;
@@ -187,6 +189,7 @@ export default async function EditPost({
 
   async function queueSocialDrafts() {
     "use server";
+    await requireStaff();
     const ids = await createDraftSocialPosts(p.id);
     // If the operator has flipped auto-publish ON, treat the manual Queue
     // Drafts click as "go live now" — saves a second trip to /admin/social.

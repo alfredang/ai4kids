@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { PostsBulkTable } from "@/components/admin/PostsBulkTable";
 import { PostsFilterBar } from "@/components/admin/PostsFilterBar";
 import { getAdminSession } from "@/lib/admin-role";
+import { requireStaff } from "@/lib/admin-guard";
 
 type Search = {
   q?: string;
@@ -120,6 +121,7 @@ export default async function PostsList({
 
   async function createPost() {
     "use server";
+    await requireStaff();
     const s = await getAdminSession();
     const aId = s?.id ? Number(s.id) : null;
     const [p] = await db
@@ -138,6 +140,7 @@ export default async function PostsList({
 
   async function deleteMany(ids: number[]) {
     "use server";
+    await requireStaff();
     if (!Array.isArray(ids) || ids.length === 0) return;
     await db.delete(postTags).where(inArray(postTags.postId, ids));
     await db.delete(posts).where(inArray(posts.id, ids));
@@ -149,6 +152,7 @@ export default async function PostsList({
 
   async function setFeatured(id: number, featured: boolean) {
     "use server";
+    await requireStaff();
     if (!id) return;
     await db.update(posts).set({ featured }).where(eq(posts.id, id));
     revalidatePath("/admin/posts");

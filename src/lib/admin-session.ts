@@ -2,14 +2,19 @@
  * Custom admin session cookie — runs alongside NextAuth's JWT cookie so the
  * admin stays signed in even if NextAuth's cookie gets wiped (a recurring
  * bug with the v5 beta + Turbopack on localhost). HMAC-signed with
- * AUTH_SECRET, 10-year TTL, opaque to the browser.
+ * AUTH_SECRET, opaque to the browser.
+ *
+ * TTL: 30-day absolute (minted at login, not re-minted per request — RSC can't
+ * set cookies). Active admins slide via the NextAuth JWT cookie, which IS
+ * re-issued each request (updateAge=0); this cookie is the fallback and simply
+ * requires a fresh login at most every 30 days.
  *
  * Format: `<userId>.<emailB64>.<expiresAtSec>.<sigB64Url>`
  */
 import crypto from "node:crypto";
 
 export const ADMIN_COOKIE_NAME = "ti_admin_session";
-const TEN_YEARS_SEC = 60 * 60 * 24 * 365 * 10;
+const THIRTY_DAYS_SEC = 60 * 60 * 24 * 30;
 
 function getSecret(): string {
   const s = process.env.AUTH_SECRET;
@@ -24,7 +29,7 @@ function hmac(payload: string): string {
 export type AdminSession = { userId: number; email: string; expiresAt: number };
 
 export function mintAdminSessionValue(userId: number, email: string): string {
-  const expiresAt = Math.floor(Date.now() / 1000) + TEN_YEARS_SEC;
+  const expiresAt = Math.floor(Date.now() / 1000) + THIRTY_DAYS_SEC;
   const emailEnc = Buffer.from(email, "utf8").toString("base64url");
   const payload = `${userId}.${emailEnc}.${expiresAt}`;
   return `${payload}.${hmac(payload)}`;
@@ -62,7 +67,7 @@ export function adminCookieOptions() {
     httpOnly: true as const,
     sameSite: "lax" as const,
     path: "/",
-    maxAge: TEN_YEARS_SEC,
+    maxAge: THIRTY_DAYS_SEC,
     secure: process.env.NODE_ENV === "production",
   };
 }

@@ -12,6 +12,7 @@ import {
 import { LEAD_EMAIL_VARIABLES } from "@/lib/email";
 import { SavedToast } from "@/app/admin/_components/SavedToast";
 import { SourceLabelsEditor } from "./SourceLabelsEditor";
+import { requireStaff } from "@/lib/admin-guard";
 
 const KEYS = {
   to: "lead_notification_email",
@@ -46,6 +47,7 @@ export default async function LeadEmailSettingsPage() {
 
   async function save(formData: FormData) {
     "use server";
+    await requireStaff();
     await upsertString(KEYS.to, String(formData.get("to") ?? "").trim());
     await upsertString(KEYS.cc, String(formData.get("cc") ?? "").trim());
     await upsertString(KEYS.subject, String(formData.get("subject") ?? "").trim());
@@ -74,6 +76,7 @@ export default async function LeadEmailSettingsPage() {
 
   async function resetDefaults() {
     "use server";
+    await requireStaff();
     await upsertString(KEYS.to, LEAD_EMAIL_DEFAULTS.to);
     await upsertString(KEYS.cc, LEAD_EMAIL_DEFAULTS.cc);
     await upsertString(KEYS.subject, LEAD_EMAIL_DEFAULTS.subject);

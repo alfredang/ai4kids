@@ -5,6 +5,7 @@ import { programs } from "@/db/schema";
 import { desc } from "drizzle-orm";
 import { CATEGORIES, formatPrice } from "@/lib/portal-content";
 import { slugify } from "@/lib/slugify";
+import { requireStaff } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ export default async function AdminPrograms() {
 
   async function createProgram(formData: FormData) {
     "use server";
+    await requireStaff();
     const title = String(formData.get("title") || "").trim();
     const category = String(formData.get("category") || "coding");
     if (!title) return;

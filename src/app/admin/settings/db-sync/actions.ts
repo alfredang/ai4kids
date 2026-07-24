@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { settings } from "@/db/schema";
 import { reloadScheduler } from "@/lib/scheduler";
 import { runFullSync } from "@/lib/sync-jobs/full-sync";
+import { requireStaff } from "@/lib/admin-guard";
 
 async function setSetting(key: string, value: unknown): Promise<void> {
   await db
@@ -18,6 +19,7 @@ async function setSetting(key: string, value: unknown): Promise<void> {
 }
 
 export async function saveDbSync(formData: FormData): Promise<void> {
+  await requireStaff();
   const enabled = formData.get("enabled") === "on";
   const cronExpr = String(formData.get("cron") ?? "0 * * * *").trim();
   await setSetting("db_sync_enabled", enabled);
@@ -32,6 +34,7 @@ export async function saveDbSync(formData: FormData): Promise<void> {
 }
 
 export async function runSyncNow(): Promise<void> {
+  await requireStaff();
   const result = await runFullSync("manual");
   await setSetting("db_sync_last_run", { at: new Date().toISOString(), ...result });
   console.log("[db-sync] manual run:", result);

@@ -4,6 +4,7 @@ import { asc, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { slugify } from "@/lib/slugify";
 import { TagsAdminTable } from "@/components/admin/TagsAdminTable";
+import { requireStaff } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ export default async function TagsAdmin() {
 
   async function add(formData: FormData) {
     "use server";
+    await requireStaff();
     const name = String(formData.get("name") ?? "").trim();
     if (!name) return;
     await db.insert(tags).values({ name, slug: slugify(name) }).onConflictDoNothing();
@@ -32,6 +34,7 @@ export default async function TagsAdmin() {
   }
   async function remove(id: number) {
     "use server";
+    await requireStaff();
     if (!id) return;
     await db.delete(tags).where(eq(tags.id, id));
     revalidatePath("/admin/tags");

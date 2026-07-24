@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { classes, programs } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { formatPrice } from "@/lib/portal-content";
+import { requireStaff } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function AdminClasses() {
 
   async function createClass(formData: FormData) {
     "use server";
+    await requireStaff();
     const programId = Number(formData.get("programId"));
     const title = String(formData.get("title") || "").trim();
     if (!programId || !title) return;
@@ -39,6 +41,7 @@ export default async function AdminClasses() {
 
   async function setStatus(formData: FormData) {
     "use server";
+    await requireStaff();
     const id = Number(formData.get("id"));
     const status = String(formData.get("status"));
     await db
@@ -50,6 +53,7 @@ export default async function AdminClasses() {
 
   async function removeClass(formData: FormData) {
     "use server";
+    await requireStaff();
     await db.delete(classes).where(eq(classes.id, Number(formData.get("id"))));
     revalidatePath("/admin/classes");
   }

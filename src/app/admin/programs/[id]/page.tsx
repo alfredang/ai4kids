@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { programs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { CATEGORIES } from "@/lib/portal-content";
+import { requireStaff } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function EditProgram({
 
   async function save(formData: FormData) {
     "use server";
+    await requireStaff();
     await db
       .update(programs)
       .set({
@@ -40,6 +42,7 @@ export default async function EditProgram({
 
   async function remove() {
     "use server";
+    await requireStaff();
     await db.delete(programs).where(eq(programs.id, pid));
     redirect("/admin/programs");
   }

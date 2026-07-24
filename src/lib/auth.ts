@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { z } from "zod";
 import { authConfig } from "./auth.config";
+import { rateLimit } from "./rate-limit";
 
 declare module "next-auth" {
   interface Session {
@@ -27,11 +28,22 @@ const providers: NextAuthConfig["providers"] = [
       identifier: { label: "Username or Email", type: "text" },
       password: { label: "Password", type: "password" },
     },
-    async authorize(raw) {
+    async authorize(raw, request) {
       const parsed = credentialsSchema.safeParse(raw);
       if (!parsed.success) return null;
       const { identifier, password } = parsed.data;
       const id = identifier.trim().toLowerCase();
+      // Brute-force throttle (same primitive as /api/admin/login): per-identifier
+      // for targeted guessing, per-IP for a spray across many accounts. Returning
+      // null here surfaces as a normal "invalid credentials" to the caller.
+      const ip =
+        request?.headers?.get("cf-connecting-ip") ||
+        request?.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        null;
+      const WINDOW_MS = 10 * 60_000;
+      const overId = !rateLimit(`login:id:${id}`, 5, WINDOW_MS);
+      const overIp = ip !== null && !rateLimit(`login:ip:${ip}`, 10, WINDOW_MS);
+      if (overId || overIp) return null;
       // Match by username (kids) first, then email (staff).
       const [byUsername] = await db
         .select()

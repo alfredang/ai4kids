@@ -3,12 +3,14 @@ import { menus, menuItems } from "@/db/schema";
 import { asc, eq, count as drizzleCount } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { MenuBuilder } from "@/components/admin/MenuBuilder";
+import { requireStaff } from "@/lib/admin-guard";
 
 export default async function MenusAdmin() {
   const allMenus = await db.select().from(menus);
 
   async function addItem(formData: FormData) {
     "use server";
+    await requireStaff();
     const menuId = Number(formData.get("menuId"));
     const label = String(formData.get("label") ?? "").trim();
     const href = String(formData.get("href") ?? "").trim();
@@ -29,6 +31,7 @@ export default async function MenusAdmin() {
 
   async function deleteItem(formData: FormData) {
     "use server";
+    await requireStaff();
     const id = Number(formData.get("id"));
     if (!id) return;
     await db.delete(menuItems).where(eq(menuItems.id, id));
@@ -41,6 +44,7 @@ export default async function MenusAdmin() {
     order: { id: number; parentId: number | null; sortOrder: number }[],
   ) {
     "use server";
+    await requireStaff();
     if (!menuId || !Array.isArray(order)) return;
     // Validate every id in order belongs to this menu (defense in depth).
     const existing = await db

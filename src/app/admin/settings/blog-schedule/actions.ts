@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { settings } from "@/db/schema";
 import { reloadScheduler } from "@/lib/scheduler";
 import { runWeeklyBlogJob } from "@/lib/blog-jobs/weekly-blog";
+import { requireStaff } from "@/lib/admin-guard";
 
 async function setSetting(key: string, value: unknown): Promise<void> {
   await db
@@ -18,6 +19,7 @@ async function setSetting(key: string, value: unknown): Promise<void> {
 }
 
 export async function saveBlogSchedule(formData: FormData): Promise<void> {
+  await requireStaff();
   const enabled = formData.get("enabled") === "on";
   const autoApprove = formData.get("auto_approve") === "on";
   const pushToRemote = formData.get("push_to_remote") === "on";
@@ -45,6 +47,7 @@ export async function saveBlogSchedule(formData: FormData): Promise<void> {
 }
 
 export async function runNow(): Promise<void> {
+  await requireStaff();
   const result = await runWeeklyBlogJob({ trigger: "manual" });
   console.log("[blog-schedule] manual run:", result);
   revalidatePath("/admin/settings/blog-schedule");
