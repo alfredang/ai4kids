@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { getPayNowConfig, getWhatsAppNumber, setPortalSetting } from "@/lib/portal-settings";
+import { requireStaff } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export default async function PortalSettings({
 
   async function save(formData: FormData) {
     "use server";
+    await requireStaff();
     await setPortalSetting("paynow_uen", String(formData.get("uen") || "").trim());
     await setPortalSetting("paynow_payee_name", String(formData.get("payee") || "").trim());
     await setPortalSetting("whatsapp_number", String(formData.get("whatsapp") || "").replace(/[^0-9]/g, ""));

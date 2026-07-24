@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/admin-role";
 import { SavedToast } from "@/app/admin/_components/SavedToast";
+import { requireAdminRole } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ export default async function UsersPage() {
 
   async function createUser(formData: FormData) {
     "use server";
+    await requireAdminRole();
     await ensureAdmin();
     const email = String(formData.get("email") ?? "").trim().toLowerCase();
     const name = String(formData.get("name") ?? "").trim();
@@ -51,6 +53,7 @@ export default async function UsersPage() {
 
   async function updateRole(formData: FormData) {
     "use server";
+    await requireAdminRole();
     await ensureAdmin();
     const id = Number(formData.get("id"));
     const role = String(formData.get("role") ?? "");
@@ -67,6 +70,7 @@ export default async function UsersPage() {
 
   async function resetPassword(formData: FormData) {
     "use server";
+    await requireAdminRole();
     await ensureAdmin();
     const id = Number(formData.get("id"));
     const password = String(formData.get("password") ?? "");
@@ -79,6 +83,7 @@ export default async function UsersPage() {
 
   async function deleteUser(formData: FormData) {
     "use server";
+    await requireAdminRole();
     const session = await ensureAdmin();
     const id = Number(formData.get("id"));
     if (!id) redirect("/admin/users?err=id");

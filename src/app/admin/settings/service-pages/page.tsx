@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { SavedToast } from "@/app/admin/_components/SavedToast";
 import { SERVICE_PAGES } from "@/lib/service-pages";
+import { requireStaff } from "@/lib/admin-guard";
 
 const SLUGS = Object.keys(SERVICE_PAGES);
 
@@ -29,6 +30,7 @@ export default async function ServicePagesAdmin({
 
   async function save(formData: FormData) {
     "use server";
+    await requireStaff();
     const slug = String(formData.get("slug") ?? "").trim();
     const raw = String(formData.get("json") ?? "").trim();
     const action = String(formData.get("action") ?? "save");

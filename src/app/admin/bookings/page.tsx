@@ -4,6 +4,7 @@ import { bookings, classes, programs, users } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { confirmBooking, markBookingPaid, cancelBooking } from "@/lib/booking";
 import { formatPrice } from "@/lib/portal-content";
+import { requireStaff } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -30,16 +31,19 @@ export default async function AdminBookings() {
 
   async function doConfirm(formData: FormData) {
     "use server";
+    await requireStaff();
     await confirmBooking(Number(formData.get("id")));
     revalidatePath("/admin/bookings");
   }
   async function doPaid(formData: FormData) {
     "use server";
+    await requireStaff();
     await markBookingPaid(Number(formData.get("id")));
     revalidatePath("/admin/bookings");
   }
   async function doCancel(formData: FormData) {
     "use server";
+    await requireStaff();
     await cancelBooking(Number(formData.get("id")));
     revalidatePath("/admin/bookings");
   }

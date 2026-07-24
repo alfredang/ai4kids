@@ -5,6 +5,7 @@ import { pages } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { PostEditorForm, type PostFormData } from "@/components/admin/PostEditorForm";
 import type { JSONContent } from "@tiptap/react";
+import { requireStaff } from "@/lib/admin-guard";
 
 export default async function EditPage({
   params,
@@ -43,6 +44,7 @@ export default async function EditPage({
 
   async function save(data: PostFormData) {
     "use server";
+    await requireStaff();
     await db
       .update(pages)
       .set({

@@ -4,6 +4,7 @@ import { asc, desc, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { PagesBulkTable, type PageRow } from "@/components/admin/PagesBulkTable";
+import { requireStaff } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export default async function PagesList() {
 
   async function createPage() {
     "use server";
+    await requireStaff();
     const [p] = await db
       .insert(pages)
       .values({
@@ -31,6 +33,7 @@ export default async function PagesList() {
 
   async function deleteMany(ids: number[]) {
     "use server";
+    await requireStaff();
     if (!Array.isArray(ids) || ids.length === 0) return;
     await db.delete(pages).where(inArray(pages.id, ids));
     revalidatePath("/admin/pages");
@@ -38,6 +41,7 @@ export default async function PagesList() {
 
   async function updateStatus(ids: number[], status: PageRow["status"]) {
     "use server";
+    await requireStaff();
     if (!Array.isArray(ids) || ids.length === 0) return;
     if (!["draft", "published", "archived"].includes(status)) return;
     await db.update(pages).set({ status }).where(inArray(pages.id, ids));

@@ -4,6 +4,7 @@ import { desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { requireStaff } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ export default async function BlocklistPage() {
 
   async function add(formData: FormData) {
     "use server";
+    await requireStaff();
     const pattern = String(formData.get("pattern") ?? "").trim().toLowerCase();
     const kind = String(formData.get("kind") ?? "block");
     const reason = String(formData.get("reason") ?? "").trim() || null;
@@ -29,6 +31,7 @@ export default async function BlocklistPage() {
 
   async function remove(formData: FormData) {
     "use server";
+    await requireStaff();
     const id = Number(formData.get("id"));
     if (id) await db.delete(leadBlocklist).where(eq(leadBlocklist.id, id));
     revalidatePath("/admin/leads/blocklist");

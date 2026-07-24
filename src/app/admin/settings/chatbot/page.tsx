@@ -8,6 +8,7 @@ import {
 } from "@/lib/chatbot-settings";
 import { isCredentialSet } from "@/lib/secrets";
 import { SavedToast } from "@/app/admin/_components/SavedToast";
+import { requireStaff } from "@/lib/admin-guard";
 
 export default async function ChatbotSettingsPage() {
   const current = await getChatbotSettings();
@@ -15,6 +16,7 @@ export default async function ChatbotSettingsPage() {
 
   async function save(formData: FormData) {
     "use server";
+    await requireStaff();
     const systemPrompt = String(formData.get("systemPrompt") ?? "");
     const questions = formData.getAll("faq_question").map((v) => String(v));
     const answers = formData.getAll("faq_answer").map((v) => String(v));
@@ -31,6 +33,7 @@ export default async function ChatbotSettingsPage() {
 
   async function resetPrompt() {
     "use server";
+    await requireStaff();
     await saveChatbotSettings({ systemPrompt: DEFAULT_SYSTEM_PROMPT, faq: current.faq });
     revalidatePath("/admin/settings/chatbot");
     redirect("/admin/settings/chatbot?saved=1");

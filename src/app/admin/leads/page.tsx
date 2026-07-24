@@ -3,6 +3,7 @@ import { leads } from "@/db/schema";
 import { desc, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { LeadsBulkTable, type LeadRow } from "@/components/admin/LeadsBulkTable";
+import { requireStaff } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ export default async function LeadsList() {
 
   async function deleteMany(ids: number[]) {
     "use server";
+    await requireStaff();
     if (!Array.isArray(ids) || ids.length === 0) return;
     await db.delete(leads).where(inArray(leads.id, ids));
     revalidatePath("/admin/leads");
@@ -18,6 +20,7 @@ export default async function LeadsList() {
 
   async function updateStatus(ids: number[], status: LeadRow["status"]) {
     "use server";
+    await requireStaff();
     if (!Array.isArray(ids) || ids.length === 0) return;
     const allowed = ["new", "follow_up", "contacted", "qualified", "converted", "lost"] as const;
     if (!(allowed as readonly string[]).includes(status)) return;

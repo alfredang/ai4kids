@@ -3,6 +3,7 @@ import { settings } from "@/db/schema";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { SavedToast } from "@/app/admin/_components/SavedToast";
+import { requireStaff } from "@/lib/admin-guard";
 import {
   HOMEPAGE_COPY_DEFAULTS,
   HERO_KPI_DEFAULTS,
@@ -86,6 +87,7 @@ export default async function HomepageCopyPage() {
 
   async function save(formData: FormData) {
     "use server";
+    await requireStaff();
     for (const f of FIELDS) {
       const v = String(formData.get(f.key) ?? "").trim();
       await db

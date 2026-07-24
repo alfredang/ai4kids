@@ -7,6 +7,7 @@ import { dispatchDueSocialPosts } from "@/lib/social/dispatch";
 import { getSocialAutoPublish, setSocialAutoPublish } from "@/lib/social/settings";
 import { AutoPublishToggle } from "@/components/admin/AutoPublishToggle";
 import { htmlToPlainText } from "@/lib/social/html-to-social";
+import { requireStaff } from "@/lib/admin-guard";
 import {
   generateLinkedInPostLLM,
   generateFacebookPostLLM,
@@ -19,6 +20,7 @@ export default async function SocialPostsList() {
 
   async function toggleAutoPublish(enabled: boolean) {
     "use server";
+    await requireStaff();
     await setSocialAutoPublish(enabled);
     revalidatePath("/admin/social");
   }
@@ -47,6 +49,7 @@ export default async function SocialPostsList() {
 
   async function deleteMany(ids: number[]) {
     "use server";
+    await requireStaff();
     if (!Array.isArray(ids) || ids.length === 0) return;
     await db.delete(socialPosts).where(inArray(socialPosts.id, ids));
     revalidatePath("/admin/social");
@@ -59,6 +62,7 @@ export default async function SocialPostsList() {
     status?: SocialPostRow["status"];
   }) {
     "use server";
+    await requireStaff();
     const patch: Record<string, unknown> = { updatedAt: new Date() };
     if (typeof input.content === "string") patch.content = input.content;
     if (input.scheduledAt !== undefined) {
@@ -71,6 +75,7 @@ export default async function SocialPostsList() {
 
   async function regenerate(id: number) {
     "use server";
+    await requireStaff();
     const [row] = await db.select().from(socialPosts).where(eq(socialPosts.id, id));
     if (!row || !row.postId) return;
     const [post] = await db.select().from(posts).where(eq(posts.id, row.postId));
@@ -104,6 +109,7 @@ export default async function SocialPostsList() {
 
   async function dispatchNow(ids: number[]) {
     "use server";
+    await requireStaff();
     if (!Array.isArray(ids) || ids.length === 0) return { picked: 0, published: 0, failed: 0, details: [] };
     const r = await dispatchDueSocialPosts({ ids });
     revalidatePath("/admin/social");
@@ -119,6 +125,7 @@ export default async function SocialPostsList() {
    */
   async function regenerateAndRepost(id: number) {
     "use server";
+    await requireStaff();
     await regenerate(id);
     await db
       .update(socialPosts)

@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { users, parentChildren } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { requireStaff } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ export default async function AdminPeople() {
 
   async function link(formData: FormData) {
     "use server";
+    await requireStaff();
     const parentId = Number(formData.get("parentId"));
     const childId = Number(formData.get("childId"));
     if (!parentId || !childId) return;

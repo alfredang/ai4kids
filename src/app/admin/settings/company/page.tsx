@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { SavedToast } from "@/app/admin/_components/SavedToast";
 import { SOCIAL_DEFAULTS, type SocialLink } from "@/lib/site-settings";
 import { LogoUploader } from "@/components/admin/LogoUploader";
+import { requireStaff } from "@/lib/admin-guard";
 
 const FIELDS: Array<{
   key: string;
@@ -70,6 +71,7 @@ export default async function CompanyInfoPage() {
 
   async function save(formData: FormData) {
     "use server";
+    await requireStaff();
     for (const f of FIELDS) {
       const v = String(formData.get(f.key) ?? "").trim();
       await db
