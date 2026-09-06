@@ -17,6 +17,8 @@ AI storytelling · coding · game design · phonics · escape rooms — a gamifi
 
 **[🚀 Live Site](https://ai4kids.tertiarycourses.com.sg/)** · [Report Bug](https://github.com/alfredang/ai4kids/issues) · [Request Feature](https://github.com/alfredang/ai4kids/issues)
 
+**Also on mobile** — [![App Store](https://img.shields.io/badge/App_Store-AI4Kids-0D96F6?logo=apple&logoColor=white)](https://apps.apple.com/app/ai4kids/id6780267161) [![Google Play](https://img.shields.io/badge/Google_Play-AI4Kids-414141?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=sg.com.tertiarycourses.ai4kids)
+
 </div>
 
 ## Screenshots
@@ -50,6 +52,7 @@ AI storytelling · coding · game design · phonics · escape rooms — a gamifi
 | 🤖 **Agentic auto-close** | When a class hits its max students it **auto-closes** and an AI routine drafts the "class full" notifications for parents + admin. |
 | 🛠️ **Admin back-office** | Manage programs, classes (open/close/edit/delete), bookings (confirm / mark-paid / cancel), and kid↔parent links. |
 | 💬 **WhatsApp** | Floating click-to-chat button for instant parent enquiries. |
+| 📱 **Mobile apps** | Companion **iOS** and **Android** apps are live; the site footer links to both store listings. |
 
 ## Tech Stack
 

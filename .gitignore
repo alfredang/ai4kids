@@ -34,3 +34,9 @@ tsconfig.tsbuildinfo
 *.sql.gz
 wp-*.sql*
 .claude/scheduled_tasks.lock
+
+# Distribution archives (rebuildable — never pushed to GitHub)
+*.zip
+
+# Source material the project was derived from — not ours to republish.
+**/reference/

@@ -11,6 +11,37 @@ export function SiteFooter() {
           <p className="mt-2 text-sm text-slate-500">
             Where children ages 4–16 learn AI by making things they love.
           </p>
+          <h4 className="mt-6 font-fun font-700 text-slate-700">Get the app</h4>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <a
+              href="https://apps.apple.com/app/ai4kids/id6780267161"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Download AI4Kids on the App Store"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/badges/app-store.svg"
+                alt="Download AI4Kids on the App Store"
+                className="h-9 w-auto"
+              />
+            </a>
+            <a
+              href="https://play.google.com/store/apps/details?id=sg.com.tertiarycourses.ai4kids"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Get AI4Kids on Google Play"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {/* Google's badge ships with ~12% transparent padding; the negative
+                  margin trims it so it optically matches the App Store badge. */}
+              <img
+                src="/badges/google-play.png"
+                alt="Get AI4Kids on Google Play"
+                className="-my-1.5 -mx-2 h-12 w-auto"
+              />
+            </a>
+          </div>
         </div>
         <div>
           <h4 className="font-fun font-700 text-slate-700">Learn</h4>
