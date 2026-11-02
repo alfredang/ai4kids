@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { getPortalSession } from "@/lib/portal-session"
-import { generateKidReply } from "@/lib/gemini-chat"
+import { getLearnerSession } from "@/lib/learner-session"
+import { generateKidReply } from "@/lib/kids-ai"
 import { saveBuddyMessage, getBuddyHistory } from "@/lib/buddy-chat"
 import { awardBuddyPointsCapped } from "@/lib/activities"
 import { rateLimit } from "@/lib/rate-limit"
@@ -21,8 +21,8 @@ const KID_SYSTEM =
 const LEADING_LABEL = /^(?:\s*(?:buddy|child)\s*:\s*)+/i;
 
 export async function POST(req: Request) {
-  const session = await getPortalSession();
-  if (!session || session.role !== "learner") return NextResponse.json({ error: "Learners only" }, { status: 403 });
+  const session = await getLearnerSession();
+  if (!session || session.role !== "learner") return NextResponse.json({ error: "A parent must sign in and choose their child before playing." }, { status: 403 });
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Say something!" }, { status: 400 });
   const learnerId = Number(session.id);

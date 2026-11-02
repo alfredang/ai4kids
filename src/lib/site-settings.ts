@@ -58,6 +58,8 @@ export const LEAD_SOURCE_LABELS_KEY = "lead_source_labels";
 export const DEFAULT_LEAD_SOURCE_LABELS: Record<string, string> = {
   home: "General Inquiry",
   "free-trial": "Free Trial",
+  "december-holiday-workshop": "December Holiday Workshop",
+  "family-ai-starter-pack": "Family AI Starter Pack",
   "ssg-ato-page": "Courseware (SSG ATO)",
   "tpqa-page": "Courseware (TPQA)",
   "course-dev-page": "Courseware (WSQ Course Dev)",
@@ -83,7 +85,7 @@ export async function getLeadSourceLabels(): Promise<Record<string, string>> {
       for (const [k, v] of Object.entries(row.value as Record<string, unknown>)) {
         if (typeof v === "string" && v.trim()) out[k] = v.trim();
       }
-      return Object.keys(out).length ? out : DEFAULT_LEAD_SOURCE_LABELS;
+      return { ...DEFAULT_LEAD_SOURCE_LABELS, ...out };
     }
   } catch {
     // fall through

@@ -34,6 +34,7 @@ export type CredentialKey =
   | "anthropic_auth_token"
   | "firecrawl_api_key"
   | "tavily_api_key"
+  | "deepseek_api_key"
   | "gemini_api_key"
   | "nvidia_api_key"
   | "gmail_user"
@@ -79,6 +80,7 @@ export async function getCredential(key: CredentialKey): Promise<string | null> 
     anthropic_auth_token: process.env.ANTHROPIC_AUTH_TOKEN,
     firecrawl_api_key: process.env.FIRECRAWL_API_KEY,
     tavily_api_key: process.env.TAVILY_API_KEY,
+    deepseek_api_key: process.env.DEEPSEEK_API_KEY,
     gemini_api_key: process.env.GEMINI_API_KEY,
     nvidia_api_key: process.env.NVIDIA_API_KEY,
     gmail_user: process.env.GMAIL_USER,
@@ -148,6 +150,7 @@ export async function getCredentialSource(key: CredentialKey): Promise<Credentia
     anthropic_auth_token: process.env.ANTHROPIC_AUTH_TOKEN,
     firecrawl_api_key: process.env.FIRECRAWL_API_KEY,
     tavily_api_key: process.env.TAVILY_API_KEY,
+    deepseek_api_key: process.env.DEEPSEEK_API_KEY,
     gemini_api_key: process.env.GEMINI_API_KEY,
     nvidia_api_key: process.env.NVIDIA_API_KEY,
     gmail_user: process.env.GMAIL_USER,

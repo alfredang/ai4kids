@@ -1,3 +1,4 @@
+import { PlayfulText } from "@/components/public/PlaySymbol";
 import { db } from "@/db";
 import { bookings, classes, programs, users } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
@@ -66,9 +67,7 @@ export default async function ParentBookings({
     <div>
       <h1 className="font-fun text-3xl font-700 text-slate-900">My bookings</h1>
       {booked && (
-        <div className="mt-4 rounded-2xl bg-mint/20 p-4 font-round text-emerald-700">
-          🎉 Booking requested! We'll confirm the class and email your PayNow QR shortly.
-        </div>
+        <div className="mt-4 rounded-2xl bg-mint/20 p-4 font-round text-emerald-700"><PlayfulText text={" 🎉 Booking requested! We'll confirm the class and email your PayNow QR shortly. "} /></div>
       )}
 
       <div className="mt-6 space-y-4">

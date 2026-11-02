@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getPortalSession } from "@/lib/portal-session";
-import { askClaudeJson } from "@/lib/ai";
+import { getLearnerSession } from "@/lib/learner-session";
+import { askKidsJson } from "@/lib/kids-ai";
 import { HEROES, PLACES, OBJECTS, MOODS, buildStory, secondFork, type Story, type Branch, type Choice } from "@/lib/story-builder/templates";
 
 export const maxDuration = 45;
@@ -68,7 +68,7 @@ function sanitizeBranch(
 }
 
 /**
- * Ask Claude for the story's FIRST ACT only, then graft the offline engine's
+ * Ask DeepSeek for the story's FIRST ACT only, then graft the offline engine's
  * second fork onto each branch — giving four endings at no extra wait.
  *
  * Why not ask the model for the whole two-fork tree? Measured (interleaved, real
@@ -78,8 +78,8 @@ function sanitizeBranch(
  * actually *less* text than the previous single-fork prompt, so this is no
  * slower than what shipped before.
  */
-async function generateWithClaude(h: Choice, p: Choice, o: Choice, m: Choice): Promise<Story | null> {
-  const json = await askClaudeJson<StoryJson>(
+async function generateWithDeepSeek(h: Choice, p: Choice, o: Choice, m: Choice): Promise<Story | null> {
+  const json = await askKidsJson<StoryJson>(
     `Write the first half of a short, gentle, G-rated adventure story for a child aged 7 to 9.
 Ingredients to use:
 - Hero: ${h.name} ${h.emoji}
@@ -108,9 +108,9 @@ Rules: each page is 1 to 2 short sentences. Keep it positive, kind, and age-appr
 }
 
 export async function POST(req: Request) {
-  const session = await getPortalSession();
+  const session = await getLearnerSession();
   if (!session || session.role !== "learner") {
-    return NextResponse.json({ error: "Learners only" }, { status: 403 });
+    return NextResponse.json({ error: "A parent must sign in and choose their child before playing." }, { status: 403 });
   }
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
@@ -121,6 +121,6 @@ export async function POST(req: Request) {
   const o = OBJECTS[parsed.data.object];
   const m = MOODS[parsed.data.mood];
 
-  const story = (await generateWithClaude(h, p, o, m)) ?? buildStory(h, p, o, m);
+  const story = (await generateWithDeepSeek(h, p, o, m)) ?? buildStory(h, p, o, m);
   return NextResponse.json({ story });
 }

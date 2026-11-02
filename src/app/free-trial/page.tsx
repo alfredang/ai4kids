@@ -1,3 +1,4 @@
+import { PlayfulText } from "@/components/public/PlaySymbol";
 import type { Metadata } from "next";
 import { SiteHeader } from "@/components/public/SiteHeader";
 import { SiteFooter } from "@/components/public/SiteFooter";
@@ -33,9 +34,7 @@ export default function FreeTrialPage() {
         <div className="mx-auto grid max-w-6xl items-start gap-10 px-4 py-14 md:grid-cols-2 md:py-20">
           {/* Pitch */}
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 font-fun text-sm font-600 text-coral shadow-sm">
-              🎉 Free trial · Ages 4–16
-            </span>
+            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 font-fun text-sm font-600 text-coral shadow-sm"><PlayfulText text={" 🎉 Free trial · Ages 4–16 "} /></span>
             <h1 className="mt-4 font-fun text-4xl font-700 leading-tight text-slate-900 md:text-5xl">
               Book your child&apos;s <span className="text-coral">free trial</span> class
             </h1>
@@ -47,7 +46,7 @@ export default function FreeTrialPage() {
               {PERKS.map((p) => (
                 <li key={p.title} className="flex items-start gap-3">
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-2xl shadow-sm">
-                    {p.emoji}
+                    <PlayfulText text={p.emoji} />
                   </span>
                   <div>
                     <div className="font-fun font-700 text-slate-800">{p.title}</div>

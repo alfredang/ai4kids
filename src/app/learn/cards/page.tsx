@@ -1,9 +1,10 @@
+import { PlayfulText } from "@/components/public/PlaySymbol";
 import Link from "next/link";
 import { db } from "@/db";
 import { activities, activityCompletions } from "@/db/schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import { getPortalSession } from "@/lib/portal-session";
+import { getLearnerSession } from "@/lib/learner-session";
 import { CARD_GAMES, modeLabel } from "@/lib/card-games/meta";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +14,8 @@ export const metadata = {
 };
 
 export default async function CardGamesHub() {
-  const session = await getPortalSession();
-  if (!session) redirect("/login?from=/learn/cards");
+  const session = await getLearnerSession();
+  if (!session) redirect("/parent/play");
   const learnerId = Number(session.id);
   const slugs = CARD_GAMES.map((g) => g.activitySlug);
 
@@ -44,7 +45,7 @@ export default async function CardGamesHub() {
       {/* Header banner */}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-4 rounded-[2rem] bg-gradient-to-r from-bubble/30 to-sky/30 p-6 shadow-lg ring-1 ring-sky/20">
         <div>
-          <div className="font-fun text-2xl font-700 text-slate-900">🕹️ Brain Arcade</div>
+          <div className="font-fun text-2xl font-700 text-slate-900"><PlayfulText text={"🕹️ Brain Arcade"} /></div>
           <p className="font-round text-slate-600">
             Quick card games — play solo, team up, or race your friends with a room code.
           </p>
@@ -65,7 +66,7 @@ export default async function CardGamesHub() {
             >
               <div className="flex items-start justify-between">
                 <div className={`inline-flex h-14 w-14 items-center justify-center rounded-2xl text-3xl ${game.accent}`}>
-                  {game.emoji}
+                  <PlayfulText text={game.emoji} />
                 </div>
                 <span className="rounded-full bg-slate-50 px-2.5 py-1 font-fun text-xs font-700 text-slate-500 ring-1 ring-slate-100">
                   {game.modes.map(modeLabel).join(" · ")}

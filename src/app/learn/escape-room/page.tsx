@@ -1,16 +1,17 @@
+import { PlayfulText } from "@/components/public/PlaySymbol";
 import Link from "next/link";
 import { db } from "@/db";
 import { activities, activityCompletions } from "@/db/schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import { getPortalSession } from "@/lib/portal-session";
+import { getLearnerSession } from "@/lib/learner-session";
 import { ESCAPE_ROOMS } from "@/lib/escape-rooms";
 
 export const dynamic = "force-dynamic";
 
 export default async function EscapeRoomsHub() {
-  const session = await getPortalSession();
-  if (!session) redirect("/login?from=/learn/escape-room");
+  const session = await getLearnerSession();
+  if (!session) redirect("/parent/play");
   const learnerId = Number(session.id);
   const slugs = ESCAPE_ROOMS.map((r) => r.activitySlug);
 
@@ -41,7 +42,7 @@ export default async function EscapeRoomsHub() {
       {/* Header banner */}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-4 rounded-[2rem] bg-gradient-to-r from-sunny/40 to-coral/30 p-6 shadow-lg ring-1 ring-amber-100">
         <div>
-          <div className="font-fun text-2xl font-700 text-slate-900">🗝️ AI Escape Rooms</div>
+          <div className="font-fun text-2xl font-700 text-slate-900"><PlayfulText text={"🗝️ AI Escape Rooms"} /></div>
           <p className="font-round text-slate-600">
             Pick a room, explore it, and solve every puzzle to break out!
           </p>
@@ -62,7 +63,7 @@ export default async function EscapeRoomsHub() {
             >
               <div className="flex items-start justify-between">
                 <div className={`inline-flex h-14 w-14 items-center justify-center rounded-2xl text-3xl ${room.accent}`}>
-                  {room.emoji}
+                  <PlayfulText text={room.emoji} />
                 </div>
                 <span className="rounded-full bg-amber-50 px-2.5 py-1 font-fun text-xs font-700 text-amber-600 ring-1 ring-amber-100">
                   ages {room.ageRange}

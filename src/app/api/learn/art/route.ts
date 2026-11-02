@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getPortalSession } from "@/lib/portal-session";
-import { askClaudeJson } from "@/lib/ai";
+import { getLearnerSession } from "@/lib/learner-session";
+import { askKidsJson } from "@/lib/kids-ai";
 import { generateAndStoreKidImage, ART_STYLES, type ArtStyle } from "@/lib/kid-image";
 import { recordCompletion } from "@/lib/activities";
 import { db } from "@/db";
@@ -17,9 +17,9 @@ const schema = z.object({
 type SafetyCheck = { safe: boolean; cleanedPrompt: string };
 
 export async function POST(req: Request) {
-  const session = await getPortalSession();
+  const session = await getLearnerSession();
   if (!session || session.role !== "learner") {
-    return NextResponse.json({ error: "Learners only" }, { status: 403 });
+    return NextResponse.json({ error: "A parent must sign in and choose their child before playing." }, { status: 403 });
   }
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
@@ -28,15 +28,15 @@ export async function POST(req: Request) {
   const { prompt, style } = parsed.data;
 
   // 1. Safety gate — never pass raw kid text straight to the image model.
-  //    If the classifier is unavailable, fail safe by using the raw prompt.
-  const check = await askClaudeJson<SafetyCheck>(
+  //    If the classifier is unavailable, reject the request before image generation.
+  const check = await askKidsJson<SafetyCheck>(
     `A child wants to make a picture of: "${prompt}".
 Decide if this is wholesome and appropriate for a young child's drawing.
 Return ONLY JSON: {"safe": boolean, "cleanedPrompt": "a tidied, kid-friendly version of the idea"}.
 Mark unsafe anything violent, scary, sexual, hateful, or otherwise not for kids.`,
     { model: "haiku" },
   );
-  if (check && !check.safe) {
+  if (!check || check.safe !== true || typeof check.cleanedPrompt !== "string") {
     return NextResponse.json({
       blocked: true,
       message: "Let's try a different idea! How about something fun like a friendly dragon or a space cat? 🚀",

@@ -1,3 +1,4 @@
+import { PublicTheme } from "@/components/public/PublicTheme";
 import "./globals.css";
 import type { Metadata } from "next";
 import {
@@ -6,12 +7,17 @@ import {
   JetBrains_Mono,
   Fredoka,
   Nunito,
+  Fraunces,
 } from "next/font/google";
 import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
 import { getWhatsAppNumber } from "@/lib/portal-settings";
 
 // Admin/blog (inherited) typography
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans-import", display: "swap" });
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans-import",
+  display: "swap",
+});
 const exo2 = Exo_2({
   subsets: ["latin"],
   weight: ["500", "600", "700", "800", "900"],
@@ -37,13 +43,19 @@ const nunito = Nunito({
   variable: "--font-round-import",
   display: "swap",
 });
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-story-import",
+  display: "swap",
+});
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3080";
+const SITE_URL = "https://ai4kids.tertiarycourses.com.sg";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  icons: { icon: [{ url: "/sunny-icon.svg", type: "image/svg+xml" }, { url: "/favicon.ico", sizes: "48x48" }], apple: "/apple-icon.png" },
   title: {
-    default: "AI Kids Academy — Fun AI Learning for Ages 4–16",
+    default: "AI for Kids Singapore | December School Holiday Workshops",
     template: "%s | AI Kids Academy",
   },
   description:
@@ -69,10 +81,10 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${exo2.variable} ${mono.variable} ${fredoka.variable} ${nunito.variable}`}
+      className={`${inter.variable} ${exo2.variable} ${mono.variable} ${fredoka.variable} ${nunito.variable} ${fraunces.variable}`}
     >
       <body className="min-h-screen antialiased font-round text-slate-800">
-        {children}
+        <PublicTheme>{children}</PublicTheme>
         {whatsapp ? <WhatsAppButton number={whatsapp} /> : null}
       </body>
     </html>

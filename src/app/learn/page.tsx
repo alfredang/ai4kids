@@ -1,9 +1,10 @@
+import { PlayfulText } from "@/components/public/PlaySymbol";
 import Link from "next/link";
 import { db } from "@/db";
 import { activities, activityCompletions } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import { getPortalSession } from "@/lib/portal-session";
+import { getLearnerSession } from "@/lib/learner-session";
 import { getLearnerStats, getLearnerBadges } from "@/lib/portal-queries";
 import { CATEGORY_BY_SLUG } from "@/lib/portal-content";
 import { ESCAPE_ROOMS } from "@/lib/escape-rooms";
@@ -24,8 +25,8 @@ const LIVE_ROUTES: Record<string, string> = {
 };
 
 export default async function LearnHome() {
-  const session = await getPortalSession();
-  if (!session) redirect("/login?from=/learn");
+  const session = await getLearnerSession();
+  if (!session) redirect("/parent/play");
   const learnerId = Number(session.id);
 
   const [all, stats, badges] = await Promise.all([
@@ -68,7 +69,7 @@ export default async function LearnHome() {
       {/* Stat banner */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-[2rem] bg-gradient-to-r from-grape to-bubble p-6 text-white shadow-lg">
         <div>
-          <div className="font-fun text-2xl font-700">Welcome back, {session.name?.split(" ")[0]}! 🌟</div>
+          <div className="font-fun text-2xl font-700">Welcome back, {session.name?.split(" ")[0]}<PlayfulText text={"! 🌟"} /></div>
           <div className="font-round text-white/90">Pick an activity and earn points.</div>
         </div>
         <div className="flex gap-6 text-center font-fun">
@@ -83,7 +84,7 @@ export default async function LearnHome() {
         <div className="mt-5 flex flex-wrap gap-2">
           {badges.map((b) => (
             <span key={b.title} title={b.description ?? ""} className="rounded-full bg-white px-3 py-1 font-fun font-600 text-sm text-slate-700 shadow-sm ring-1 ring-amber-100">
-              {b.emoji} {b.title}
+              <PlayfulText text={b.emoji} /> {b.title}
             </span>
           ))}
         </div>
@@ -126,16 +127,12 @@ export default async function LearnHome() {
                 <Link
                   href={route}
                   className="mt-3 rounded-full bg-coral px-4 py-2.5 text-center font-fun font-700 text-white shadow transition hover:scale-105"
-                >
-                  Play ▶
-                </Link>
+                ><PlayfulText text={" Play ▶ "} /></Link>
               ) : (
                 <Link
                   href={`/learn/coming-soon?slug=${a.slug}&title=${encodeURIComponent(a.title)}&emoji=${encodeURIComponent(a.emoji ?? cat?.emoji ?? "✨")}`}
                   className="mt-3 rounded-full bg-slate-100 px-4 py-2.5 text-center font-fun font-600 text-slate-500"
-                >
-                  Sneak peek 👀
-                </Link>
+                ><PlayfulText text={" Sneak peek 👀 "} /></Link>
               )}
             </div>,
           ];
@@ -168,9 +165,7 @@ function CardGamesTile({ count, played }: { count: number; played: number }) {
       <div className="mt-2 text-xs text-slate-400">
         {played > 0 ? `${played} of ${count} games played` : "Not played yet"}
       </div>
-      <span className="mt-3 rounded-full bg-coral px-4 py-2.5 text-center font-fun font-700 text-white shadow transition group-hover:scale-105">
-        Play ▶
-      </span>
+      <span className="mt-3 rounded-full bg-coral px-4 py-2.5 text-center font-fun font-700 text-white shadow transition group-hover:scale-105"><PlayfulText text={" Play ▶ "} /></span>
     </Link>
   );
 }
@@ -196,9 +191,7 @@ function EscapeRoomsTile({ count, played }: { count: number; played: number }) {
       <div className="mt-2 text-xs text-slate-400">
         {played > 0 ? `${played} of ${count} rooms explored` : "Not explored yet"}
       </div>
-      <span className="mt-3 rounded-full bg-coral px-4 py-2.5 text-center font-fun font-700 text-white shadow transition group-hover:scale-105">
-        Enter ▶
-      </span>
+      <span className="mt-3 rounded-full bg-coral px-4 py-2.5 text-center font-fun font-700 text-white shadow transition group-hover:scale-105"><PlayfulText text={" Enter ▶ "} /></span>
     </Link>
   );
 }

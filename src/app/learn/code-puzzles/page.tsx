@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { activities, activityCompletions } from "@/db/schema";
-import { getPortalSession } from "@/lib/portal-session";
+import { getLearnerSession } from "@/lib/learner-session";
 import { CodeQuestGame } from "./CodeQuestGame";
 
 export const dynamic = "force-dynamic";
@@ -29,8 +29,8 @@ async function clearedLevels(learnerId: number): Promise<number[]> {
 }
 
 export default async function CodePuzzlesPage() {
-  const session = await getPortalSession();
-  if (!session) redirect("/login?from=/learn/code-puzzles");
+  const session = await getLearnerSession();
+  if (!session) redirect("/parent/play");
 
   return <CodeQuestGame initialCleared={await clearedLevels(Number(session.id))} />;
 }

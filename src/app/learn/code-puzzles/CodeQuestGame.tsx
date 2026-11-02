@@ -1,4 +1,6 @@
 "use client";
+import { PlayfulText } from "@/components/public/PlaySymbol";
+
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -75,12 +77,10 @@ function LevelSelect({
     <div>
       <div className="rounded-[2rem] bg-gradient-to-r from-grape/30 to-sky/30 p-6">
         <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/70 text-3xl">💻</div>
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/70 text-3xl"><PlayfulText text={"💻"} /></div>
           <div>
             <h1 className="font-fun text-2xl font-700 text-slate-900">Code Quest</h1>
-            <p className="font-round text-slate-600">
-              Plan the robot&apos;s path to the star — then press Run! 🤖
-            </p>
+            <p className="font-round text-slate-600"><PlayfulText text={" Plan the robot&apos;s path to the star — then press Run! 🤖 "} /></p>
           </div>
         </div>
       </div>
@@ -306,8 +306,8 @@ function Grid({ level, robot }: { level: Level; robot: Cell }) {
                   isWall ? "bg-slate-700" : "bg-sky/10"
                 }`}
               >
-                {sameCell(level.goal, cell) && <span aria-hidden>⭐</span>}
-                {sameCell(robot, cell) && <span aria-hidden>🤖</span>}
+                {sameCell(level.goal, cell) && <span aria-hidden><PlayfulText text={"⭐"} /></span>}
+                {sameCell(robot, cell) && <span aria-hidden><PlayfulText text={"🤖"} /></span>}
               </div>
             );
           })}
@@ -448,17 +448,13 @@ function Controls({
             onClick={onRepeat}
             disabled={running}
             className="rounded-full bg-grape px-6 py-3 font-fun font-700 text-white shadow transition hover:scale-105 disabled:opacity-50"
-          >
-            🔁 Repeat
-          </button>
+          ><PlayfulText text={" 🔁 Repeat "} /></button>
         )}
         <button
           onClick={onUndo}
           disabled={running}
           className="rounded-full bg-slate-100 px-6 py-3 font-fun font-700 text-slate-600 transition hover:bg-slate-200 disabled:opacity-50"
-        >
-          ↩ Undo
-        </button>
+        ><PlayfulText text={" ↩ Undo "} /></button>
       </div>
 
       <button
@@ -476,7 +472,7 @@ function Celebration({ isLast, onNext }: { isLast: boolean; onNext: () => void }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 text-center shadow-lg ring-1 ring-slate-100">
-        <div className="text-6xl">🤖⭐</div>
+        <div className="text-6xl"><PlayfulText text={"🤖⭐"} /></div>
         <h2 className="mt-4 font-fun text-2xl font-700 text-slate-900">Solved it!</h2>
         <p className="mt-1 font-round text-slate-500">
           {isLast ? "You finished every puzzle. Amazing! 🎉" : "Nice planning. On to the next one!"}

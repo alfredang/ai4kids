@@ -1,4 +1,6 @@
 "use client";
+import { PlayfulText } from "@/components/public/PlaySymbol";
+
 
 import { useState } from "react";
 import Link from "next/link";
@@ -62,7 +64,7 @@ export default function ArtStudioPage() {
     <div>
       <Link href="/learn" className="font-fun text-sm font-600 text-slate-400 hover:text-coral">← Back to activities</Link>
       <div className="mt-3 rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-tangerine/30">
-        <h1 className="font-fun text-3xl font-700 text-slate-900">🎨 AI Art Studio</h1>
+        <h1 className="font-fun text-3xl font-700 text-slate-900"><PlayfulText text={"🎨 AI Art Studio"} /></h1>
         <p className="mt-1 font-round text-slate-500">Describe a picture and the AI will paint it for you!</p>
 
         <textarea
@@ -79,8 +81,7 @@ export default function ArtStudioPage() {
               key={i}
               onClick={() => setPrompt(i)}
               className="rounded-full bg-orange-50 px-3 py-1 text-sm font-600 text-slate-500 ring-1 ring-orange-100 hover:bg-orange-100"
-            >
-              ✨ {i}
+            ><PlayfulText text={" ✨ "} />{i}
             </button>
           ))}
         </div>
@@ -119,8 +120,7 @@ export default function ArtStudioPage() {
         <div className="mt-6 rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-orange-100">
           {score != null && (
             <div className="mb-4 inline-block rounded-full bg-mint/20 px-4 py-1 font-fun font-700 text-emerald-600">
-              +{score} points earned! 🎉
-            </div>
+              +{score}<PlayfulText text={" points earned! 🎉 "} /></div>
           )}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -132,9 +132,7 @@ export default function ArtStudioPage() {
             <button
               onClick={() => setPlaying(true)}
               className="mt-4 rounded-full bg-grape px-6 py-3 font-fun font-700 text-white shadow"
-            >
-              Play a puzzle 🧩
-            </button>
+            ><PlayfulText text={" Play a puzzle 🧩 "} /></button>
           ) : (
             <div className="mt-5">
               <JigsawBoard imageURL={imageURL} />
@@ -147,9 +145,7 @@ export default function ArtStudioPage() {
           <button
             onClick={() => { setImageURL(null); setScore(null); setPrompt(""); }}
             className="mt-6 rounded-full bg-sky-500 px-6 py-3 font-fun font-700 text-white shadow"
-          >
-            Make another! 🎨
-          </button>
+          ><PlayfulText text={" Make another! 🎨 "} /></button>
         </div>
       )}
     </div>

@@ -40,3 +40,15 @@ wp-*.sql*
 
 # Source material the project was derived from — not ours to republish.
 **/reference/
+
+# Local credentials and signing material
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+*.keystore
+*.jks

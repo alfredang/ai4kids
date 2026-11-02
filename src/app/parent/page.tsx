@@ -1,3 +1,4 @@
+import { PlayfulText } from "@/components/public/PlaySymbol";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getPortalSession } from "@/lib/portal-session";
@@ -26,13 +27,13 @@ export default async function ParentHome() {
   return (
     <div>
       <h1 className="font-fun text-3xl font-700 text-slate-900">
-        Hi {session.name?.split(" ")[0] || "there"}! 👋
-      </h1>
-      <p className="mt-1 font-round text-slate-500">Here's how your kids are doing.</p>
+        Hi {session.name?.split(" ")[0] || "there"}<PlayfulText text={"! 👋 "} /></h1>
+      <p className="mt-1 font-round text-slate-500">Pick a child and explore the games together.</p>
 
+      <Link href="/parent/play" className="mt-4 inline-block rounded-2xl bg-violet-600 px-6 py-3 font-bold text-white">Explore our games →</Link>
       {kids.length === 0 ? (
         <div className="mt-8 rounded-3xl bg-white p-10 text-center shadow-sm ring-1 ring-amber-100">
-          <div className="text-5xl">🐣</div>
+          <div className="text-5xl"><PlayfulText text={"🐣"} /></div>
           <p className="mt-3 font-round text-slate-600">No kids linked yet.</p>
           <Link
             href="/parent/children/new"
@@ -64,12 +65,12 @@ export default async function ParentHome() {
               <div className="mt-4">
                 <div className="font-fun font-600 text-sm text-slate-500">Recent activity</div>
                 {recent.length === 0 ? (
-                  <p className="mt-1 text-sm text-slate-400">Nothing yet — encourage them to play! 🎮</p>
+                  <p className="mt-1 text-sm text-slate-400"><PlayfulText text={"Nothing yet — encourage them to play! 🎮"} /></p>
                 ) : (
                   <ul className="mt-2 space-y-1">
                     {recent.map((r) => (
                       <li key={r.id} className="flex items-center justify-between text-sm text-slate-600">
-                        <span>{r.activityEmoji} {r.activityTitle}</span>
+                        <span><PlayfulText text={r.activityEmoji} /> {r.activityTitle}</span>
                         <span className="font-fun font-700 text-coral">+{r.score}</span>
                       </li>
                     ))}

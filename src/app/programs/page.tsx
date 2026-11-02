@@ -1,3 +1,4 @@
+import { PlayfulText } from "@/components/public/PlaySymbol";
 import Link from "next/link";
 import { db } from "@/db";
 import { programs, classes } from "@/db/schema";
@@ -29,31 +30,50 @@ export default async function ProgramsPage({
 
   const filtered = all.filter((p) => {
     if (category && p.category !== category) return false;
-    if (ageBand && (p.ageMax < ageBand.min || p.ageMin > ageBand.max)) return false;
+    if (ageBand && (p.ageMax < ageBand.min || p.ageMin > ageBand.max))
+      return false;
     return true;
   });
 
   // Count open classes per program for the badge.
-  const openClasses = await db.select().from(classes).catch(() => []);
+  const openClasses = await db
+    .select()
+    .from(classes)
+    .catch(() => []);
   const openByProgram = new Map<number, number>();
   for (const c of openClasses) {
-    if (c.status === "open") openByProgram.set(c.programId, (openByProgram.get(c.programId) ?? 0) + 1);
+    if (c.status === "open")
+      openByProgram.set(c.programId, (openByProgram.get(c.programId) ?? 0) + 1);
   }
 
   return (
-    <div className="bg-cream min-h-screen">
+    <div className="kids-workshop-page min-h-screen">
       <SiteHeader />
-      <div className="mx-auto max-w-6xl px-4 py-10">
-        <h1 className="font-fun text-4xl font-700 text-slate-900">Explore programs</h1>
-        <p className="mt-1 font-round text-slate-500">
+      <div className="kids-wrap kids-catalogue">
+        <h1 className="kids-catalogue-heading">Explore programs</h1>
+        <p className="kids-catalogue-intro">
           Small live classes where kids build real things with AI.
         </p>
+        <Link
+          href="/#workshops"
+          className="mt-6 block rounded-3xl border border-amber-200 bg-amber-50 p-5 font-round text-amber-900 transition hover:bg-amber-100"
+        >
+          <span className="font-fun text-xl"><PlayfulText text={" ☀ A December to remember, together "} /></span>
+          <span className="mt-1 block text-sm">
+            Explore the parent-child holiday adventure album: stories, art,
+            maths and science. →
+          </span>
+        </Link>
 
         {/* Filters */}
         <div className="mt-6 flex flex-wrap gap-2">
-          <FilterChip href="/programs" active={!category && !age} label="All" />
+          <CatalogueFilter
+            href="/programs"
+            active={!category && !age}
+            label="All"
+          />
           {CATEGORIES.map((c) => (
-            <FilterChip
+            <CatalogueFilter
               key={c.slug}
               href={`/programs?category=${c.slug}`}
               active={category === c.slug}
@@ -63,7 +83,7 @@ export default async function ProgramsPage({
         </div>
         <div className="mt-2 flex flex-wrap gap-2">
           {AGE_BANDS.map((b) => (
-            <FilterChip
+            <CatalogueFilter
               key={b.slug}
               href={`/programs?age=${b.slug}`}
               active={age === b.slug}
@@ -74,9 +94,7 @@ export default async function ProgramsPage({
         </div>
 
         {filtered.length === 0 ? (
-          <div className="mt-12 rounded-3xl bg-white p-10 text-center text-slate-500 shadow-sm">
-            No programs match yet — check back soon! 🐣
-          </div>
+          <div className="mt-12 rounded-3xl bg-white p-10 text-center text-slate-500 shadow-sm"><PlayfulText text={" No programs match yet — check back soon! 🐣 "} /></div>
         ) : (
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((p) => {
@@ -86,23 +104,33 @@ export default async function ProgramsPage({
                 <Link
                   key={p.id}
                   href={`/programs/${p.slug}`}
-                  className={`rounded-3xl bg-white p-6 shadow-sm ring-1 transition hover:-translate-y-1 hover:shadow-lg ${cat?.ring ?? "ring-amber-100"}`}
+                  className={`kids-catalogue-card ${cat?.ring ?? "ring-amber-100"}`}
                 >
                   <div className="flex items-start justify-between">
-                    <div className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl text-2xl ${cat?.accent ?? ""}`}>
+                    <div
+                      className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl text-2xl ${cat?.accent ?? ""}`}
+                    >
                       {p.emoji ?? cat?.emoji ?? "✨"}
                     </div>
                     {open > 0 && (
-                      <span className="rounded-full bg-mint/20 px-2 py-1 text-xs font-600 text-emerald-600">
+                      <span className="kids-catalogue-availability">
                         {open} class{open > 1 ? "es" : ""} open
                       </span>
                     )}
                   </div>
-                  <h3 className="mt-3 font-fun text-lg font-700 text-slate-800">{p.title}</h3>
-                  <p className="mt-1 line-clamp-2 text-sm text-slate-500">{p.summary}</p>
+                  <h3 className="mt-3 font-fun text-lg font-700 text-slate-800">
+                    {p.title}
+                  </h3>
+                  <p className="mt-1 line-clamp-2 text-sm text-slate-500">
+                    {p.summary}
+                  </p>
                   <div className="mt-3 flex items-center justify-between font-fun">
-                    <span className="text-sm text-slate-400">Ages {p.ageMin}–{p.ageMax}</span>
-                    <span className="font-700 text-coral">{formatPrice(p.priceCents)}</span>
+                    <span className="text-sm text-slate-400">
+                      Ages {p.ageMin}–{p.ageMax}
+                    </span>
+                    <span className="font-700 text-coral">
+                      {formatPrice(p.priceCents)}
+                    </span>
                   </div>
                 </Link>
               );
@@ -115,7 +143,7 @@ export default async function ProgramsPage({
   );
 }
 
-function FilterChip({
+function CatalogueFilter({
   href,
   active,
   label,
@@ -129,13 +157,7 @@ function FilterChip({
   return (
     <Link
       href={href}
-      className={`rounded-full px-4 py-2 font-fun text-sm font-600 transition ${
-        active
-          ? "bg-slate-800 text-white"
-          : subtle
-            ? "bg-white text-slate-500 ring-1 ring-amber-100 hover:bg-amber-50"
-            : "bg-white text-slate-600 ring-1 ring-amber-100 hover:bg-amber-50"
-      }`}
+      className={`kids-catalogue-filter ${active ? "is-active" : ""} ${subtle ? "is-age" : ""}`}
     >
       {label}
     </Link>

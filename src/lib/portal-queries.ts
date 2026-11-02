@@ -96,7 +96,7 @@ export async function getParentChildren(parentId: number): Promise<Kid[]> {
     })
     .from(parentChildren)
     .innerJoin(users, eq(parentChildren.childId, users.id))
-    .where(eq(parentChildren.parentId, parentId));
+    .where(and(eq(parentChildren.parentId, parentId), eq(users.role, "learner")));
 }
 
 export type LearnerStats = {

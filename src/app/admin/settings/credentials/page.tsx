@@ -5,6 +5,7 @@ const KEYS: CredentialKey[] = [
   "anthropic_auth_token",
   "firecrawl_api_key",
   "tavily_api_key",
+  "deepseek_api_key",
   "gemini_api_key",
   "nvidia_api_key",
   "gmail_user",

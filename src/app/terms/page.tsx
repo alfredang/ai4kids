@@ -3,7 +3,7 @@ import { Container } from "@/components/layout/Container";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 
-const PAGE_URL = "https://www.tertiaryinfotech.com/terms";
+const PAGE_URL = "https://ai4kids.tertiarycourses.com.sg/terms";
 const COMPANY = "Tertiary Infotech Academy Pte Ltd";
 const BRAND = "Tertiary Infotech Academy";
 const EFFECTIVE_DATE = "16 May 2026";

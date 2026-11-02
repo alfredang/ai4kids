@@ -26,7 +26,7 @@ export async function getWhatsAppNumber(): Promise<string | null> {
   return (
     (await readSetting("whatsapp_number")) ??
     process.env.WHATSAPP_NUMBER ??
-    null
+    "6588666375" // Verified on tertiarycourses.com.sg, 2 November 2026.
   );
 }
 

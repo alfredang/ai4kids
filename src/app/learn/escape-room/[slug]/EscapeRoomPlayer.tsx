@@ -1,4 +1,6 @@
 "use client";
+import { PlayfulText } from "@/components/public/PlaySymbol";
+
 
 import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -33,15 +35,13 @@ export function EscapeRoomPlayer({ room }: { room: EscapeRoom }) {
         <span aria-hidden className="text-slate-300">
           ·
         </span>
-        <Link href="/learn/escape-room" className="text-slate-400 hover:text-coral">
-          🗝️ All escape rooms
-        </Link>
+        <Link href="/learn/escape-room" className="text-slate-400 hover:text-coral"><PlayfulText text={" 🗝️ All escape rooms "} /></Link>
       </div>
 
       {/* Room header */}
       <div className={`mt-3 flex items-center gap-4 rounded-[2rem] bg-white p-5 shadow-sm ring-1 ${room.ring}`}>
         <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-4xl ${room.accent}`}>
-          {room.emoji}
+          <PlayfulText text={room.emoji} />
         </div>
         <div className="min-w-0">
           <h1 className="font-fun text-2xl font-700 text-slate-900">{room.title}</h1>
@@ -69,15 +69,11 @@ function ModeSelect({ room, onPick }: { room: EscapeRoom; onPick: (m: Mode) => v
         <button
           onClick={() => onPick("solo")}
           className="rounded-full bg-coral px-8 py-3 font-fun text-lg font-700 text-white shadow-lg transition hover:scale-105"
-        >
-          Play solo ▶
-        </button>
+        ><PlayfulText text={" Play solo ▶ "} /></button>
         <button
           onClick={() => onPick("coop")}
           className="rounded-full bg-grape px-8 py-3 font-fun text-lg font-700 text-white shadow-lg transition hover:scale-105"
-        >
-          Play with friends 👫
-        </button>
+        ><PlayfulText text={" Play with friends 👫 "} /></button>
       </div>
     </div>
   );
@@ -262,7 +258,7 @@ function CoopRoom({ room, onLeave }: { room: EscapeRoom; onLeave: () => void }) 
   if (stage === "choose") {
     return (
       <div className="mt-4 rounded-[2rem] bg-white p-8 shadow-sm ring-1 ring-amber-100">
-        <h2 className="text-center font-fun text-2xl font-700 text-slate-900">Play with friends 👫</h2>
+        <h2 className="text-center font-fun text-2xl font-700 text-slate-900"><PlayfulText text={"Play with friends 👫"} /></h2>
         <p className="mt-1 text-center font-round text-slate-500">
           Start a new room and share the code, or type a friend&apos;s code to join.
         </p>
@@ -273,12 +269,12 @@ function CoopRoom({ room, onLeave }: { room: EscapeRoom; onLeave: () => void }) 
             disabled={busy}
             className="flex flex-col items-center gap-2 rounded-3xl bg-grape/10 p-6 ring-1 ring-grape/30 transition hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50"
           >
-            <span className="text-4xl">🚪</span>
+            <span className="text-4xl"><PlayfulText text={"🚪"} /></span>
             <span className="font-fun text-lg font-700 text-grape">Start a room</span>
             <span className="font-round text-xs text-slate-500">Get a code to share</span>
           </button>
           <div className="flex flex-col items-center gap-2 rounded-3xl bg-sky/10 p-6 ring-1 ring-sky/30">
-            <span className="text-4xl">🔑</span>
+            <span className="text-4xl"><PlayfulText text={"🔑"} /></span>
             <span className="font-fun text-lg font-700 text-sky-600">Join a room</span>
             <div className="mt-1 flex w-full gap-2">
               <input
@@ -310,7 +306,7 @@ function CoopRoom({ room, onLeave }: { room: EscapeRoom; onLeave: () => void }) 
   }
 
   if (!st) {
-    return <div className="mt-4 text-center font-fun text-slate-500">Loading the room… 🚪</div>;
+    return <div className="mt-4 text-center font-fun text-slate-500"><PlayfulText text={"Loading the room… 🚪"} /></div>;
   }
 
   // --- Lobby: waiting for the host to start ---
@@ -328,11 +324,9 @@ function CoopRoom({ room, onLeave }: { room: EscapeRoom; onLeave: () => void }) 
             <button
               onClick={startGame}
               className="rounded-full bg-coral px-8 py-3 font-fun text-lg font-700 text-white shadow-lg transition hover:scale-105"
-            >
-              Start the escape! 🚀
-            </button>
+            ><PlayfulText text={" Start the escape! 🚀 "} /></button>
           ) : (
-            <p className="font-round text-slate-500">Waiting for the host to start… ⏳</p>
+            <p className="font-round text-slate-500"><PlayfulText text={"Waiting for the host to start… ⏳"} /></p>
           )}
         </div>
         <div className="mt-5">
@@ -349,7 +343,7 @@ function CoopRoom({ room, onLeave }: { room: EscapeRoom; onLeave: () => void }) 
     const score = st.total ? Math.round((st.points / (st.total * POINTS_FIRST_TRY)) * 100) : 0;
     return (
       <div className="mt-4 rounded-[2rem] bg-white p-10 text-center shadow-sm ring-1 ring-amber-100">
-        <div className="text-7xl">🎉</div>
+        <div className="text-7xl"><PlayfulText text={"🎉"} /></div>
         <h2 className="mt-3 font-fun text-3xl font-700 text-slate-900">Your team escaped!</h2>
         <p className="mx-auto mt-2 max-w-md font-round text-slate-500">{room.outro}</p>
         <div className="mt-4 inline-block rounded-full bg-mint/20 px-5 py-1.5 font-fun font-700 text-emerald-600">
@@ -357,9 +351,7 @@ function CoopRoom({ room, onLeave }: { room: EscapeRoom; onLeave: () => void }) 
         </div>
         <PlayerStrip room={room} players={st.players} youId={st.you} />
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <button onClick={onLeave} className="rounded-full bg-coral px-6 py-3 font-fun font-700 text-white shadow">
-            Back to start 🔁
-          </button>
+          <button onClick={onLeave} className="rounded-full bg-coral px-6 py-3 font-fun font-700 text-white shadow"><PlayfulText text={" Back to start 🔁 "} /></button>
           <Link href="/learn" className="rounded-full bg-slate-100 px-6 py-3 font-fun font-600 text-slate-600">
             All activities
           </Link>
@@ -1365,21 +1357,13 @@ function RoomMap({
         {touch && (
           <div className="absolute bottom-4 left-4 z-50 grid select-none grid-cols-3 gap-1">
             <span />
-            <button {...holdDir(0, -1)} aria-label="Move up" className={worldDpad}>
-              ⬆️
-            </button>
+            <button {...holdDir(0, -1)} aria-label="Move up" className={worldDpad}><PlayfulText text={" ⬆️ "} /></button>
             <span />
-            <button {...holdDir(-1, 0)} aria-label="Move left" className={worldDpad}>
-              ⬅️
-            </button>
+            <button {...holdDir(-1, 0)} aria-label="Move left" className={worldDpad}><PlayfulText text={" ⬅️ "} /></button>
             <span />
-            <button {...holdDir(1, 0)} aria-label="Move right" className={worldDpad}>
-              ➡️
-            </button>
+            <button {...holdDir(1, 0)} aria-label="Move right" className={worldDpad}><PlayfulText text={" ➡️ "} /></button>
             <span />
-            <button {...holdDir(0, 1)} aria-label="Move down" className={worldDpad}>
-              ⬇️
-            </button>
+            <button {...holdDir(0, 1)} aria-label="Move down" className={worldDpad}><PlayfulText text={" ⬇️ "} /></button>
             <span />
           </div>
         )}
@@ -1387,8 +1371,7 @@ function RoomMap({
 
       {/* Status bar */}
       <div className="mt-3 flex flex-wrap items-center justify-center gap-2 font-fun text-sm font-700 text-slate-500">
-        <span className="rounded-full bg-white px-3 py-1 shadow-sm ring-1 ring-slate-100">
-          🧩 {solvedIds.length}/{total} puzzles
+        <span className="rounded-full bg-white px-3 py-1 shadow-sm ring-1 ring-slate-100"><PlayfulText text={" 🧩 "} />{solvedIds.length}/{total} puzzles
         </span>
         {carryItems.length > 0 && (
           <span className="rounded-full bg-white px-3 py-1 shadow-sm ring-1 ring-slate-100">
@@ -1506,17 +1489,13 @@ function PuzzleModal({
 
         {reviewing ? (
           <div className="mt-4">
-            <div className="rounded-2xl bg-sky/10 py-2 text-center font-fun text-sm font-700 text-sky-700 ring-1 ring-sky/20">
-              ✅ Already solved — here&apos;s a recap.
-            </div>
+            <div className="rounded-2xl bg-sky/10 py-2 text-center font-fun text-sm font-700 text-sky-700 ring-1 ring-sky/20"><PlayfulText text={" ✅ Already solved — here&apos;s a recap. "} /></div>
             <PuzzleReview puzzle={station.puzzle} wordHints={wordHints} />
             <div className="mt-4 rounded-2xl bg-mint/15 p-4 text-center ring-1 ring-mint/30">
               <p className="font-round text-sm text-slate-600">{station.puzzle.learn}</p>
             </div>
             <div className="mt-4 text-center">
-              <button onClick={onClose} className="rounded-full bg-coral px-7 py-2.5 font-fun font-700 text-white shadow transition hover:scale-105">
-                Got it 👍
-              </button>
+              <button onClick={onClose} className="rounded-full bg-coral px-7 py-2.5 font-fun font-700 text-white shadow transition hover:scale-105"><PlayfulText text={" Got it 👍 "} /></button>
             </div>
           </div>
         ) : (
@@ -1536,24 +1515,22 @@ function PuzzleModal({
             {!justSolved && (
               <div className="mt-5 text-center">
                 {hintShown ? (
-                  <p className="font-round text-sm text-amber-600">💡 {station.puzzle.hint}</p>
+                  <p className="font-round text-sm text-amber-600"><PlayfulText text={"💡 "} />{station.puzzle.hint}</p>
                 ) : (
                   <button
                     onClick={onShowHint}
                     className="font-fun text-sm font-600 text-slate-400 underline-offset-2 hover:text-amber-600 hover:underline"
-                  >
-                    Need a hint? 💡
-                  </button>
+                  ><PlayfulText text={" Need a hint? 💡 "} /></button>
                 )}
                 {wrongCount > 0 && (
-                  <p className="mt-2 font-fun text-sm font-600 text-coral">Not quite — give it another go! 🔁</p>
+                  <p className="mt-2 font-fun text-sm font-600 text-coral"><PlayfulText text={"Not quite — give it another go! 🔁"} /></p>
                 )}
               </div>
             )}
 
             {justSolved && (
               <div className="mt-6 rounded-2xl bg-mint/15 p-5 text-center ring-1 ring-mint/30">
-                <div className="font-fun text-lg font-700 text-emerald-700">🔓 Solved!</div>
+                <div className="font-fun text-lg font-700 text-emerald-700"><PlayfulText text={"🔓 Solved!"} /></div>
                 <p className="mt-1 font-round text-sm text-slate-600">{station.puzzle.learn}</p>
                 <button
                   onClick={onClose}
@@ -1643,9 +1620,9 @@ function NoteCard({ note, room, onClose }: { note: RoomNote; room: EscapeRoom; o
         {note.art === "crossing" && (
           <div className="mt-4 rounded-2xl bg-white p-4 text-center font-mono text-sm text-slate-600 ring-1 ring-amber-100">
             <div className="mt-1 text-coral">　　2　↓　(Column)</div>
-            <div className="mt-1 text-coral">1　→　⭐　　　　　　</div>
+            <div className="mt-1 text-coral"><PlayfulText text={"1　→　⭐　　　　　　"} /></div>
             <div className="mt-1 text-coral">(Row)　　　　　　　　　　　</div>
-            <div className="mt-2 text-xs text-slate-400">Read the ⭐&apos;s Column &amp; Row.</div>
+            <div className="mt-2 text-xs text-slate-400"><PlayfulText text={"Read the ⭐&apos;s Column &amp; Row."} /></div>
           </div>
         )}
         {note.art === "coremap" && chargeCarry && (() => {
@@ -1690,25 +1667,22 @@ function NoteCard({ note, room, onClose }: { note: RoomNote; room: EscapeRoom; o
                           ))}
                         </div>
                       ) : isSuit ? (
-                        <span className="text-base">🦸</span>
+                        <span className="text-base"><PlayfulText text={"🦸"} /></span>
                       ) : isSpawn ? (
-                        <span className="text-base">🚪</span>
+                        <span className="text-base"><PlayfulText text={"🚪"} /></span>
                       ) : null}
                       <span className="mt-0.5 text-[7px] font-600 leading-tight text-slate-500">{cell.label}</span>
                     </div>
                   );
                 })}
               </div>
-              <p className="mt-2 text-center text-[10px] text-slate-500">
-                🔘 cores wait in the {L.cells.find((c) => c.id === chargeCarry.coreRoom)?.label ?? "Landing"} · carry each to the charger with its number.
+              <p className="mt-2 text-center text-[10px] text-slate-500"><PlayfulText text={" 🔘 cores wait in the "} />{L.cells.find((c) => c.id === chargeCarry.coreRoom)?.label ?? "Landing"} · carry each to the charger with its number.
               </p>
             </div>
           );
         })()}
         <div className="mt-5 text-center">
-          <button onClick={onClose} className="rounded-full bg-amber-500 px-7 py-2.5 font-fun font-700 text-white shadow transition hover:scale-105">
-            Got it 👍
-          </button>
+          <button onClick={onClose} className="rounded-full bg-amber-500 px-7 py-2.5 font-fun font-700 text-white shadow transition hover:scale-105"><PlayfulText text={" Got it 👍 "} /></button>
         </div>
       </div>
     </div>
@@ -1727,7 +1701,7 @@ function EscapedCard({
 }) {
   return (
     <div className="mt-4 rounded-[2rem] bg-white p-10 text-center shadow-sm ring-1 ring-amber-100">
-      <div className="text-7xl">🎉</div>
+      <div className="text-7xl"><PlayfulText text={"🎉"} /></div>
       <h2 className="mt-3 font-fun text-3xl font-700 text-slate-900">You escaped!</h2>
       <p className="mx-auto mt-2 max-w-md font-round text-slate-500">{room.outro}</p>
       {score != null && (
@@ -1736,12 +1710,8 @@ function EscapedCard({
         </div>
       )}
       <div className="mt-6 flex flex-wrap justify-center gap-3">
-        <button onClick={onReplay} className="rounded-full bg-coral px-6 py-3 font-fun font-700 text-white shadow">
-          Play again 🔁
-        </button>
-        <Link href="/learn/escape-room" className="rounded-full bg-grape px-6 py-3 font-fun font-700 text-white shadow">
-          Try another room 🗝️
-        </Link>
+        <button onClick={onReplay} className="rounded-full bg-coral px-6 py-3 font-fun font-700 text-white shadow"><PlayfulText text={" Play again 🔁 "} /></button>
+        <Link href="/learn/escape-room" className="rounded-full bg-grape px-6 py-3 font-fun font-700 text-white shadow"><PlayfulText text={" Try another room 🗝️ "} /></Link>
         <Link href="/learn" className="rounded-full bg-slate-100 px-6 py-3 font-fun font-600 text-slate-600">
           All activities
         </Link>
@@ -4041,7 +4011,7 @@ function CrosswordPuzzle({ puzzle, solved, onSolved }: PuzzleProps<Extract<Escap
       </div>
 
       {solved ? (
-        <p className="mt-3 font-fun text-sm font-700 text-amber-600">⭐ The gold column spells {puzzle.secret.toUpperCase()}</p>
+        <p className="mt-3 font-fun text-sm font-700 text-amber-600"><PlayfulText text={"⭐ The gold column spells "} />{puzzle.secret.toUpperCase()}</p>
       ) : (
         <>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -4408,9 +4378,7 @@ function CodePuzzle({ puzzle, solved, onSolved, onWrong }: PuzzleProps<Extract<E
           type="submit"
           disabled={solved || !value.trim()}
           className="rounded-full bg-coral px-6 py-2.5 font-fun font-700 text-white shadow transition hover:scale-105 disabled:opacity-50"
-        >
-          Unlock 🔑
-        </button>
+        ><PlayfulText text={" Unlock 🔑 "} /></button>
       </div>
     </form>
   );
@@ -4509,7 +4477,7 @@ function CipherPuzzle({
 
       {/* Decoder key: symbol → letter legend */}
       <div className="mx-auto mt-4 max-w-sm rounded-2xl bg-slate-900 p-4 ring-2 ring-slate-700">
-        <p className="font-fun text-xs font-700 uppercase tracking-wider text-slate-400">🔑 Decoder Key</p>
+        <p className="font-fun text-xs font-700 uppercase tracking-wider text-slate-400"><PlayfulText text={"🔑 Decoder Key"} /></p>
         <div className="mt-2 grid grid-cols-4 gap-2">
           {puzzle.symbols.map((sym, i) => (
             <div key={sym} className="flex flex-col items-center rounded-lg bg-slate-800 py-1.5">
@@ -4549,9 +4517,7 @@ function CipherPuzzle({
           type="submit"
           disabled={solved || !value.trim()}
           className="rounded-full bg-coral px-6 py-2.5 font-fun font-700 text-white shadow transition hover:scale-105 disabled:opacity-50"
-        >
-          Decode 🔓
-        </button>
+        ><PlayfulText text={" Decode 🔓 "} /></button>
       </form>
     </div>
   );
@@ -4688,14 +4654,10 @@ function CircuitPuzzle({
                   {isStart && edgeNub(puzzle.start.from, "bg-amber-400")}
                   {isEnd && edgeNub(puzzle.end.to, lit ? "bg-amber-400" : "bg-slate-400")}
                   {isStart && (
-                    <span className="absolute -left-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 text-[10px] shadow ring-1 ring-amber-400/70">
-                      ⚡
-                    </span>
+                    <span className="absolute -left-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 text-[10px] shadow ring-1 ring-amber-400/70"><PlayfulText text={" ⚡ "} /></span>
                   )}
                   {isEnd && (
-                    <span className={`absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 text-[10px] shadow ring-1 transition ${lit ? "ring-amber-400/70" : "ring-slate-500 grayscale"}`}>
-                      💡
-                    </span>
+                    <span className={`absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 text-[10px] shadow ring-1 transition ${lit ? "ring-amber-400/70" : "ring-slate-500 grayscale"}`}><PlayfulText text={" 💡 "} /></span>
                   )}
                 </button>
               );
@@ -4743,7 +4705,7 @@ function SortPuzzle({ puzzle, solved, onSolved, onWrong }: PuzzleProps<Extract<E
             key={bi}
             className="rounded-2xl bg-amber-50 py-2 font-fun text-sm font-700 text-slate-600 ring-1 ring-amber-100"
           >
-            {b.emoji} {b.label} bin
+            <PlayfulText text={b.emoji} /> {b.label} bin
           </div>
         ))}
       </div>
@@ -4758,7 +4720,7 @@ function SortPuzzle({ puzzle, solved, onSolved, onWrong }: PuzzleProps<Extract<E
                 key={i}
                 className="rounded-2xl bg-mint/15 px-4 py-2.5 font-fun text-sm font-600 text-emerald-700 ring-1 ring-emerald-200"
               >
-                {b.emoji} &ldquo;{it.text}&rdquo;
+                <PlayfulText text={b.emoji} /> &ldquo;{it.text}&rdquo;
               </div>
             );
           }
@@ -4778,7 +4740,7 @@ function SortPuzzle({ puzzle, solved, onSolved, onWrong }: PuzzleProps<Extract<E
                   aria-label={`Put in ${b.label} bin`}
                   className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-50 text-lg ring-1 ring-amber-100 transition hover:scale-110 hover:bg-amber-100"
                 >
-                  {b.emoji}
+                  <PlayfulText text={b.emoji} />
                 </button>
               ))}
             </div>
@@ -4958,21 +4920,13 @@ function MazePuzzle({ puzzle, solved, onSolved }: PuzzleProps<Extract<EscapeRoom
 
           <div className="mt-1 inline-grid grid-cols-3 gap-1">
             <span />
-            <button onClick={() => move(-1, 0)} disabled={solved} aria-label="Up" className={dpad}>
-              ⬆️
-            </button>
+            <button onClick={() => move(-1, 0)} disabled={solved} aria-label="Up" className={dpad}><PlayfulText text={" ⬆️ "} /></button>
             <span />
-            <button onClick={() => move(0, -1)} disabled={solved} aria-label="Left" className={dpad}>
-              ⬅️
-            </button>
+            <button onClick={() => move(0, -1)} disabled={solved} aria-label="Left" className={dpad}><PlayfulText text={" ⬅️ "} /></button>
             <span className="flex items-center justify-center font-fun text-[10px] font-700 text-slate-400">move</span>
-            <button onClick={() => move(0, 1)} disabled={solved} aria-label="Right" className={dpad}>
-              ➡️
-            </button>
+            <button onClick={() => move(0, 1)} disabled={solved} aria-label="Right" className={dpad}><PlayfulText text={" ➡️ "} /></button>
             <span />
-            <button onClick={() => move(1, 0)} disabled={solved} aria-label="Down" className={dpad}>
-              ⬇️
-            </button>
+            <button onClick={() => move(1, 0)} disabled={solved} aria-label="Down" className={dpad}><PlayfulText text={" ⬇️ "} /></button>
             <span />
           </div>
         </div>
@@ -5097,7 +5051,7 @@ function TrailMazePuzzle({
       {/* The map: the route's landmarks with connector arrows; locked until the
           prerequisite map station is solved (then each ticks green in order). */}
       <div className="mx-auto mt-4 flex max-w-md flex-wrap items-center justify-center gap-1.5 rounded-2xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-200">
-        <span className="mr-1 font-fun text-sm font-700 text-emerald-700">🗺️ Map:</span>
+        <span className="mr-1 font-fun text-sm font-700 text-emerald-700"><PlayfulText text={"🗺️ Map:"} /></span>
         {puzzle.route.map((emoji, i) => {
           const done = i < step;
           const next = i === step && !allCollected;
@@ -5183,21 +5137,13 @@ function TrailMazePuzzle({
 
               <div className="mt-1 inline-grid grid-cols-3 gap-1">
                 <span />
-                <button onClick={() => move(-1, 0)} disabled={solved} aria-label="Up" className={dpad}>
-                  ⬆️
-                </button>
+                <button onClick={() => move(-1, 0)} disabled={solved} aria-label="Up" className={dpad}><PlayfulText text={" ⬆️ "} /></button>
                 <span />
-                <button onClick={() => move(0, -1)} disabled={solved} aria-label="Left" className={dpad}>
-                  ⬅️
-                </button>
+                <button onClick={() => move(0, -1)} disabled={solved} aria-label="Left" className={dpad}><PlayfulText text={" ⬅️ "} /></button>
                 <span className="flex items-center justify-center font-fun text-[10px] font-700 text-slate-400">walk</span>
-                <button onClick={() => move(0, 1)} disabled={solved} aria-label="Right" className={dpad}>
-                  ➡️
-                </button>
+                <button onClick={() => move(0, 1)} disabled={solved} aria-label="Right" className={dpad}><PlayfulText text={" ➡️ "} /></button>
                 <span />
-                <button onClick={() => move(1, 0)} disabled={solved} aria-label="Down" className={dpad}>
-                  ⬇️
-                </button>
+                <button onClick={() => move(1, 0)} disabled={solved} aria-label="Down" className={dpad}><PlayfulText text={" ⬇️ "} /></button>
                 <span />
               </div>
             </div>
@@ -5491,8 +5437,7 @@ function PuzzleReview({
       <div className="mt-3 text-center">
         {puzzle.emoji && <div className="text-4xl">{puzzle.emoji}</div>}
         <p className="mt-2 font-fun font-700 text-slate-800">{puzzle.prompt}</p>
-        <div className="mt-3 rounded-2xl bg-mint/20 px-4 py-3 font-fun font-700 text-emerald-700 ring-1 ring-emerald-300">
-          ✅ {puzzle.options[puzzle.answerIndex]}
+        <div className="mt-3 rounded-2xl bg-mint/20 px-4 py-3 font-fun font-700 text-emerald-700 ring-1 ring-emerald-300"><PlayfulText text={" ✅ "} />{puzzle.options[puzzle.answerIndex]}
         </div>
       </div>
     );
@@ -5507,8 +5452,7 @@ function PuzzleReview({
           <span className="rounded-xl bg-slate-900 px-4 py-1.5 font-mono text-lg font-700 tracking-widest text-mint">
             {puzzle.clue}
           </span>
-          <span className="rounded-2xl bg-mint/20 px-4 py-1.5 font-fun font-700 text-emerald-700 ring-1 ring-emerald-300">
-            ✅ {puzzle.answer}
+          <span className="rounded-2xl bg-mint/20 px-4 py-1.5 font-fun font-700 text-emerald-700 ring-1 ring-emerald-300"><PlayfulText text={" ✅ "} />{puzzle.answer}
           </span>
         </div>
       </div>
@@ -5542,8 +5486,7 @@ function PuzzleReview({
       <div className="mt-3 text-center">
         {puzzle.emoji && <div className="text-4xl">{puzzle.emoji}</div>}
         <p className="mt-2 font-fun font-700 text-slate-800">{puzzle.prompt}</p>
-        <div className="mt-3 inline-block rounded-2xl bg-mint/20 px-5 py-2 font-mono text-xl font-700 tracking-widest text-emerald-700 ring-1 ring-emerald-300">
-          ✅ {puzzle.answer.toUpperCase()}
+        <div className="mt-3 inline-block rounded-2xl bg-mint/20 px-5 py-2 font-mono text-xl font-700 tracking-widest text-emerald-700 ring-1 ring-emerald-300"><PlayfulText text={" ✅ "} />{puzzle.answer.toUpperCase()}
         </div>
       </div>
     );
@@ -5554,9 +5497,7 @@ function PuzzleReview({
       <div className="mt-3 text-center">
         {puzzle.emoji && <div className="text-4xl">{puzzle.emoji}</div>}
         <p className="mt-2 font-fun font-700 text-slate-800">{puzzle.prompt}</p>
-        <div className="mt-3 rounded-2xl bg-mint/20 px-4 py-3 font-fun font-700 text-emerald-700 ring-1 ring-emerald-300">
-          ✅ ⚡ connected to 💡 — power restored!
-        </div>
+        <div className="mt-3 rounded-2xl bg-mint/20 px-4 py-3 font-fun font-700 text-emerald-700 ring-1 ring-emerald-300"><PlayfulText text={" ✅ ⚡ connected to 💡 — power restored! "} /></div>
       </div>
     );
   }
@@ -5585,9 +5526,7 @@ function PuzzleReview({
       <div className="mt-3 text-center">
         {puzzle.emoji && <div className="text-4xl">{puzzle.emoji}</div>}
         <p className="mt-2 font-fun font-700 text-slate-800">{puzzle.prompt}</p>
-        <div className="mt-3 rounded-2xl bg-mint/20 px-4 py-3 font-fun font-700 text-emerald-700 ring-1 ring-emerald-300">
-          ✅ Core charged!
-        </div>
+        <div className="mt-3 rounded-2xl bg-mint/20 px-4 py-3 font-fun font-700 text-emerald-700 ring-1 ring-emerald-300"><PlayfulText text={" ✅ Core charged! "} /></div>
       </div>
     );
   }
@@ -5612,7 +5551,7 @@ function PuzzleReview({
     const gridCols = Math.max(...puzzle.rows.map((r) => r.offset + r.word.length));
     return (
       <div className="mt-3 text-center">
-        <p className="font-fun font-700 text-slate-800">Crossword solved! 🎉</p>
+        <p className="font-fun font-700 text-slate-800"><PlayfulText text={"Crossword solved! 🎉"} /></p>
         <div className="mt-3 overflow-x-auto">
           <div className="mx-auto grid w-max gap-1" style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}>
             {puzzle.rows.map((row, r) => (
@@ -5636,8 +5575,7 @@ function PuzzleReview({
             ))}
           </div>
         </div>
-        <p className="mt-2 font-round text-xs text-slate-500">
-          ⭐ The gold column spells <span className="font-700 text-amber-600">{puzzle.secret.toUpperCase()}</span>.
+        <p className="mt-2 font-round text-xs text-slate-500"><PlayfulText text={" ⭐ The gold column spells "} /><span className="font-700 text-amber-600">{puzzle.secret.toUpperCase()}</span>.
         </p>
       </div>
     );
@@ -5648,8 +5586,7 @@ function PuzzleReview({
       <div className="mt-3 text-center">
         {puzzle.emoji && <div className="text-4xl">{puzzle.emoji}</div>}
         <p className="mt-2 font-fun font-700 text-slate-800">{puzzle.prompt}</p>
-        <div className="mt-3 rounded-2xl bg-mint/20 px-4 py-3 font-fun text-lg font-700 tracking-[0.3em] text-emerald-700 ring-1 ring-emerald-300">
-          🔓 {puzzle.word.toUpperCase()}
+        <div className="mt-3 rounded-2xl bg-mint/20 px-4 py-3 font-fun text-lg font-700 tracking-[0.3em] text-emerald-700 ring-1 ring-emerald-300"><PlayfulText text={" 🔓 "} />{puzzle.word.toUpperCase()}
         </div>
       </div>
     );
@@ -5661,7 +5598,7 @@ function PuzzleReview({
   const cross = puzzle.intersection;
   return (
     <div className="mt-3 text-center">
-      <p className="font-fun font-700 text-slate-800">Found them all! 🎉</p>
+      <p className="font-fun font-700 text-slate-800"><PlayfulText text={"Found them all! 🎉"} /></p>
       <div className="mt-2 flex flex-wrap justify-center gap-2">
         {puzzle.words.map((w) => {
           const emoji = wordHints?.get(norm(w));
@@ -5715,9 +5652,7 @@ function PuzzleReview({
               ))}
             </div>
           </div>
-          <p className="mt-2 font-round text-xs text-slate-500">
-            ⭐ Read its Column and Row for the door.
-          </p>
+          <p className="mt-2 font-round text-xs text-slate-500"><PlayfulText text={" ⭐ Read its Column and Row for the door. "} /></p>
         </>
       )}
     </div>
@@ -5780,19 +5715,17 @@ function ExitKeypad({
         className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
       />
       <div className="relative z-10 w-full max-w-md rounded-[2rem] bg-white p-7 text-center shadow-2xl ring-1 ring-amber-100">
-        <div className="text-5xl">🔢</div>
+        <div className="text-5xl"><PlayfulText text={"🔢"} /></div>
         <h3 className="mt-2 font-fun text-2xl font-700 text-slate-900">Door Keypad</h3>
 
         {ok ? (
           <div className="mt-5 rounded-2xl bg-mint/15 p-5 ring-1 ring-mint/30">
-            <div className="font-fun text-lg font-700 text-emerald-700">🎉 Click! The door unlocks!</div>
+            <div className="font-fun text-lg font-700 text-emerald-700"><PlayfulText text={"🎉 Click! The door unlocks!"} /></div>
             <p className="mt-1 font-round text-sm text-slate-600">{outro}</p>
           </div>
         ) : (
           <form onSubmit={submit}>
-            <p className="mx-auto mt-1 max-w-xs font-round text-sm text-slate-500">
-              Where the three words crossed on the display. ⭐
-            </p>
+            <p className="mx-auto mt-1 max-w-xs font-round text-sm text-slate-500"><PlayfulText text={" Where the three words crossed on the display. ⭐ "} /></p>
             <div className="mt-5 flex justify-center gap-3">
               {slots.map((_s, i) => (
                 <input
@@ -5810,9 +5743,7 @@ function ExitKeypad({
               ))}
             </div>
             {shake && (
-              <p className="mt-3 font-fun text-sm font-600 text-coral">
-                That code didn&apos;t work — go back to the display and check the crossing! 🔁
-              </p>
+              <p className="mt-3 font-fun text-sm font-600 text-coral"><PlayfulText text={" That code didn&apos;t work — go back to the display and check the crossing! 🔁 "} /></p>
             )}
             <div className="mt-6 flex justify-center gap-3">
               <button
@@ -5826,9 +5757,7 @@ function ExitKeypad({
                 type="submit"
                 disabled={digits.some((d) => !d)}
                 className="rounded-full bg-coral px-7 py-2.5 font-fun font-700 text-white shadow transition hover:scale-105 disabled:opacity-50"
-              >
-                Open door 🔓
-              </button>
+              ><PlayfulText text={" Open door 🔓 "} /></button>
             </div>
           </form>
         )}
@@ -5895,12 +5824,12 @@ function CipherExitKeypad({
         className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
       />
       <div className="relative z-10 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-[2rem] bg-white p-7 text-center shadow-2xl ring-1 ring-amber-100">
-        <div className="text-5xl">🔣</div>
+        <div className="text-5xl"><PlayfulText text={"🔣"} /></div>
         <h3 className="mt-2 font-fun text-2xl font-700 text-slate-900">Door Decoder</h3>
 
         {ok ? (
           <div className="mt-5 rounded-2xl bg-mint/15 p-5 ring-1 ring-mint/30">
-            <div className="font-fun text-lg font-700 text-emerald-700">🎉 Code accepted — the door swings open!</div>
+            <div className="font-fun text-lg font-700 text-emerald-700"><PlayfulText text={"🎉 Code accepted — the door swings open!"} /></div>
             <p className="mt-1 font-round text-sm text-slate-600">{outro}</p>
           </div>
         ) : (
@@ -5921,7 +5850,7 @@ function CipherExitKeypad({
 
             {/* Decoder key: symbol over letter (❓ until its machine is fixed) */}
             <div className="mt-4 rounded-2xl bg-slate-900 p-4 ring-2 ring-slate-700">
-              <p className="font-fun text-xs font-700 uppercase tracking-wider text-slate-400">🔑 Decoder Key</p>
+              <p className="font-fun text-xs font-700 uppercase tracking-wider text-slate-400"><PlayfulText text={"🔑 Decoder Key"} /></p>
               <div className="mt-2 grid grid-cols-5 gap-2">
                 {exit.symbols.map((sym, i) => (
                   <div key={i} className="flex flex-col items-center rounded-lg bg-slate-800 py-1.5">
@@ -5960,12 +5889,10 @@ function CipherExitKeypad({
                 type="submit"
                 disabled={!ready || !value.trim()}
                 className="rounded-full bg-coral px-6 py-2.5 font-fun font-700 text-white shadow transition hover:scale-105 disabled:opacity-50"
-              >
-                Decode 🔓
-              </button>
+              ><PlayfulText text={" Decode 🔓 "} /></button>
             </form>
             {shake && (
-              <p className="mt-3 font-fun text-sm font-600 text-coral">That&apos;s not it — check the key and try again! 🔁</p>
+              <p className="mt-3 font-fun text-sm font-600 text-coral"><PlayfulText text={"That&apos;s not it — check the key and try again! 🔁"} /></p>
             )}
             <div className="mt-5">
               <button onClick={onClose} className="font-fun text-sm font-600 text-slate-400 hover:text-coral">
@@ -6045,12 +5972,12 @@ function UnscrambleExitKeypad({
         className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
       />
       <div className="relative z-10 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-[2rem] bg-white p-7 text-center shadow-2xl ring-1 ring-amber-100">
-        <div className="text-5xl">🦸</div>
+        <div className="text-5xl"><PlayfulText text={"🦸"} /></div>
         <h3 className="mt-2 font-fun text-2xl font-700 text-slate-900">Suit Power Core</h3>
 
         {ok ? (
           <div className="mt-5 rounded-2xl bg-mint/15 p-5 ring-1 ring-mint/30">
-            <div className="font-fun text-lg font-700 text-emerald-700">🎉 Suit fully charged — power up!</div>
+            <div className="font-fun text-lg font-700 text-emerald-700"><PlayfulText text={"🎉 Suit fully charged — power up!"} /></div>
             <p className="mt-1 font-round text-sm text-slate-600">{outro}</p>
           </div>
         ) : (
@@ -6067,7 +5994,7 @@ function UnscrambleExitKeypad({
                       {w.emoji} {w.core}
                     </div>
                     {done[i] ? (
-                      <div className="mt-1 font-fun text-lg font-700 tracking-widest text-emerald-700">✅ {w.answer}</div>
+                      <div className="mt-1 font-fun text-lg font-700 tracking-widest text-emerald-700"><PlayfulText text={"✅ "} />{w.answer}</div>
                     ) : revealed ? (
                       <>
                         <div className="mt-1 font-mono text-2xl font-700 tracking-[0.3em] text-grape">{w.scrambled}</div>
@@ -6093,7 +6020,7 @@ function UnscrambleExitKeypad({
                         </form>
                       </>
                     ) : (
-                      <div className="mt-1 font-fun text-lg font-700 text-slate-300">🔒 Core not charged yet</div>
+                      <div className="mt-1 font-fun text-lg font-700 text-slate-300"><PlayfulText text={"🔒 Core not charged yet"} /></div>
                     )}
                   </div>
                 );

@@ -2,16 +2,16 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
 import { escapeSessions } from "@/db/schema";
-import { getPortalSession } from "@/lib/portal-session";
+import { getLearnerSession } from "@/lib/learner-session";
 import { getEscapeRoom } from "@/lib/escape-rooms";
 import { generateCode, upsertPlayer, buildState, cleanupStaleSessions } from "@/lib/escape-session";
 
 const schema = z.object({ roomSlug: z.string().min(1) });
 
 export async function POST(req: Request) {
-  const session = await getPortalSession();
+  const session = await getLearnerSession();
   if (!session || session.role !== "learner") {
-    return NextResponse.json({ error: "Learners only" }, { status: 403 });
+    return NextResponse.json({ error: "A parent must sign in and choose their child before playing." }, { status: 403 });
   }
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });

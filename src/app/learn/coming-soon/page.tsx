@@ -1,4 +1,6 @@
 "use client";
+import { PlayfulText } from "@/components/public/PlaySymbol";
+
 
 import { useState } from "react";
 import Link from "next/link";
@@ -34,23 +36,17 @@ export default function ComingSoonPage() {
       <div className="mt-3 rounded-[2rem] bg-white p-10 text-center shadow-sm ring-1 ring-amber-100">
         <div className="text-7xl">{emoji}</div>
         <h1 className="mt-3 font-fun text-3xl font-700 text-slate-900">{title}</h1>
-        <p className="mt-2 font-round text-slate-500">
-          This full activity is coming soon! Our teachers are building something awesome.
-          Try the mini sneak peek to earn a few explorer points. 🌟
-        </p>
+        <p className="mt-2 font-round text-slate-500"><PlayfulText text={" This full activity is coming soon! Our teachers are building something awesome. Try the mini sneak peek to earn a few explorer points. 🌟 "} /></p>
         {!done ? (
           <button
             onClick={tryDemo}
             disabled={!slug}
             className="mt-6 rounded-full bg-grape px-8 py-3 font-fun text-lg font-700 text-white shadow-lg transition hover:scale-105 disabled:opacity-50"
-          >
-            Try the sneak peek 👀
-          </button>
+          ><PlayfulText text={" Try the sneak peek 👀 "} /></button>
         ) : (
           <div className="mt-6">
             <div className="inline-block rounded-full bg-mint/20 px-4 py-1 font-fun font-700 text-emerald-600">
-              +{score} explorer points! 🎉
-            </div>
+              +{score}<PlayfulText text={" explorer points! 🎉 "} /></div>
             <div className="mt-4">
               <Link href="/learn" className="rounded-full bg-coral px-6 py-3 font-fun font-700 text-white shadow">
                 Back to activities

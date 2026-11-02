@@ -1,29 +1,28 @@
+import { PlayfulText } from "@/components/public/PlaySymbol";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getPortalSession } from "@/lib/portal-session";
+import { getLearnerSession } from "@/lib/learner-session";
 import { getLearnerStories } from "@/lib/portal-queries";
 import { DeleteStoryButton } from "@/components/portal/DeleteStoryButton";
 
 export default async function StoriesGalleryPage() {
   // Guard here too: the layout's redirect runs in parallel with this page, so
   // it doesn't stop our session read — without this, a null session throws.
-  const session = await getPortalSession();
-  if (!session) redirect("/login?from=/learn/stories");
+  const session = await getLearnerSession();
+  if (!session) redirect("/parent/play");
   const stories = await getLearnerStories(Number(session.id));
 
   return (
     <div>
       <Link href="/learn" className="font-fun text-sm font-600 text-slate-400 hover:text-coral">← Back to activities</Link>
-      <h1 className="mt-3 font-fun text-3xl font-700 text-slate-900">📚 My Stories</h1>
+      <h1 className="mt-3 font-fun text-3xl font-700 text-slate-900"><PlayfulText text={"📚 My Stories"} /></h1>
       <p className="mt-1 font-round text-slate-500">All the tales you’ve saved. Tap one to read it again.</p>
 
       {stories.length === 0 ? (
         <div className="mt-8 rounded-[2rem] bg-white p-10 text-center shadow-sm ring-1 ring-grape/30">
-          <div className="text-5xl">📖</div>
+          <div className="text-5xl"><PlayfulText text={"📖"} /></div>
           <p className="mt-3 font-fun font-700 text-slate-700">No stories yet!</p>
-          <Link href="/learn/storytelling" className="mt-4 inline-block rounded-full bg-grape px-6 py-3 font-fun font-700 text-white shadow">
-            Build your first one ▶
-          </Link>
+          <Link href="/learn/storytelling" className="mt-4 inline-block rounded-full bg-grape px-6 py-3 font-fun font-700 text-white shadow"><PlayfulText text={" Build your first one ▶ "} /></Link>
         </div>
       ) : (
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">

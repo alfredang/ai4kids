@@ -1,4 +1,6 @@
 "use client";
+import { PlayfulText } from "@/components/public/PlaySymbol";
+
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -41,7 +43,7 @@ function StartScreen({ onPick }: { onPick: (m: Mode) => void }) {
         ← Back to activities
       </Link>
       <div className="mt-3 rounded-[2rem] bg-gradient-to-r from-coral/20 via-cream to-grape/20 p-6">
-        <h1 className="font-fun text-3xl font-700 text-slate-900">📖 Story Time</h1>
+        <h1 className="font-fun text-3xl font-700 text-slate-900"><PlayfulText text={"📖 Story Time"} /></h1>
         <p className="mt-1 font-round font-600 text-slate-600">How do you want to make your story?</p>
       </div>
 
@@ -50,7 +52,7 @@ function StartScreen({ onPick }: { onPick: (m: Mode) => void }) {
           onClick={() => onPick("build")}
           className="flex flex-col items-start gap-2 rounded-3xl bg-white p-6 text-left shadow-sm ring-1 ring-grape/30 transition hover:-translate-y-1 hover:shadow-md"
         >
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-grape/15 text-3xl">🪄</div>
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-grape/15 text-3xl"><PlayfulText text={"🪄"} /></div>
           <div className="font-fun text-xl font-700 text-slate-900">Build a story</div>
           <p className="font-round text-sm text-slate-500">Pick a hero, place, and magic item — then choose how the tale ends.</p>
         </button>
@@ -59,7 +61,7 @@ function StartScreen({ onPick }: { onPick: (m: Mode) => void }) {
           onClick={() => onPick("write")}
           className="flex flex-col items-start gap-2 rounded-3xl bg-white p-6 text-left shadow-sm ring-1 ring-coral/30 transition hover:-translate-y-1 hover:shadow-md"
         >
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-coral/15 text-3xl">✍️</div>
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-coral/15 text-3xl"><PlayfulText text={"✍️"} /></div>
           <div className="font-fun text-xl font-700 text-slate-900">Write your own</div>
           <p className="font-round text-sm text-slate-500">Type any idea and watch the AI turn it into an illustrated story.</p>
         </button>
@@ -140,7 +142,7 @@ function WriteMode({ onBack }: { onBack: () => void }) {
         ← Choose a different way
       </button>
       <div className="mt-3 rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-coral/30">
-        <h1 className="font-fun text-3xl font-700 text-slate-900">✍️ Write your own</h1>
+        <h1 className="font-fun text-3xl font-700 text-slate-900"><PlayfulText text={"✍️ Write your own"} /></h1>
         <p className="mt-1 font-round text-slate-500">Tell the AI what your story is about and watch it come to life!</p>
 
         <textarea
@@ -157,8 +159,7 @@ function WriteMode({ onBack }: { onBack: () => void }) {
               key={i}
               onClick={() => setPrompt(i)}
               className="rounded-full bg-amber-50 px-3 py-1 text-sm font-600 text-slate-500 ring-1 ring-amber-100 hover:bg-amber-100"
-            >
-              ✨ {i}
+            ><PlayfulText text={" ✨ "} />{i}
             </button>
           ))}
         </div>
@@ -176,8 +177,7 @@ function WriteMode({ onBack }: { onBack: () => void }) {
         <div className="mt-6 rounded-[2rem] bg-white p-8 shadow-sm ring-1 ring-amber-100">
           {score != null && (
             <div className="mb-4 inline-block rounded-full bg-mint/20 px-4 py-1 font-fun font-700 text-emerald-600">
-              +{score} points earned! 🎉
-            </div>
+              +{score}<PlayfulText text={" points earned! 🎉 "} /></div>
           )}
           <h2 className="font-fun text-2xl font-700 text-slate-900">{story.title}</h2>
           <div className="mt-4 space-y-5">
@@ -193,17 +193,13 @@ function WriteMode({ onBack }: { onBack: () => void }) {
                 <button
                   onClick={() => speak(s.text)}
                   className="mt-2 rounded-full bg-amber-100 px-3 py-1 font-fun text-sm font-700 text-amber-700 transition hover:bg-amber-200"
-                >
-                  🔊 Read to me
-                </button>
+                ><PlayfulText text={" 🔊 Read to me "} /></button>
               </div>
             ))}
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
             {saved ? (
-              <Link href="/learn/stories" className="rounded-full bg-mint/30 px-6 py-3 font-fun font-700 text-emerald-700 shadow">
-                Saved! View My Stories 📚
-              </Link>
+              <Link href="/learn/stories" className="rounded-full bg-mint/30 px-6 py-3 font-fun font-700 text-emerald-700 shadow"><PlayfulText text={" Saved! View My Stories 📚 "} /></Link>
             ) : (
               <button
                 onClick={saveStory}
@@ -220,9 +216,7 @@ function WriteMode({ onBack }: { onBack: () => void }) {
                 setSaved(false);
               }}
               className="rounded-full bg-sky-500 px-6 py-3 font-fun font-700 text-white shadow"
-            >
-              Write another! ✏️
-            </button>
+            ><PlayfulText text={" Write another! ✏️ "} /></button>
           </div>
         </div>
       )}
@@ -457,12 +451,12 @@ function BuildMode({ onBack }: { onBack: () => void }) {
 
       {generating ? (
         <div className="mt-3 flex min-h-[24rem] flex-col items-center justify-center gap-4 rounded-[2rem] bg-white p-8 text-center shadow-sm ring-1 ring-grape/30">
-          <div className="animate-pulse text-6xl">✨📖✨</div>
+          <div className="animate-pulse text-6xl"><PlayfulText text={"✨📖✨"} /></div>
           <p className="font-fun text-xl font-700 text-slate-800">Writing your story…</p>
         </div>
       ) : pages.length === 0 ? (
         <div className="mt-3 rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-grape/30">
-          <h1 className="font-fun text-3xl font-700 text-slate-900">🪄 Build a story</h1>
+          <h1 className="font-fun text-3xl font-700 text-slate-900"><PlayfulText text={"🪄 Build a story"} /></h1>
           <p className="mt-1 font-round font-600 text-slate-500">Pick your ingredients and I&apos;ll weave a story!</p>
 
           <ChoiceRow title="Pick your hero" items={HEROES} selected={hero} onSelect={setHero} />
@@ -475,12 +469,8 @@ function BuildMode({ onBack }: { onBack: () => void }) {
               onClick={() => ready && makeStory(hero!, place!, obj!, mood!)}
               disabled={!ready}
               className="w-full rounded-full bg-coral py-3 font-fun text-lg font-700 text-white shadow-lg shadow-coral/30 transition hover:scale-[1.02] disabled:opacity-40"
-            >
-              ✨ Make my story!
-            </button>
-            <button onClick={surprise} className="w-full rounded-full bg-grape py-3 font-fun font-700 text-white shadow transition hover:scale-[1.02]">
-              🎲 Surprise me!
-            </button>
+            ><PlayfulText text={" ✨ Make my story! "} /></button>
+            <button onClick={surprise} className="w-full rounded-full bg-grape py-3 font-fun font-700 text-white shadow transition hover:scale-[1.02]"><PlayfulText text={" 🎲 Surprise me! "} /></button>
           </div>
         </div>
       ) : celebrate ? (
@@ -493,13 +483,9 @@ function BuildMode({ onBack }: { onBack: () => void }) {
             {awarded ? "You earned +60 points!" : "You explored the other path — nice work! 🌟"}
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <button onClick={replayFork} className="rounded-full bg-grape px-6 py-3 font-fun font-700 text-white shadow">
-              Try the other path 🔀
-            </button>
+            <button onClick={replayFork} className="rounded-full bg-grape px-6 py-3 font-fun font-700 text-white shadow"><PlayfulText text={" Try the other path 🔀 "} /></button>
             {saved ? (
-              <Link href="/learn/stories" className="rounded-full bg-mint/30 px-6 py-3 font-fun font-700 text-emerald-700 shadow">
-                Saved! View My Stories 📚
-              </Link>
+              <Link href="/learn/stories" className="rounded-full bg-mint/30 px-6 py-3 font-fun font-700 text-emerald-700 shadow"><PlayfulText text={" Saved! View My Stories 📚 "} /></Link>
             ) : (
               <button
                 onClick={saveStory}
@@ -509,9 +495,7 @@ function BuildMode({ onBack }: { onBack: () => void }) {
                 {saving ? "Saving…" : "Save my storybook 📖"}
               </button>
             )}
-            <button onClick={restart} className="rounded-full bg-coral px-6 py-3 font-fun font-700 text-white shadow">
-              Build another 🔁
-            </button>
+            <button onClick={restart} className="rounded-full bg-coral px-6 py-3 font-fun font-700 text-white shadow"><PlayfulText text={" Build another 🔁 "} /></button>
             <Link href="/learn" className="rounded-full bg-slate-100 px-6 py-3 font-fun font-600 text-slate-600">
               All activities
             </Link>
@@ -538,9 +522,7 @@ function BuildMode({ onBack }: { onBack: () => void }) {
             <button
               onClick={() => speak(pages[pageIndex])}
               className="rounded-full bg-amber-100 px-4 py-1.5 font-fun text-sm font-700 text-amber-700 transition hover:bg-amber-200"
-            >
-              🔊 Read to me
-            </button>
+            ><PlayfulText text={" 🔊 Read to me "} /></button>
             <button
               onClick={() => setAutoRead((v) => !v)}
               className={`rounded-full px-4 py-1.5 font-fun text-sm font-700 transition ${

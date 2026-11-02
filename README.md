@@ -21,6 +21,10 @@ AI storytelling · coding · game design · phonics · escape rooms — a gamifi
 
 </div>
 
+## Current family homepage
+
+![AI Kids family homepage](screenshot.png)
+
 ## Screenshots
 
 <div align="center">
@@ -37,7 +41,7 @@ AI storytelling · coding · game design · phonics · escape rooms — a gamifi
 
 ## About
 
-**AI Kids Academy** is a kids' AI education portal that combines a **gamified learning playground** with a **class-booking platform** for parents. Children log in to their own colourful dashboard to play AI-powered activities and earn points and badges; parents browse programs, book classes online, and track their kids' progress; admins manage the whole catalogue from a back-office.
+**AI Kids Academy** is a kids' AI education portal that combines a **gamified learning playground** with a **class-booking platform** for parents. Parents sign in, choose an owned child profile, and unlock the games together. Children play AI-powered activities and earn points and badges; parents browse programs, book classes online, and track their kids' progress; admins manage the whole catalogue from a back-office.
 
 ### Key Features
 
@@ -216,3 +220,13 @@ Set `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `NEXT_PUBLIC_SITE_URL`, and Googl
 ⭐ If this project sparked some curiosity, give it a star!
 
 </div>
+
+### December family workshops and parent-unlocked games
+
+- Photo-first Singapore family homepage, three-scene Tetris photo banner and original sunny / plush characters.
+- December AI story writing, math, science and creative-content workshop enquiries; dates and fees are confirmed by the team.
+- Free printable family activity pack and adult-guided tools.
+- `Explore games` opens `/parent/play`. Parent authentication and live child ownership are required for every `/learn` page and API; direct child logins do not unlock games.
+- AI text uses **DeepSeek V4.1 Flash**, official model ID `deepseek-flash`. Set `deepseek_api_key` in Admin → Settings → Credentials (encrypted at rest); `DEEPSEEK_API_KEY` is the environment fallback. Art and voice retain separate providers. No silent Claude/Gemini text fallback.
+- Marketing canonicals and sitemap target `https://ai4kids.tertiarycourses.com.sg`; private family/game routes are excluded.
+- Production: push `main` to trigger the existing Coolify Docker deployment. This server-rendered app is not a GitHub Pages deployment.

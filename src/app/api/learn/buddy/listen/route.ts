@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getPortalSession } from "@/lib/portal-session";
+import { getLearnerSession } from "@/lib/learner-session";
 import { transcribeKidAudio } from "@/lib/whisper-stt";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -7,8 +7,8 @@ export const maxDuration = 30;
 
 /** Audio upload → transcript (Cloudflare Whisper). Feeds the buddy's tap-to-talk. */
 export async function POST(req: Request) {
-  const session = await getPortalSession();
-  if (!session || session.role !== "learner") return NextResponse.json({ error: "Learners only" }, { status: 403 });
+  const session = await getLearnerSession();
+  if (!session || session.role !== "learner") return NextResponse.json({ error: "A parent must sign in and choose their child before playing." }, { status: 403 });
   // Over the limit → empty transcript (no STT call).
   if (!rateLimit(`listen:${session.id}`, 20, 60_000)) return NextResponse.json({ text: "" });
 

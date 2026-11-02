@@ -1,3 +1,4 @@
+import { PlayfulText } from "@/components/public/PlaySymbol";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
@@ -60,9 +61,9 @@ export default async function NewChildPage({
         ← My kids
       </Link>
       <div className="mt-4 rounded-[2rem] bg-white p-8 shadow-sm ring-1 ring-amber-100">
-        <h1 className="font-fun text-2xl font-700 text-slate-900">Add your child 🧒</h1>
+        <h1 className="font-fun text-2xl font-700 text-slate-900"><PlayfulText text={"Add your child 🧒"} /></h1>
         <p className="mt-1 text-sm text-slate-500">
-          Create a kid login. They'll use the username + secret word to sign in.
+          Create your child’s profile. You’ll sign in as a parent to unlock their games.
         </p>
         {err && (
           <p className="mt-3 rounded-2xl bg-coral/10 p-3 text-sm text-coral">
@@ -90,9 +91,7 @@ export default async function NewChildPage({
               Bands: {AGE_BANDS.map((b) => b.slug).join(" · ")}
             </p>
           </div>
-          <button className="w-full rounded-2xl bg-sky-500 py-3 font-fun text-lg font-700 text-white shadow-lg transition hover:scale-[1.02]">
-            Create kid account 🎉
-          </button>
+          <button className="w-full rounded-2xl bg-sky-500 py-3 font-fun text-lg font-700 text-white shadow-lg transition hover:scale-[1.02]"><PlayfulText text={" Create kid account 🎉 "} /></button>
         </form>
       </div>
     </div>

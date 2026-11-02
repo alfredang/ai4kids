@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
+import { KidsLogo } from "@/components/public/KidsLogo";
+import { KidsIcon } from "@/components/public/KidsIcon";
 
 export default function LoginPage() {
-  const [tab, setTab] = useState<"kid" | "parent" | "admin">("kid");
+  const [tab, setTab] = useState<"kid" | "parent" | "admin">("parent");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -35,7 +37,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-sky/20 via-cream to-coral/20 p-4">
       <div className="w-full max-w-md rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-amber-100">
         <Link href="/" className="flex items-center justify-center gap-2 font-fun text-2xl font-700 text-slate-800">
-          <span aria-hidden>🤖</span> AI <span className="text-coral">Kids</span>
+          <KidsIcon name="sun" /> AI <span className="text-coral">Kids</span>
         </Link>
 
         <div className="mt-6 grid grid-cols-3 gap-1.5 rounded-full bg-amber-50 p-1 font-fun text-sm font-600">
@@ -43,19 +45,19 @@ export default function LoginPage() {
             onClick={() => setTab("kid")}
             className={`rounded-full py-2 transition ${tab === "kid" ? "bg-coral text-white shadow" : "text-slate-500"}`}
           >
-            🚀 Kid
+            <KidsIcon name="bag" /> Child
           </button>
           <button
             onClick={() => setTab("parent")}
             className={`rounded-full py-2 transition ${tab === "parent" ? "bg-sky-500 text-white shadow" : "text-slate-500"}`}
           >
-            👋 Parent
+            <KidsIcon name="home" /> Parent
           </button>
           <button
             onClick={() => setTab("admin")}
             className={`rounded-full py-2 transition ${tab === "admin" ? "bg-slate-700 text-white shadow" : "text-slate-500"}`}
           >
-            🔐 Admin
+            <KidsIcon name="shield" /> Staff
           </button>
         </div>
 
@@ -95,13 +97,13 @@ export default function LoginPage() {
         ) : tab === "parent" ? (
           <div className="mt-6 space-y-4">
             <p className="text-center font-round text-slate-500">
-              Parents sign in with Google.
+              Parents sign in to unlock the games and choose a child’s profile.
             </p>
             <button
               onClick={async () => {
                 // Drop any leftover staff admin cookie before the OAuth redirect.
                 await fetch("/api/portal/drop-admin", { method: "POST" }).catch(() => {});
-                signIn("google", { callbackUrl: "/dashboard" });
+                signIn("google", { callbackUrl: "/parent/play" });
               }}
               className="flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-slate-200 bg-white py-3 font-fun font-600 text-slate-700 transition hover:bg-slate-50"
             >

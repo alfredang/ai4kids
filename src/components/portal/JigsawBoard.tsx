@@ -1,4 +1,6 @@
 "use client";
+import { PlayfulText } from "@/components/public/PlaySymbol";
+
 
 import { useState, type CSSProperties } from "react";
 
@@ -113,8 +115,7 @@ export function JigsawBoard({ imageURL, artworkId }: { imageURL: string; artwork
         ))}
         <button onClick={() => setPeek((p) => !p)}
           className="ml-auto rounded-full bg-sky/15 px-4 py-2 font-fun text-sm font-700 text-sky-600 ring-1 ring-sky/30">
-          {peek ? "Hide" : "Peek"} 👀
-        </button>
+          {peek ? "Hide" : "Peek"}<PlayfulText text={" 👀 "} /></button>
       </div>
 
       {/* Board */}
@@ -149,9 +150,8 @@ export function JigsawBoard({ imageURL, artworkId }: { imageURL: string; artwork
 
       {solved && (
         <div className="mt-4 rounded-2xl bg-mint/20 p-4 text-center font-fun font-700 text-emerald-600">
-          You solved it! +{earned} points 🎉
-          <div>
-            <button onClick={() => newGame(grid, base)} className="mt-3 rounded-full bg-sky-500 px-6 py-2 font-700 text-white shadow">Play again 🔁</button>
+          You solved it! +{earned}<PlayfulText text={" points 🎉 "} /><div>
+            <button onClick={() => newGame(grid, base)} className="mt-3 rounded-full bg-sky-500 px-6 py-2 font-700 text-white shadow"><PlayfulText text={"Play again 🔁"} /></button>
           </div>
         </div>
       )}

@@ -1,4 +1,6 @@
 "use client";
+import { PlayfulText } from "@/components/public/PlaySymbol";
+
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
@@ -180,9 +182,7 @@ function StarRow({ filled, size = "text-xl" }: { filled: number; size?: string }
   return (
     <div className={`flex ${size}`}>
       {[0, 1, 2].map((s) => (
-        <span key={s} className={s < filled ? "" : "opacity-25 grayscale"}>
-          ⭐
-        </span>
+        <span key={s} className={s < filled ? "" : "opacity-25 grayscale"}><PlayfulText text={" ⭐ "} /></span>
       ))}
     </div>
   );
@@ -194,8 +194,7 @@ function HearButton({ onClick, accent, label = "Hear it" }: { onClick: () => voi
     <button
       onClick={onClick}
       className={`inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 font-fun text-sm font-700 shadow-sm ring-1 ring-slate-100 ${a.softText}`}
-    >
-      🔊 {label}
+    ><PlayfulText text={" 🔊 "} />{label}
     </button>
   );
 }
@@ -205,7 +204,7 @@ function RoundFeedback({ solved, wrong, isLast, accent, onNext }: { solved: bool
   if (solved) {
     return (
       <div className="flex flex-col items-center gap-3">
-        <p className="font-fun text-lg font-700 text-emerald-600">Great job! 🎉</p>
+        <p className="font-fun text-lg font-700 text-emerald-600"><PlayfulText text={"Great job! 🎉"} /></p>
         <button onClick={onNext} className={`rounded-full ${a.solid} px-6 py-2.5 font-fun font-700 text-white shadow transition hover:scale-105`}>
           {isLast ? "Finish ▶" : "Next ▶"}
         </button>
@@ -213,7 +212,7 @@ function RoundFeedback({ solved, wrong, isLast, accent, onNext }: { solved: bool
     );
   }
   if (wrong) {
-    return <p className="text-center font-round font-600 text-coral">Not quite — listen again and try once more! 🙂</p>;
+    return <p className="text-center font-round font-600 text-coral"><PlayfulText text={"Not quite — listen again and try once more! 🙂"} /></p>;
   }
   return null;
 }
@@ -266,9 +265,7 @@ function TapCard({
         }}
         aria-label={hearLabel}
         className={`rounded-full ${a.soft} px-3 py-1 font-fun text-xs font-700 ${a.softText}`}
-      >
-        🔊
-      </button>
+      ><PlayfulText text={" 🔊 "} /></button>
     </div>
   );
 }
@@ -345,10 +342,9 @@ function PhonicsBuddy({ enabled, req, accent, speak, resetKey }: { enabled: bool
         onClick={ask}
         disabled={busy}
         className={`inline-flex items-center gap-2 rounded-full ${a.solid} px-5 py-2 font-fun text-sm font-700 text-white shadow transition hover:scale-105 disabled:opacity-60`}
-      >
-        ✨ {busy ? "Thinking…" : "Ask Buddy"}
+      ><PlayfulText text={" ✨ "} />{busy ? "Thinking…" : "Ask Buddy"}
       </button>
-      {hint && <p className={`w-full rounded-2xl ${a.soft} p-3 text-center font-round text-sm text-slate-700`}>🤖 {hint}</p>}
+      {hint && <p className={`w-full rounded-2xl ${a.soft} p-3 text-center font-round text-sm text-slate-700`}><PlayfulText text={"🤖 "} />{hint}</p>}
     </div>
   );
 }
@@ -399,9 +395,7 @@ function PopGame({ rounds, accent, speak, play, buddy, onProgress, onFinish }: G
         {options.map((slug, i) => (
           <div key={i} className={`flex w-24 flex-col items-center gap-2 rounded-3xl p-3 shadow-sm ring-1 ${wrong === i ? "bg-coral/15 ring-coral/30" : "bg-white ring-slate-100"}`}>
             <div className={`font-fun text-3xl font-700 ${a.text}`}>{i + 1}</div>
-            <button onClick={() => play(slug)} className={`rounded-full ${a.soft} px-3 py-1.5 font-fun text-xs font-700 ${a.softText}`}>
-              🔊 Hear
-            </button>
+            <button onClick={() => play(slug)} className={`rounded-full ${a.soft} px-3 py-1.5 font-fun text-xs font-700 ${a.softText}`}><PlayfulText text={" 🔊 Hear "} /></button>
             <button onClick={() => pick(i)} className={`w-full rounded-xl ${a.solid} py-1.5 font-fun text-sm font-700 text-white`}>
               Pick
             </button>
@@ -649,9 +643,7 @@ function ListenGame({ rounds, accent, speak, buddy, onProgress, onFinish }: Game
     <div className="flex w-full flex-col items-center gap-5">
       <p className="text-center font-round font-600 text-slate-500">Listen, then tap the word you hear!</p>
       <div className={`flex w-full flex-col items-center gap-2 rounded-3xl bg-white p-6 shadow-sm ring-1 ${a.ring}`}>
-        <button onClick={() => speak(round.word)} className={`flex h-24 w-24 items-center justify-center rounded-full ${a.solid} text-5xl text-white shadow-lg transition hover:scale-105`}>
-          🔊
-        </button>
+        <button onClick={() => speak(round.word)} className={`flex h-24 w-24 items-center justify-center rounded-full ${a.solid} text-5xl text-white shadow-lg transition hover:scale-105`}><PlayfulText text={" 🔊 "} /></button>
         <p className="font-round text-sm font-600 text-slate-400">Tap to hear again</p>
       </div>
       <div className="flex justify-center gap-3">
@@ -732,14 +724,10 @@ function BlendGame({ rounds, accent, speak, play, buddy, onProgress, onFinish }:
               onClick={() => play(slug)}
               aria-label={`Sound ${i + 1}`}
               className={`flex h-16 w-16 items-center justify-center rounded-full ${a.soft} text-2xl shadow-sm transition hover:scale-105`}
-            >
-              🔊
-            </button>
+            ><PlayfulText text={" 🔊 "} /></button>
           ))}
         </div>
-        <button onClick={() => setBlendTick((n) => n + 1)} className={`rounded-full ${a.solid} px-6 py-2.5 font-fun font-700 text-white shadow transition hover:scale-105`}>
-          Blend it! 🔊
-        </button>
+        <button onClick={() => setBlendTick((n) => n + 1)} className={`rounded-full ${a.solid} px-6 py-2.5 font-fun font-700 text-white shadow transition hover:scale-105`}><PlayfulText text={" Blend it! 🔊 "} /></button>
       </div>
       {/* No letters shown — the word is decoded purely by ear. */}
       <div className="flex justify-center gap-3">
@@ -801,9 +789,7 @@ function DigraphGame({ rounds, accent, speak, play, buddy, onProgress, onFinish 
       <p className="text-center font-round font-600 text-slate-500">Which two letters make this sound?</p>
       {/* No word shown — the child must map the sound to its two-letter spelling. */}
       <div className={`flex w-full flex-col items-center gap-2 rounded-3xl bg-white p-6 shadow-sm ring-1 ${a.ring}`}>
-        <button onClick={() => play(round.sound)} className={`flex h-24 w-24 items-center justify-center rounded-full ${a.solid} text-5xl text-white shadow-lg transition hover:scale-105`}>
-          🔊
-        </button>
+        <button onClick={() => play(round.sound)} className={`flex h-24 w-24 items-center justify-center rounded-full ${a.solid} text-5xl text-white shadow-lg transition hover:scale-105`}><PlayfulText text={" 🔊 "} /></button>
         <p className="font-round text-sm font-600 text-slate-400">Tap to hear again</p>
         {/* On a win, reinforce: the two letters → a word that uses them. */}
         {solved && (
@@ -929,7 +915,7 @@ function StageHost({ stage, speak, play, stop, buddy, onDone, onBack }: { stage:
       {earned != null && (
         <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-900/30 p-4">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 text-center shadow-xl ring-1 ring-amber-100">
-            <div className="text-6xl">🎉</div>
+            <div className="text-6xl"><PlayfulText text={"🎉"} /></div>
             <h2 className="mt-2 font-fun text-2xl font-700 text-slate-900">{stage.title} cleared!</h2>
             <div className="mt-3 flex justify-center">
               <StarRow filled={earned} size="text-4xl" />
@@ -943,9 +929,7 @@ function StageHost({ stage, speak, play, stop, buddy, onDone, onBack }: { stage:
                   setAttempt((n) => n + 1);
                 }}
                 className="rounded-full bg-slate-100 px-5 py-2.5 font-fun font-700 text-slate-600 hover:bg-slate-200"
-              >
-                Play again 🔁
-              </button>
+              ><PlayfulText text={" Play again 🔁 "} /></button>
               <button onClick={onBack} className={`rounded-full ${a.solid} px-5 py-2.5 font-fun font-700 text-white shadow`}>
                 Map
               </button>
@@ -1015,13 +999,12 @@ export function PhonicsQuest({ initialStars }: { initialStars: Stars }) {
         <Link href="/learn" className="font-fun text-sm font-600 text-slate-400 hover:text-coral">
           ← Back to activities
         </Link>
-        <div className="inline-flex items-center gap-1 rounded-full bg-sunny/20 px-3 py-1 font-fun text-sm font-700 text-amber-600">
-          ⭐ {totalStars}
+        <div className="inline-flex items-center gap-1 rounded-full bg-sunny/20 px-3 py-1 font-fun text-sm font-700 text-amber-600"><PlayfulText text={" ⭐ "} />{totalStars}
         </div>
       </div>
 
       <div className="mt-3 rounded-[2rem] bg-gradient-to-r from-bubble/25 to-sky/25 p-6">
-        <h1 className="font-fun text-3xl font-700 text-slate-900">🔤 Phonics Quest</h1>
+        <h1 className="font-fun text-3xl font-700 text-slate-900"><PlayfulText text={"🔤 Phonics Quest"} /></h1>
         <p className="mt-1 font-round font-600 text-slate-600">Travel the worlds and master every sound!</p>
       </div>
 
@@ -1051,7 +1034,7 @@ export function PhonicsQuest({ initialStars }: { initialStars: Stars }) {
                   </div>
                 )}
               </div>
-              {unlocked && <div className={`font-fun text-xl font-700 ${a.text}`}>▶</div>}
+              {unlocked && <div className={`font-fun text-xl font-700 ${a.text}`}><PlayfulText text={"▶"} /></div>}
             </button>
           );
         })}

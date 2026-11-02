@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { getPortalSession } from "@/lib/portal-session";
+import { getLearnerSession } from "@/lib/learner-session";
 import { db } from "@/db";
 import { learnerStories } from "@/db/schema";
 
 /** Delete one of the learner's own saved stories. */
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getPortalSession();
+  const session = await getLearnerSession();
   if (!session || session.role !== "learner") {
-    return NextResponse.json({ error: "Learners only" }, { status: 403 });
+    return NextResponse.json({ error: "A parent must sign in and choose their child before playing." }, { status: 403 });
   }
   const storyId = Number((await params).id);
   if (!Number.isInteger(storyId)) {

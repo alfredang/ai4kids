@@ -1,4 +1,6 @@
 "use client";
+import { PlayfulText } from "@/components/public/PlaySymbol";
+
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { TalkingBuddy } from "@/components/portal/TalkingBuddy";
@@ -201,9 +203,7 @@ export default function BuddyPage() {
           <button
             onClick={clearChat}
             className="rounded-full bg-slate-100 px-3 py-1 font-fun text-xs font-700 text-slate-500 transition hover:bg-slate-200"
-          >
-            New chat 🧹
-          </button>
+          ><PlayfulText text={" New chat 🧹 "} /></button>
         )}
       </div>
 
@@ -218,7 +218,7 @@ export default function BuddyPage() {
             >
               {customising ? "Done" : "✏️ Customise"}
             </button>
-            <h1 className="font-fun text-2xl font-700 text-slate-900">🤖 {title}</h1>
+            <h1 className="font-fun text-2xl font-700 text-slate-900"><PlayfulText text={"🤖 "} />{title}</h1>
             <p className="font-round text-sm text-slate-500">Your friendly AI pal — talk or type!</p>
             <div className="mt-2">
               <TalkingBuddy audioUrl={audio} fallbackText={speakText ?? undefined} color={buddyColor} mood={mood} />
@@ -301,9 +301,7 @@ export default function BuddyPage() {
           className="max-h-[70vh] min-h-[16rem] space-y-3 overflow-y-auto rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-slate-100"
         >
           {messages.length === 0 ? (
-            <div className="flex h-full min-h-[14rem] items-center justify-center text-center font-round text-slate-400">
-              Your chat will show up here 💬
-            </div>
+            <div className="flex h-full min-h-[14rem] items-center justify-center text-center font-round text-slate-400"><PlayfulText text={" Your chat will show up here 💬 "} /></div>
           ) : (
             messages.map((m, i) =>
               m.role === "user" ? (
@@ -314,7 +312,7 @@ export default function BuddyPage() {
                 </div>
               ) : (
                 <div key={i} className="flex items-end justify-start gap-2">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky/15 text-lg">🤖</span>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky/15 text-lg"><PlayfulText text={"🤖"} /></span>
                   <span className="max-w-[80%] rounded-2xl rounded-bl-md bg-sky/10 px-4 py-2 font-round text-slate-700 ring-1 ring-sky/20">
                     {m.content}
                   </span>
@@ -322,9 +320,7 @@ export default function BuddyPage() {
                     onClick={() => speak(m.content)}
                     aria-label="Play again"
                     className="shrink-0 text-slate-300 transition hover:text-sky-500"
-                  >
-                    🔊
-                  </button>
+                  ><PlayfulText text={" 🔊 "} /></button>
                 </div>
               ),
             )

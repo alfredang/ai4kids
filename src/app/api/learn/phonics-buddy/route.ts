@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getPortalSession } from "@/lib/portal-session";
+import { getLearnerSession } from "@/lib/learner-session";
 import { getCredential } from "@/lib/secrets";
-import { isAiConfigured } from "@/lib/ai";
-import { generateKidReply } from "@/lib/gemini-chat";
+import { generateKidReply } from "@/lib/kids-ai";
 
 export const maxDuration = 30;
 
@@ -16,10 +15,8 @@ export const maxDuration = 30;
  * Hints only — the end-of-world praise is hardcoded on the client, because a
  * celebration must be instant and an LLM round-trip isn't.
  *
- * Goes through `generateKidReply` — Gemini Flash primary, Claude Agent SDK
- * fallback — like the Talking Buddy, and like the Gemini Buddy this was ported
- * from. That Gemini path is scoped to the children's games; the CMS chatbot +
- * admin AI Assist remain Agent-SDK-only per CLAUDE.md.
+ * Text hints use DeepSeek V4.1 Flash. If it is unavailable, the game keeps
+ * its prepared hints. Admin AI remains separate.
  */
 
 const PHONICS_SYSTEM =
@@ -39,11 +36,10 @@ const schema = z.object({
   answer: z.string().max(24).optional(),
 });
 
-// GET → whether the Buddy is available, so the client can hide the button. Either
-// provider will do: Gemini serves it, and Claude alone still works via fallback.
+// Parent-gated capability check for the optional AI hint button.
 export async function GET() {
-  const [gemini, claude] = await Promise.all([getCredential("gemini_api_key"), isAiConfigured()]);
-  return NextResponse.json({ enabled: Boolean(gemini) || claude });
+  if (!(await getLearnerSession())) return NextResponse.json({ error: "Parent login required" }, { status: 403 });
+  return NextResponse.json({ enabled: Boolean(await getCredential("deepseek_api_key")) });
 }
 
 /** The round's task. The tutor persona and safety frame live in PHONICS_SYSTEM. */
@@ -92,9 +88,9 @@ function mentions(haystack: string, word: string): boolean {
 }
 
 export async function POST(req: Request) {
-  const session = await getPortalSession();
+  const session = await getLearnerSession();
   if (!session || session.role !== "learner") {
-    return NextResponse.json({ error: "Learners only" }, { status: 403 });
+    return NextResponse.json({ error: "A parent must sign in and choose their child before playing." }, { status: 403 });
   }
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

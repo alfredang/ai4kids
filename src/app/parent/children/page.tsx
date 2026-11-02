@@ -1,3 +1,4 @@
+import { PlayfulText } from "@/components/public/PlaySymbol";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getPortalSession } from "@/lib/portal-session";
@@ -27,9 +28,7 @@ export default async function ChildrenPage() {
 
       <div className="mt-6 space-y-3">
         {withStats.length === 0 && (
-          <p className="rounded-3xl bg-white p-8 text-center text-slate-500 shadow-sm">
-            No kids yet. Add your first child to get them learning! 🌱
-          </p>
+          <p className="rounded-3xl bg-white p-8 text-center text-slate-500 shadow-sm"><PlayfulText text={" No kids yet. Add your first child to get them learning! 🌱 "} /></p>
         )}
         {withStats.map(({ k, s }) => (
           <div key={k.id} className="flex items-center justify-between rounded-3xl bg-white p-5 shadow-sm ring-1 ring-amber-100">
@@ -53,9 +52,7 @@ export default async function ChildrenPage() {
               <Link
                 href={`/parent/buddy/${k.id}`}
                 className="rounded-full bg-sky/15 px-4 py-2 font-fun text-sm font-700 text-sky-600 transition hover:bg-sky/25"
-              >
-                💬 Buddy chats
-              </Link>
+              ><PlayfulText text={" 💬 Buddy chats "} /></Link>
             </div>
           </div>
         ))}

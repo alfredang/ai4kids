@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
     "/api/ai/assist": ["./node_modules/@anthropic-ai/**/*"],
   },
   images: {
+    qualities: [75, 90],
     remotePatterns: [
       { protocol: "https", hostname: "www.tertiaryinfotech.com" },
       // Cloudflare R2 public buckets (logo, uploaded media).

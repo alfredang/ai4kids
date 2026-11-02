@@ -1,12 +1,13 @@
+import { PlayfulText } from "@/components/public/PlaySymbol";
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { getPortalSession } from "@/lib/portal-session";
+import { getLearnerSession } from "@/lib/learner-session";
 import { getLearnerStory } from "@/lib/portal-queries";
 import { SavedStoryReader } from "@/components/portal/SavedStoryReader";
 
 export default async function StoryViewerPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await getPortalSession();
-  if (!session) redirect("/login?from=/learn/stories");
+  const session = await getLearnerSession();
+  if (!session) redirect("/parent/play");
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
   const story = await getLearnerStory(Number(session.id), id);
@@ -25,9 +26,7 @@ export default async function StoryViewerPage({ params }: { params: Promise<{ id
       </div>
 
       <div className="mt-6 flex flex-wrap justify-center gap-3">
-        <Link href="/learn/storytelling" className="rounded-full bg-coral px-6 py-3 font-fun font-700 text-white shadow">
-          Build another 🔁
-        </Link>
+        <Link href="/learn/storytelling" className="rounded-full bg-coral px-6 py-3 font-fun font-700 text-white shadow"><PlayfulText text={" Build another 🔁 "} /></Link>
         <Link href="/learn/stories" className="rounded-full bg-slate-100 px-6 py-3 font-fun font-600 text-slate-600">
           All my stories
         </Link>

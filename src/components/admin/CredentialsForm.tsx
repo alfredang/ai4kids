@@ -6,6 +6,7 @@ type Key =
   | "anthropic_auth_token"
   | "firecrawl_api_key"
   | "tavily_api_key"
+  | "deepseek_api_key"
   | "gemini_api_key"
   | "nvidia_api_key"
   | "gmail_user"
@@ -51,9 +52,14 @@ const FIELDS: Record<
     hint: "Used by AI Assist to gather up-to-date research context before drafting.",
     placeholder: "tvly-…",
   },
+  deepseek_api_key: {
+    label: "DeepSeek — API key (kids AI text games)",
+    hint: "Powers parent-unlocked Talking Buddy, phonics and story generation with DeepSeek V4.1 Flash (deepseek-flash). Image and voice providers are separate.",
+    placeholder: "Enter your DeepSeek API key",
+  },
   gemini_api_key: {
-    label: "Google Gemini — API key (kids Talking Buddy)",
-    hint: "From Google AI Studio → Get API key. Powers the /learn Talking Buddy's text replies (Gemini Flash) and a richer TTS voice fallback. Used only for the children's games, not the CMS chatbot.",
+    label: "Google Gemini — API key (image / voice fallback)",
+    hint: "From Google AI Studio → Get API key. Used for image generation and a richer TTS voice fallback. Used only for the children's games, not the CMS chatbot.",
     placeholder: "AIza…",
   },
   nvidia_api_key: {
@@ -173,7 +179,7 @@ const GROUPS: Group[] = [
   {
     title: "AI integrations",
     description: "API keys for Claude, research, and content tooling.",
-    keys: ["anthropic_auth_token", "firecrawl_api_key", "tavily_api_key", "gemini_api_key", "nvidia_api_key", "cloudflare_ai_token"],
+    keys: ["anthropic_auth_token", "firecrawl_api_key", "tavily_api_key", "deepseek_api_key", "gemini_api_key", "nvidia_api_key", "cloudflare_ai_token"],
   },
   {
     title: "Gmail OAuth (lead notification email)",

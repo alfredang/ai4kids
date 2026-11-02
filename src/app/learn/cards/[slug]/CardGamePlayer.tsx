@@ -1,4 +1,6 @@
 "use client";
+import { PlayfulText } from "@/components/public/PlaySymbol";
+
 
 /**
  * Client for the three card games. One component drives every phase — menu,
@@ -287,13 +289,13 @@ export function CardGamePlayer({ game }: { game: CardGameMeta }) {
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-fun text-sm font-600">
         <Link href="/learn" className="text-slate-400 hover:text-coral">← Back to activities</Link>
         <span aria-hidden className="text-slate-300">·</span>
-        <Link href="/learn/cards" className="text-slate-400 hover:text-coral">🕹️ Brain Arcade</Link>
+        <Link href="/learn/cards" className="text-slate-400 hover:text-coral"><PlayfulText text={"🕹️ Brain Arcade"} /></Link>
       </div>
 
       {/* Title */}
       <div className={`mt-3 flex items-center gap-4 rounded-[2rem] bg-white p-5 shadow-sm ring-1 ${game.ring}`}>
         <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-4xl ${game.accent}`}>
-          {game.emoji}
+          <PlayfulText text={game.emoji} />
         </div>
         <div className="min-w-0">
           <h1 className="font-fun text-2xl font-700 text-slate-900">{game.title}</h1>
@@ -410,9 +412,7 @@ function Menu({
             onClick={onSolo}
             disabled={busy}
             className="rounded-3xl bg-grape px-5 py-4 text-left font-fun font-700 text-white shadow transition hover:scale-[1.02] disabled:opacity-50"
-          >
-            🎯 Play Solo
-            <span className="block font-round text-sm font-500 text-white/80">
+          ><PlayfulText text={" 🎯 Play Solo "} /><span className="block font-round text-sm font-500 text-white/80">
               Beat the clock on your own.
             </span>
           </button>
@@ -533,7 +533,7 @@ function Lobby({
             {enough ? "Start game ▶" : `Need ${game.minPlayers}+ players`}
           </button>
         ) : (
-          <div className="font-round text-slate-500">Waiting for the host to start… 🕒</div>
+          <div className="font-round text-slate-500"><PlayfulText text={"Waiting for the host to start… 🕒"} /></div>
         )}
         <div>
           <button onClick={onLeave} className="mt-3 font-fun text-sm font-600 text-slate-400 hover:text-coral">
@@ -585,13 +585,13 @@ function Results({ state, onAgain }: { state: CardStateDTO; onAgain: () => void 
       {solo && !soloLost && thisMs != null && (
         <div className="mx-auto mt-4 max-w-xs">
           <div className="rounded-2xl bg-white/70 px-5 py-3 font-fun font-700 text-slate-700 shadow-sm">
-            <span className="tabular-nums">⏱️ Your time: {fmtTime(thisMs)}</span>
+            <span className="tabular-nums"><PlayfulText text={"⏱️ Your time: "} />{fmtTime(thisMs)}</span>
             {state.bestMs != null && (
-              <span className="ml-3 tabular-nums text-amber-600">🏆 Best: {fmtTime(state.bestMs)}</span>
+              <span className="ml-3 tabular-nums text-amber-600"><PlayfulText text={"🏆 Best: "} />{fmtTime(state.bestMs)}</span>
             )}
           </div>
           {newBest && (
-            <div className="mt-2 font-fun font-700 text-emerald-600">✨ New personal best!</div>
+            <div className="mt-2 font-fun font-700 text-emerald-600"><PlayfulText text={"✨ New personal best!"} /></div>
           )}
         </div>
       )}
@@ -614,9 +614,7 @@ function Results({ state, onAgain }: { state: CardStateDTO; onAgain: () => void 
       <button
         onClick={onAgain}
         className="mt-6 rounded-full bg-coral px-8 py-3 font-fun text-lg font-700 text-white shadow transition hover:scale-105"
-      >
-        Play again ▶
-      </button>
+      ><PlayfulText text={" Play again ▶ "} /></button>
     </div>
   );
 }
@@ -650,12 +648,10 @@ function SoloClock({
 
   return (
     <div className="mb-4 flex items-center justify-center gap-3 font-fun font-700">
-      <span className="rounded-2xl bg-sky/10 px-4 py-1.5 text-sky-700 ring-1 ring-sky/20 tabular-nums">
-        ⏱️ {fmtTime(elapsed)}
+      <span className="rounded-2xl bg-sky/10 px-4 py-1.5 text-sky-700 ring-1 ring-sky/20 tabular-nums"><PlayfulText text={" ⏱️ "} />{fmtTime(elapsed)}
       </span>
       {bestMs != null && (
-        <span className="rounded-2xl bg-amber-50 px-4 py-1.5 text-amber-600 ring-1 ring-amber-100 tabular-nums">
-          🏆 Best {fmtTime(bestMs)}
+        <span className="rounded-2xl bg-amber-50 px-4 py-1.5 text-amber-600 ring-1 ring-amber-100 tabular-nums"><PlayfulText text={" 🏆 Best "} />{fmtTime(bestMs)}
         </span>
       )}
     </div>
@@ -772,8 +768,7 @@ function TimerBar({ remaining, total }: { remaining: number; total: number }) {
           style={{ width: `${frac * 100}%` }}
         />
       </div>
-      <div className={`mt-1 text-center font-fun text-sm font-700 tabular-nums ${urgent ? "text-coral" : "text-slate-500"}`}>
-        ⏱ {secs}s
+      <div className={`mt-1 text-center font-fun text-sm font-700 tabular-nums ${urgent ? "text-coral" : "text-slate-500"}`}><PlayfulText text={" ⏱ "} />{secs}s
       </div>
     </div>
   );
@@ -929,7 +924,7 @@ function WheelBoard({ view, busy, onMove }: { view: WheelView; busy: boolean; on
         <p className="mt-4 text-center font-fun font-700 text-slate-400">Choosing an animal…</p>
       ) : !ready ? (
         <div className="mt-4 rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-slate-100">
-          <div className="text-5xl">🏁</div>
+          <div className="text-5xl"><PlayfulText text={"🏁"} /></div>
           <div className="mt-2 font-fun text-xl font-700 text-slate-800">Final Round!</div>
           <p className="mt-1 font-round text-sm text-slate-500">
             Just one animal left — {view.targetAnimal}. Get this card right to win!
@@ -937,9 +932,7 @@ function WheelBoard({ view, busy, onMove }: { view: WheelView; busy: boolean; on
           <button
             onClick={() => setReady(true)}
             className="mt-4 rounded-full bg-coral px-6 py-2.5 font-fun font-700 text-white shadow transition hover:scale-105"
-          >
-            I&apos;m ready! ▶
-          </button>
+          ><PlayfulText text={" I&apos;m ready! ▶ "} /></button>
         </div>
       ) : (
         <div className="mt-3">
@@ -953,9 +946,7 @@ function WheelBoard({ view, busy, onMove }: { view: WheelView; busy: boolean; on
             <TimerBar remaining={remaining} total={view.roundMs} />
           </div>
           {view.wrongPicks.length > 0 && (
-            <p className="mt-1 text-center font-fun text-xs font-700 text-coral">
-              ❌ no more chances left — choose carefully!
-            </p>
+            <p className="mt-1 text-center font-fun text-xs font-700 text-coral"><PlayfulText text={" ❌ no more chances left — choose carefully! "} /></p>
           )}
           <div className="mt-3 grid grid-cols-2 gap-3">
             {view.cards.map((c) => {
@@ -1002,7 +993,7 @@ function OddOneBoard({ view, busy, onMove }: { view: OddOneView; busy: boolean; 
         <TimerBar remaining={remaining} total={view.roundMs} />
       </div>
       {view.wrongPicks.length > 0 && (
-        <p className="mt-1 text-center font-fun text-xs font-700 text-coral">❌ one mistake — look closely!</p>
+        <p className="mt-1 text-center font-fun text-xs font-700 text-coral"><PlayfulText text={"❌ one mistake — look closely!"} /></p>
       )}
       <div className="mt-3 grid grid-cols-2 gap-3">
         {view.cards.map((c) => {
@@ -1229,9 +1220,7 @@ function DiscardBoard({ view, busy, onMove }: { view: DiscardView; busy: boolean
           disabled={view.canPlay || !view.yourTurn || busy}
           className="rounded-full bg-slate-100 px-6 py-2.5 font-fun font-700 text-slate-500 transition hover:bg-slate-200 disabled:opacity-40"
           title={view.canPlay ? "You still have a move!" : "No move — pass your turn"}
-        >
-          Pass 🤷
-        </button>
+        ><PlayfulText text={" Pass 🤷 "} /></button>
       </div>
     </div>
   );
@@ -1318,9 +1307,7 @@ function MathBoard({ view, busy, onMove }: { view: MathView; busy: boolean; onMo
           }}
           disabled={!view.yourTurn || busy}
           className="rounded-full bg-slate-100 px-6 py-2.5 font-fun font-700 text-slate-600 transition hover:bg-slate-200 disabled:opacity-40"
-        >
-          Draw 🃏
-        </button>
+        ><PlayfulText text={" Draw 🃏 "} /></button>
       </div>
       {picked.length > 0 && !readyVals && (
         <p className="mt-2 text-center font-round text-xs text-coral">
@@ -1366,7 +1353,7 @@ function BeatDieBoard({ view, busy, onMove }: { view: BeatDieView; busy: boolean
               <span className="mt-1 font-round text-[10px] text-white/80">beat it!</span>
             </>
           ) : (
-            <span className="text-4xl">🎲</span>
+            <span className="text-4xl"><PlayfulText text={"🎲"} /></span>
           )}
         </div>
       </div>
@@ -1379,9 +1366,7 @@ function BeatDieBoard({ view, busy, onMove }: { view: BeatDieView; busy: boolean
               onClick={() => onMove({ type: "roll" })}
               disabled={busy}
               className="rounded-full bg-emerald-500 px-8 py-3 font-fun text-lg font-700 text-white shadow transition hover:scale-105 disabled:opacity-50"
-            >
-              🎲 Roll the die
-            </button>
+            ><PlayfulText text={" 🎲 Roll the die "} /></button>
           ) : (
             <p className="font-round text-sm text-slate-400">Waiting for the roll…</p>
           )}
@@ -1434,9 +1419,7 @@ function BeatDieBoard({ view, busy, onMove }: { view: BeatDieView; busy: boolean
           }}
           disabled={!canDraw}
           className="rounded-full bg-slate-100 px-6 py-2.5 font-fun font-700 text-slate-600 transition hover:bg-slate-200 disabled:opacity-40"
-        >
-          Draw 🃏
-        </button>
+        ><PlayfulText text={" Draw 🃏 "} /></button>
       </div>
       {rolled && picked.length > 0 && !beats && (
         <p className="mt-2 text-center font-round text-xs text-coral">
@@ -1510,7 +1493,7 @@ function ShowdownBoard({
                   {"⭐".repeat(s)}
                   {"☆".repeat(Math.max(0, view.starsToWin - s))}
                 </span>{" "}
-                <span className="text-slate-400">🃏 {view.handCounts[p.learnerId] ?? 0}</span>
+                <span className="text-slate-400"><PlayfulText text={"🃏 "} />{view.handCounts[p.learnerId] ?? 0}</span>
               </div>
               {!out && view.committed[p.learnerId] && (
                 <div className="text-[10px] font-700 text-emerald-500">locked in</div>
@@ -1524,10 +1507,9 @@ function ShowdownBoard({
       {r && (
         <div className="mt-3 rounded-2xl bg-bubble/10 px-4 py-2 text-center font-round text-xs text-slate-600 ring-1 ring-bubble/20">
           {r.draw ? (
-            <>🤝 Draw — everyone played the same total. No stars this round.</>
+            <><PlayfulText text={"🤝 Draw — everyone played the same total. No stars this round."} /></>
           ) : (
-            <>
-              ⭐ {r.highIds.map(name).join(" & ")}{" "}
+            <><PlayfulText text={" ⭐ "} />{r.highIds.map(name).join(" & ")}{" "}
               {r.highIds.length > 1 ? (
                 <>
                   tied highest — each won a star and discarded; {r.lowIds.map(name).join(" & ")} took {r.transferred.join(" and ")}.
@@ -1538,7 +1520,7 @@ function ShowdownBoard({
                   played.
                 </>
               )}
-              {r.eliminatedThisRound.length > 0 && <> {r.eliminatedThisRound.map(name).join(", ")} ran out! ❌</>}
+              {r.eliminatedThisRound.length > 0 && <> {r.eliminatedThisRound.map(name).join(", ")}<PlayfulText text={" ran out! ❌"} /></>}
             </>
           )}
         </div>
@@ -1546,10 +1528,10 @@ function ShowdownBoard({
 
       {/* Your area */}
       {view.youEliminated ? (
-        <p className="mt-6 text-center font-fun font-700 text-slate-400">You&apos;re out — watching the rest. 👀</p>
+        <p className="mt-6 text-center font-fun font-700 text-slate-400"><PlayfulText text={"You&apos;re out — watching the rest. 👀"} /></p>
       ) : committed ? (
         <div className="mt-6 text-center">
-          <p className="font-fun font-700 text-emerald-600">✅ Locked in: {view.yourSelection!.join(" + ")}</p>
+          <p className="font-fun font-700 text-emerald-600"><PlayfulText text={"✅ Locked in: "} />{view.yourSelection!.join(" + ")}</p>
           <p className="mt-1 font-round text-sm text-slate-400">
             Waiting for {view.waitingOn} more player{view.waitingOn === 1 ? "" : "s"}…
           </p>
@@ -1665,9 +1647,7 @@ function MatchColoursBoard({
 
       {/* Stage */}
       {!view.inRound ? (
-        <p className="mt-8 text-center font-fun font-700 text-slate-400">
-          👀 Watching the sudden-death round…
-        </p>
+        <p className="mt-8 text-center font-fun font-700 text-slate-400"><PlayfulText text={" 👀 Watching the sudden-death round… "} /></p>
       ) : preview ? (
         /* ---- Preview: memorise the colour↔number mapping ---- */
         <div className="mt-6">
@@ -1783,14 +1763,13 @@ function MatchColoursBoard({
               </div>
               <div className="mt-4 font-fun font-700">
                 {you == null || you < 0 ? (
-                  <span className="text-slate-400">⏳ Too slow — no points.</span>
+                  <span className="text-slate-400"><PlayfulText text={"⏳ Too slow — no points."} /></span>
                 ) : youCorrect ? (
-                  <span className="text-emerald-600">
-                    ✅ Correct!{!tallying && view.yourPoints ? ` +${view.yourPoints}` : ""}
+                  <span className="text-emerald-600"><PlayfulText text={" ✅ Correct!"} />{!tallying && view.yourPoints ? ` +${view.yourPoints}` : ""}
                     {!tallying && view.yourPoints === 3 ? " ⚡ Fastest!" : ""}
                   </span>
                 ) : (
-                  <span className="text-coral">❌ You tapped {col(you).emoji} — no points.</span>
+                  <span className="text-coral"><PlayfulText text={"❌ You tapped "} />{col(you).emoji} — no points.</span>
                 )}
               </div>
               {tallying && <div className="mt-1 font-round text-xs text-slate-400">Tallying scores…</div>}

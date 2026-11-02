@@ -1,36 +1,81 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
+import { KidsIcon, type KidsIconName } from "@/components/public/KidsIcon";
+import { KidsLogo } from "@/components/public/KidsLogo";
 
 export function SiteHeader() {
+  const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  const hasMainLandmark =
+    pathname === "/" ||
+    pathname === "/contact" ||
+    pathname.startsWith("/holiday-workshops/");
+  const links: [string, string, KidsIconName][] = [
+    ["/#workshops", "December workshops", "bag"],
+    ["/games", "Explore games", "wand"],
+    ["/#free-tools", "Free goodies", "gift"],
+  ];
   return (
-    <header className="sticky top-0 z-40 border-b border-amber-100 bg-cream/80 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <Link href="/" className="flex items-center gap-2 font-fun text-xl font-700 text-slate-800">
-          <span className="text-2xl" aria-hidden>🤖</span>
-          <span>
-            AI <span className="text-coral">Kids</span>
-          </span>
-        </Link>
-        <nav className="hidden items-center gap-6 font-fun font-500 text-slate-600 md:flex">
-          <Link href="/programs" className="transition hover:text-coral">Programs</Link>
-          <Link href="/#how" className="transition hover:text-coral">How it works</Link>
-          <Link href="/#ages" className="transition hover:text-coral">Ages 4–16</Link>
-          <Link href="/contact" className="transition hover:text-coral">Contact</Link>
+    <header className="kids-site-header">
+      {hasMainLandmark && (
+        <a className="kids-skip-link" href="#main-content">
+          Skip to content
+        </a>
+      )}
+      <div className="kids-nav-wrap">
+        <KidsLogo />
+        <nav className="kids-desktop-nav" aria-label="Main navigation">
+          {links.map(([href, label, icon]) => (
+            <Link key={href} href={href}>
+              <span className="kids-nav-emoji" aria-hidden="true">
+                <KidsIcon name={icon as KidsIconName} />
+              </span>
+              <span>{label}</span>
+            </Link>
+          ))}
         </nav>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/login"
-            className="rounded-full px-4 py-2 font-fun font-600 text-slate-600 transition hover:bg-amber-100"
-          >
-            Log in
+        <div className="kids-nav-actions">
+          <Link href="/login?parentRequired=1" className="kids-login">
+            <KidsIcon name="home" /> Family login
           </Link>
-          <Link
-            href="/programs"
-            className="rounded-full bg-coral px-4 py-2 font-fun font-700 text-white shadow-md shadow-coral/30 transition hover:scale-105"
-          >
-            Book a class
+          <Link href="/#enquire" className="kids-button kids-button-small">
+            Say hello! <span aria-hidden="true">↗</span>
           </Link>
+          <button
+            className="kids-menu-toggle"
+            aria-label={open ? "Close menu" : "Open menu"}
+            aria-expanded={open}
+            aria-controls="kids-mobile-nav"
+            onClick={() => setOpen(!open)}
+          >
+            {open ? <KidsIcon name="close" /> : <KidsIcon name="menu" />}
+            <span>Menu</span>
+          </button>
         </div>
       </div>
+      {open && (
+        <nav
+          id="kids-mobile-nav"
+          className="kids-mobile-nav"
+          aria-label="Mobile navigation"
+        >
+          {[
+            ...links,
+            ["/login", "Family login", "home"],
+            ["/#enquire", "Say hello!", "mail"],
+          ].map(([href, label, icon]) => (
+            <Link key={href} href={href} onClick={() => setOpen(false)}>
+              <span className="kids-nav-emoji" aria-hidden="true">
+                <KidsIcon name={icon as KidsIconName} />
+              </span>
+              <span>{label}</span>
+            </Link>
+          ))}
+        </nav>
+      )}
     </header>
   );
 }

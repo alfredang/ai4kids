@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { HiThumbUp } from "react-icons/hi";
+import { KidsIcon } from "@/components/public/KidsIcon";
 
 export function LikeButton({
   slug,
@@ -81,7 +81,7 @@ export function LikeButton({
           : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-(--color-cyan) hover:border-(--color-cyan)/30"
       } disabled:opacity-60`}
     >
-      <HiThumbUp className={`w-4 h-4 ${liked ? "" : "opacity-80"}`} />
+      <KidsIcon name="heart" className={`w-4 h-4 ${liked ? "" : "opacity-80"}`} />
       <span className="tabular-nums">{count}</span>
       <span className="hidden sm:inline">{liked ? "Liked" : "Like"}</span>
     </button>

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { activities, activityCompletions } from "@/db/schema";
-import { getPortalSession } from "@/lib/portal-session";
+import { getLearnerSession } from "@/lib/learner-session";
 import { PhonicsQuest, type Stars } from "./PhonicsQuest";
 
 export const dynamic = "force-dynamic";
@@ -30,8 +30,8 @@ async function bestStars(learnerId: number): Promise<Stars> {
 }
 
 export default async function PhonicsPage() {
-  const session = await getPortalSession();
-  if (!session) redirect("/login?from=/learn/phonics");
+  const session = await getLearnerSession();
+  if (!session) redirect("/parent/play");
 
   return <PhonicsQuest initialStars={await bestStars(Number(session.id))} />;
 }

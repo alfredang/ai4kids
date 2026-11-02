@@ -8,7 +8,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ShareButtons } from "@/components/blog/ShareButtons";
 import { LikeButton } from "@/components/blog/LikeButton";
-import { HiUser, HiCalendar, HiTag, HiFolder } from "react-icons/hi2";
+import { KidsIcon } from "@/components/public/KidsIcon";
 import type { Metadata } from "next";
 
 function formatDateDMY(d: Date | null | undefined): string {
@@ -186,12 +186,12 @@ export default async function PostPage({
                 </h1>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-white/55 text-xs font-mono mb-3">
                   <span className="inline-flex items-center gap-1.5">
-                    <HiUser className="w-3.5 h-3.5 text-(--color-cyan)/80" />
+                    <KidsIcon name="home" className="w-3.5 h-3.5 text-(--color-cyan)/80" />
                     Author: Tertiary Infotech Academy
                   </span>
                   {post.publishedAt && (
                     <span className="inline-flex items-center gap-1.5">
-                      <HiCalendar className="w-3.5 h-3.5 text-(--color-cyan)/80" />
+                      <KidsIcon name="sun" className="w-3.5 h-3.5 text-(--color-cyan)/80" />
                       Created On: {formatDateDMY(post.publishedAt)}
                     </span>
                   )}
@@ -203,7 +203,7 @@ export default async function PostPage({
                         href={`/blog?category=${category.slug}`}
                         className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] uppercase tracking-wider bg-yellow-400/10 text-yellow-300 border border-yellow-400/30 hover:bg-yellow-400/20 transition"
                       >
-                        <HiFolder className="w-3 h-3" />
+                        <KidsIcon name="book" className="w-3 h-3" />
                         {category.name}
                       </Link>
                     )}
@@ -213,7 +213,7 @@ export default async function PostPage({
                         href={`/blog?tag=${t.slug}`}
                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 transition"
                       >
-                        <HiTag className="w-3 h-3" />
+                        <KidsIcon name="gift" className="w-3 h-3" />
                         {t.name}
                       </Link>
                     ))}
