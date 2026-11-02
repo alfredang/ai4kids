@@ -230,3 +230,5 @@ Set `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `NEXT_PUBLIC_SITE_URL`, and Googl
 - AI text uses **DeepSeek V4.1 Flash**, official model ID `deepseek-flash`. Set `deepseek_api_key` in Admin → Settings → Credentials (encrypted at rest); `DEEPSEEK_API_KEY` is the environment fallback. Art and voice retain separate providers. No silent Claude/Gemini text fallback.
 - Marketing canonicals and sitemap target `https://ai4kids.tertiarycourses.com.sg`; private family/game routes are excluded.
 - Production: push `main` to trigger the existing Coolify Docker deployment. This server-rendered app is not a GitHub Pages deployment.
+
+Native clients use `GET /api/parent/play` to list the authenticated parent’s child profiles and `POST /api/parent/play` with `{ childId }` to select one. The server checks the live parent role and ownership before setting the HTTP-only play-profile cookie. Every game request rechecks ownership. Provider API keys stay in the server credential vault.

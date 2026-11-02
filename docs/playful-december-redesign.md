@@ -82,3 +82,7 @@ The family website was pushed as `fff8142` and verified on https://ai4kids.terti
 Pip now periodically slides out an invitation for 6.5 seconds, about every 21 seconds. Opening the helper pauses invitations; hidden tabs, focused forms, footer overlap and reduced-motion settings suppress automatic prompts. A browser test measured opacity 0 → 1 → 0.
 
 Production enquiry QA: the form returned 200 and displayed its success state. The configured destination is `angch@tertiaryinfotech.com`, with no CC. Production has no Gmail sending credentials. The existing company connection tested with `invalid_grant`; it was not copied into this app. A fresh Gmail connection is required to complete delivery testing.
+
+### Native online-game compatibility
+
+Added parent-only profile-list and selection endpoints for the Android client. Playwright API tests verified anonymous 403, owned profile list 200, foreign child selection 403, owned selection 200 and subsequent game access 200. This preserves the existing game response contracts while requiring the parent session. No schema changes or public child directory were added.
