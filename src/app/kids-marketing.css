@@ -3509,3 +3509,10 @@
 .kids-public-shell .kids-consent {font-size:18px;}
 .kids-public-shell .kids-hero-small {font-size:18px;font-weight:700;}
 @media(max-width:600px){.kids-public-shell .kids-album-note{font-size:21px;padding:14px;gap:10px;}.kids-public-shell .kids-album-note a{font-size:21px;}.kids-public-shell .kids-takeaway{font-size:18px;}}
+/* Pip peeks out with a short invitation, then gives the page room again. */
+.pip-launcher-bubble {opacity:0;transform:translateX(30px) scale(.9) rotate(-3deg);transform-origin:right center;pointer-events:none;transition:transform .65s cubic-bezier(.2,1.3,.35,1),opacity .3s;}
+.pip-is-peeking .pip-launcher-bubble,.pip-launcher:hover .pip-launcher-bubble,.pip-launcher:focus-visible .pip-launcher-bubble,.pip-is-open .pip-launcher-bubble {opacity:1;transform:translateX(0) scale(1) rotate(-3deg);}
+.pip-is-peeking .pip-launcher-character {animation:kids-pip-hello .8s ease-in-out 2;}
+@keyframes kids-pip-hello {0%,100%{transform:rotate(0) translateY(0);}40%{transform:rotate(-7deg) translateY(-5px);}70%{transform:rotate(5deg) translateY(-2px);}}
+.kids-motion-paused .pip-launcher-bubble {transition:none;}
+@media(prefers-reduced-motion:reduce){.pip-launcher-bubble {transition:none;}.pip-is-peeking .pip-launcher-character{animation:none;}}

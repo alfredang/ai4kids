@@ -56,3 +56,7 @@ Exact generation prompt:
 - Real `/api/contact` rejected an empty payload with HTTP 400. The local leads table's required columns were verified read-only.
 
 The code is implemented locally. No Git push or production deployment was performed, and live staff email delivery has not been claimed.
+
+## Current status — 3 November 2026
+
+The initial local-only status above is historical. Commit `fff8142` is now deployed and verified on the live AI4Kids domain. Later revisions and current email-delivery limitation are documented in `playful-december-redesign.md`.

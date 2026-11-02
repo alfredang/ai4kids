@@ -2,25 +2,25 @@
 
 ## Direction
 
-User-directed revision of the local AI Kids site: photorealistic banner first; big cute original logo; colourful type; compact spacing; fewer words; no small chips; irregular illustrated album; playful menu; clear December school holiday workshops; a fixed bottom-right WhatsApp helper.
+User-directed revision of the AI Kids site: photorealistic banner first; big cute original logo; colourful type; compact spacing; fewer words; no small chips; irregular illustrated album; playful menu; clear December school holiday workshops; a fixed bottom-right WhatsApp helper.
 
 Typography was measured directly from the user's own https://alfredang.github.io/financial-planning/v2/ and its https://github.com/alfredang/financial-planning source: Fraunces headings with soft/wonky axes, Nunito body/menu, body 17px, menu 17px, card copy 16px, hero introduction 20.8px, desktop H1 62.4px, section headings up to 44.8px. These measurements guide readability; the brand mark, illustrations, layouts and copy are original to AI Kids.
 
-The new palette uses warm ivory, mint, lavender, soft sky blue and yellow. The previous large orange enquiry panel is mint. Primary copy is purple, teal, berry and indigo. Repetitive three-step marketing content was removed. Section padding is usually 20–29px rather than 65–85px.
+The current palette uses light sky blue, mint, lavender, rainbow accents and sunny yellow. The previous large orange enquiry panel is mint. Primary copy is purple, teal, berry and indigo. Repetitive three-step marketing content was removed. Section padding is usually 20–29px rather than 65–85px.
 
 ## Implemented
 
 - Three photorealistic Singapore workshop images with visible AI storybook and maths interfaces.
-- Downward liquid/water reveal between photos, automatic rotation, previous/next and pause controls; rotation pauses on hover, focus, offscreen, hidden document, reduced motion and the global motion control.
+- Tetris-style falling photo tiles between three photos, automatic rotation, previous/next and pause controls; rotation pauses on hover, focus, offscreen, hidden document, reduced motion and the global motion control.
 - Images precede the main heading. The December workshop album has a clear nav entry and visible heading.
-- Original sunny bookworm logo, rainbow lettering and emoji menu illustrations.
+- Original sunny bookworm logo, rainbow lettering and original SVG menu illustrations.
 - Four compact illustrated album pages: Storybook Studio, Mini Maker Studio, Maths Detectives, Science Explorers. Artwork is original SVG, scalable at any resolution.
 - Gentle artwork motion, twinkling stars, hover movement and scroll entrances, with reduced-motion support and a pause control.
 - A smiling mint toybox replaces four identical free-tool marketing cards.
 - Parent form, workshop details, family contact page and catalogue filters use the updated family identity.
 - Catalogue filters and workshop metadata are plain text / underlined links, without small chip styling.
 - Pip remains fixed to the bottom right and connects to +65 8866 6375. Its greeting bubble collapses when the footer is visible, leaving footer links unobstructed.
-- Parent leads continue through the existing API; no live test leads or emails were created.
+- Parent leads continue through the existing API. One authorised live QA enquiry was saved; email delivery is awaiting a refreshed Gmail OAuth connection. No delivery success is claimed.
 
 The user confirmed there are no genuine parent testimonials available. None were fabricated. The workshop project outcomes serve as the visible showcase instead.
 
@@ -74,3 +74,11 @@ This is a local revision at http://localhost:3080/. No Git push or production de
 - Ten card-game routes render and initialise; Card Showdown verified with three players. Six escape rooms create/start/solve/finish successfully through their APIs.
 - Local artwork generation falls back without a configured image provider; DeepSeek is the text provider, not an image generator.
 - Canonical host and sitemap corrected; four workshop pages cover story writing, math, science and creative content without invented reviews, dates or fees.
+
+## Live release and Pip follow-up
+
+The family website was pushed as `fff8142` and verified on https://ai4kids.tertiarycourses.com.sg/ on 3 November 2026. Production readback confirmed the new homepage, Games navigation, sunny favicon, all three photo assets and the corrected sitemap. Anonymous production game requests return 403. The DeepSeek key is encrypted in the production database and read back successfully without exposing its value.
+
+Pip now periodically slides out an invitation for 6.5 seconds, about every 21 seconds. Opening the helper pauses invitations; hidden tabs, focused forms, footer overlap and reduced-motion settings suppress automatic prompts. A browser test measured opacity 0 → 1 → 0.
+
+Production enquiry QA: the form returned 200 and displayed its success state. The configured destination is `angch@tertiaryinfotech.com`, with no CC. Production has no Gmail sending credentials. The existing company connection tested with `invalid_grant`; it was not copied into this app. A fresh Gmail connection is required to complete delivery testing.

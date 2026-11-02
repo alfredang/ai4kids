@@ -30,10 +30,28 @@ export function WhatsAppButton({ number }: { number: string }) {
   const [input, setInput] = useState("");
   const [lastQuestion, setLastQuestion] = useState("");
   const [overFooter, setOverFooter] = useState(false);
+  const [peek, setPeek] = useState(false);
+  const [invitation, setInvitation] = useState(0);
+  const invitations = ["Looking for a December workshop?", "Story magic or maths mysteries?", "A little parent + child adventure?", "Need help choosing a workshop?"];
+
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const disabled = path?.startsWith("/admin") || path?.startsWith("/learn");
+  useEffect(() => {
+    if (open || disabled || overFooter) { setPeek(false); return; }
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+    let hide: ReturnType<typeof setTimeout> | undefined;
+    const show = () => {
+      if (document.hidden || reduced.matches || document.documentElement.classList.contains("kids-motion-paused") || document.activeElement?.closest("form")) return;
+      setInvitation(current => (current + 1) % 4);
+      setPeek(true);
+      hide = setTimeout(() => setPeek(false), 6500);
+    };
+    const first = setTimeout(show, 4500);
+    const repeat = setInterval(show, 21000);
+    return () => { clearTimeout(first); clearInterval(repeat); if (hide) clearTimeout(hide); };
+  }, [open, disabled, overFooter, path]);
   useEffect(() => {
     const footer = document.querySelector(".kids-site-footer");
     if (!footer) return;
@@ -178,10 +196,10 @@ export function WhatsAppButton({ number }: { number: string }) {
             {[
               "Story magic",
               "Maths mysteries",
-              "🎨 Art adventures",
-              "🌱 Science fun",
-              "☀️ December details",
-              "🎁 Free activity pack",
+              "Art adventures",
+              "Science fun",
+              "December details",
+              "Free activity pack",
             ].map((q) => (
               <button key={q} onClick={() => ask(q)}>
                 {q}
@@ -236,14 +254,14 @@ export function WhatsAppButton({ number }: { number: string }) {
         }
         aria-expanded={open}
         aria-controls="pip-chat-panel"
-        className={`pip-launcher ${open ? "pip-is-open" : ""}`}
+        className={`pip-launcher ${open ? "pip-is-open" : ""} ${peek ? "pip-is-peeking" : ""}`}
       >
-        <span className="pip-launcher-bubble">
+        <span className="pip-launcher-bubble" aria-hidden="true">
           {open ? (
             "Sending you sunshine!"
           ) : (
             <>
-              Psst… little adventure?
+              {invitations[invitation]}
               <small>
                 Ask Pip! <span aria-hidden="true">♡</span>
               </small>
