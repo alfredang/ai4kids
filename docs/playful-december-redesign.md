@@ -86,3 +86,9 @@ Production enquiry QA: the form returned 200 and displayed its success state. Th
 ### Native online-game compatibility
 
 Added parent-only profile-list and selection endpoints for the Android client. Playwright API tests verified anonymous 403, owned profile list 200, foreign child selection 403, owned selection 200 and subsequent game access 200. This preserves the existing game response contracts while requiring the parent session. No schema changes or public child directory were added.
+
+### November native release verification
+
+Parent email/password sign-in is now available alongside configured Google sign-in. Production verification confirmed an isolated synthetic parent can list one owned child, select that child and reach a game API (all 200). The review-family provisioning endpoint requires a current database-verified admin role and accepts only a strong password for the fixed synthetic family; anonymous and parent requests return 403.
+
+iOS version 1.5 build 9 was submitted and read back as WAITING_FOR_REVIEW on 3 November 2026. Its sunny logo, original illustrated controls, bundled fonts and screenshots match the website; the seven iOS activities remain offline. Android 1.3 (6), package `sg.com.tertiarycourses.ai4kidsapp`, has a signed, validated production bundle for the sales account's draft; Google Play submission is still pending sales-account authentication and final device/store checks. The public Google Play badge continues to point to the existing available app until the replacement listing is public.

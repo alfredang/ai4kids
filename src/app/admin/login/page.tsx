@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 
@@ -10,6 +10,13 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
+  useEffect(() => {
+    fetch("/api/auth/providers")
+      .then((response) => response.json())
+      .then((providers) => setGoogleEnabled(Boolean(providers.google)))
+      .catch(() => setGoogleEnabled(false));
+  }, []);
   const params = useSearchParams();
   const from = params.get("from") ?? "/admin";
   const oauthError = params.get("error");
@@ -120,7 +127,7 @@ export default function LoginPage() {
           {loading ? "Signing in…" : "Sign in →"}
         </button>
 
-        <div className="relative flex items-center gap-3 py-1">
+        {googleEnabled && <><div className="relative flex items-center gap-3 py-1">
           <div className="flex-1 h-px bg-white/10" />
           <span className="kicker text-xs">or</span>
           <div className="flex-1 h-px bg-white/10" />
@@ -139,7 +146,7 @@ export default function LoginPage() {
             <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.83C6.71 7.31 9.14 5.38 12 5.38Z" fill="#EA4335" />
           </svg>
           Continue with Google
-        </button>
+        </button></>}
       </form>
     </div>
   );
