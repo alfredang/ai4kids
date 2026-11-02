@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
-import { KidsLogo } from "@/components/public/KidsLogo";
 import { KidsIcon } from "@/components/public/KidsIcon";
 
 export default function LoginPage() {
@@ -12,6 +11,25 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/providers")
+      .then((response) => response.json())
+      .then((providers) => setGoogleEnabled(Boolean(providers.google)))
+      .catch(() => setGoogleEnabled(false));
+  }, []);
+
+  function destination() {
+    const requested = new URL(window.location.href).searchParams.get("callbackUrl");
+    if (requested) {
+      const target = new URL(requested, window.location.origin);
+      if (target.origin === window.location.origin && !target.pathname.startsWith("/login")) {
+        return target.pathname + target.search;
+      }
+    }
+    return tab === "parent" ? "/parent/play" : "/dashboard";
+  }
 
   async function handleKidLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -24,12 +42,12 @@ export default function LoginPage() {
     });
     setLoading(false);
     if (res?.error) {
-      setError("Oops! That username or password didn't work. Try again 🙂");
+      setError("That sign-in didn’t work. Check your details and try again.");
     } else {
       // Signing in as a kid drops any leftover staff admin session in this
       // browser, so a kid account can't carry admin powers.
       await fetch("/api/portal/drop-admin", { method: "POST" }).catch(() => {});
-      window.location.href = "/dashboard";
+      window.location.href = destination();
     }
   }
 
@@ -61,22 +79,30 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {tab === "kid" ? (
+        {tab === "kid" || tab === "parent" ? (
           <form onSubmit={handleKidLogin} className="mt-6 space-y-4">
+            {tab === "parent" && <p className="font-round text-slate-600">A grown-up signs in, then chooses a child’s profile.</p>}
             <div>
-              <label className="font-fun font-600 text-sm text-slate-600">Username</label>
+              <label htmlFor="family-identifier" className="font-fun font-600 text-sm text-slate-600">{tab === "parent" ? "Parent email" : "Username"}</label>
               <input
+                id="family-identifier"
+                type={tab === "parent" ? "email" : "text"}
+                autoComplete="username"
+                required
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="e.g. supernova"
+                placeholder={tab === "parent" ? "you@example.com" : "e.g. supernova"}
                 autoCapitalize="none"
                 className="mt-1 w-full rounded-2xl border-2 border-amber-100 bg-amber-50/40 px-4 py-3 font-round text-lg outline-none focus:border-coral"
               />
             </div>
             <div>
-              <label className="font-fun font-600 text-sm text-slate-600">Password</label>
+              <label htmlFor="family-password" className="font-fun font-600 text-sm text-slate-600">Password</label>
               <input
+                id="family-password"
                 type="password"
+                autoComplete="current-password"
+                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="your secret word"
@@ -88,22 +114,18 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full rounded-2xl bg-coral py-3 font-fun text-lg font-700 text-white shadow-lg shadow-coral/30 transition hover:scale-[1.02] disabled:opacity-60"
             >
-              {loading ? "Logging in…" : "Let's go! 🎉"}
+              {loading ? "Signing in…" : tab === "parent" ? "Unlock our playground" : "Let’s go!"}
             </button>
-            <p className="text-center text-xs text-slate-400">
+            {tab === "kid" && <p className="text-center text-sm text-slate-500">
               Ask your parent for your username and secret word.
-            </p>
-          </form>
-        ) : tab === "parent" ? (
-          <div className="mt-6 space-y-4">
-            <p className="text-center font-round text-slate-500">
-              Parents sign in to unlock the games and choose a child’s profile.
-            </p>
+            </p>}
+            {tab === "parent" && googleEnabled && <>
             <button
+              type="button"
               onClick={async () => {
                 // Drop any leftover staff admin cookie before the OAuth redirect.
                 await fetch("/api/portal/drop-admin", { method: "POST" }).catch(() => {});
-                signIn("google", { callbackUrl: "/parent/play" });
+                signIn("google", { callbackUrl: destination() });
               }}
               className="flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-slate-200 bg-white py-3 font-fun font-600 text-slate-700 transition hover:bg-slate-50"
             >
@@ -113,7 +135,9 @@ export default function LoginPage() {
             <p className="text-center text-xs text-slate-400">
               New here? Signing in creates your parent account automatically.
             </p>
-          </div>
+            </>}
+            {tab === "parent" && !googleEnabled && <p className="text-sm text-slate-600">Need a parent account? <Link href="/#enquire" className="font-bold underline">Ask our friendly team.</Link></p>}
+          </form>
         ) : (
           <div className="mt-6 space-y-4">
             <p className="text-center font-round text-slate-500">

@@ -47,7 +47,7 @@ AI storytelling · coding · game design · phonics · escape rooms — a gamifi
 
 | Area | What it does |
 |------|--------------|
-| 🎭 **Three roles** | **Learners** (kids) log in with a username + password; **Parents** & **Admins** sign in with Google (or credentials). Each role lands on its own dashboard. |
+| 🎭 **Three roles** | Parents sign in with email and password, then choose their child to unlock games. Google sign-in appears when configured. Staff use the separate admin sign-in. |
 | 🧩 **AI activities** | Seven play-at-home games in the kid playground: **Story Builder** (branching, AI-illustrated tales + "write your own"), **AI Phonics** (listen-and-match), **Talking Buddy** (voice/text AI chat), **AI Art Studio** (paint an idea, then jigsaw it), **Code Puzzles**, **AI Escape Rooms** and **Brain Arcade** card games — each awarding points and badges. |
 | 🏆 **Gamification** | Every activity awards a score; kids collect badges and climb an opt-in **leaderboard**. |
 | 👨‍👩‍👧 **Parent dashboard** | Link multiple kids, see activities completed, total scores, badges, and recent activity per child. |
@@ -67,7 +67,7 @@ AI storytelling · coding · game design · phonics · escape rooms — a gamifi
 | **Styling** | Tailwind CSS 4 (bright kids theme + dark admin theme), Framer Motion, Fredoka / Nunito fonts |
 | **Database** | PostgreSQL 16 + Drizzle ORM |
 | **Auth** | Auth.js v5 (Credentials + Google OAuth), JWT sessions, role-based access |
-| **AI/LLM** | **Claude Agent SDK** (CMS chatbot, admin AI Assist, agentic class-close) · **Google Gemini** for the kids-games text & chat · **NVIDIA FLUX** + **Cloudflare Flux** for kid-safe image generation |
+| **AI/LLM** | **Claude Agent SDK** for CMS/admin tools · **DeepSeek V4.1 Flash** for kids’ game text and chat · **NVIDIA FLUX** + **Cloudflare Flux** for kid-safe image generation |
 | **Payments** | PayNow QR generation (EMVCo SGQR via `qrcode`) |
 | **Email** | Gmail OAuth (transactional booking emails) |
 | **Security** | bcrypt password hashing, AES-256-GCM encrypted credential store |
