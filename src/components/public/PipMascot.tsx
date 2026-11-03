@@ -8,7 +8,9 @@ export function PipMascot({ className = "" }: { className?: string }) {
       aria-hidden="true"
     >
       <path d="m96 43 5-9 3 9 10 2-9 6-1 10-6-8-10-1 8-5Z" fill="#FFD23F" />
+      {/* Raised arm: the floating helper rotates it from the shoulder to wave. */}
       <path
+        className="pip-arm"
         d="M19 85C1 69 0 84 14 97l12 8"
         fill="#FFD7BB"
         stroke="#714936"
@@ -53,6 +55,7 @@ export function PipMascot({ className = "" }: { className?: string }) {
         strokeWidth="2.5"
       />
       <path
+        className="pip-cap-star"
         d="m57 10 2.5 5 5.5.8-4 3.8 1 5.4-5-2.6-5 2.6 1-5.4-4-3.8 5.5-.8L57 10Z"
         fill="#C56841"
       />
@@ -62,8 +65,11 @@ export function PipMascot({ className = "" }: { className?: string }) {
         strokeWidth="3"
         strokeLinecap="round"
       />
-      <ellipse cx="45" cy="56" rx="3.2" ry="4.5" fill="#513B35" />
+      <ellipse className="pip-eye-left" cx="45" cy="56" rx="3.2" ry="4.5" fill="#513B35" />
+      {/* Open right eye is hidden by default; the floating helper animates it into a wink. */}
+      <ellipse className="pip-eye-right" cx="73.5" cy="56" rx="3.2" ry="4.5" fill="#513B35" opacity="0" />
       <path
+        className="pip-eye-wink"
         d="M69 56c3-4 6-4 9 0"
         stroke="#513B35"
         strokeWidth="3"

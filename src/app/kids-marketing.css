@@ -3516,3 +3516,37 @@
 @keyframes kids-pip-hello {0%,100%{transform:rotate(0) translateY(0);}40%{transform:rotate(-7deg) translateY(-5px);}70%{transform:rotate(5deg) translateY(-2px);}}
 .kids-motion-paused .pip-launcher-bubble {transition:none;}
 @media(prefers-reduced-motion:reduce){.pip-launcher-bubble {transition:none;}.pip-is-peeking .pip-launcher-character{animation:none;}}
+/* Floating Pip: both eyes open, a blink and a wink, a little hop, and WhatsApp worn as the cap badge.
+   Outside the widget (homepage, contact) Pip keeps the original winking portrait. */
+.pip-widget .pip-eye-right {opacity:1;}
+.pip-widget .pip-eye-wink {opacity:0;}
+.pip-launcher .pip-cap-star {visibility:hidden;}
+.pip-launcher :is(.pip-eye-left,.pip-eye-right) {transform-box:fill-box;transform-origin:center;animation:pip-blink 6s infinite;}
+.pip-launcher .pip-eye-right {animation:pip-blink 6s infinite,pip-wink-eye 6s infinite;}
+.pip-launcher .pip-eye-wink {animation:pip-wink-arc 6s infinite;}
+@keyframes pip-blink {0%,44%,50%,100%{transform:scaleY(1);}47%{transform:scaleY(.1);}}
+@keyframes pip-wink-eye {0%,79.9%,92%,100%{opacity:1;}80%,91.9%{opacity:0;}}
+@keyframes pip-wink-arc {0%,79.9%,92%,100%{opacity:0;}80%,91.9%{opacity:1;}}
+.pip-launcher-character {transform-origin:50% 100%;animation:pip-hop 7s ease-in-out 2s infinite;}
+/* Hop keeps its rhythm while Pip waves hello (transform vs translate/scale don't clash). */
+.pip-is-peeking .pip-launcher-character {animation:pip-hop 7s ease-in-out 2s infinite,kids-pip-hello .8s ease-in-out 2;}
+@keyframes pip-hop {0%,82%,100%{translate:0 0;scale:1 1;}85%{translate:0 2px;scale:1.08 .9;}89%{translate:0 -18px;scale:.95 1.06;}93%{translate:0 0;scale:1.07 .93;}96%{translate:0 -5px;scale:1 1;}}
+.pip-launcher .pip-whatsapp-dot {right:auto;bottom:auto;left:48%;top:14.5%;transform:translate(-50%,-50%);width:23px;height:23px;border-width:2px;box-shadow:0 2px 0 #714936;animation:pip-badge-glow 4s ease-out 1.5s infinite;}
+.pip-launcher .pip-whatsapp-dot > svg {width:13px;height:13px;}
+@keyframes pip-badge-glow {0%{box-shadow:0 2px 0 #714936,0 0 0 0 rgba(67,130,107,.55);}60%,100%{box-shadow:0 2px 0 #714936,0 0 0 9px rgba(67,130,107,0);}}
+.pip-launcher-bubble {max-width:250px;}
+.pip-bubble-tag {display:block;width:fit-content;margin-bottom:3px;padding:1px 9px;border-radius:999px;background:#ffe9a3;color:#9a4a1f;font-size:12px;letter-spacing:.02em;}
+.pip-is-peeking .pip-bubble-tag {animation:pip-tag-wiggle .6s ease-in-out .35s 2;}
+@keyframes pip-tag-wiggle {0%,100%{rotate:0deg;}30%{rotate:-4deg;}70%{rotate:4deg;}}
+@media(max-width:600px){.pip-launcher-bubble{max-width:205px;}.pip-launcher .pip-whatsapp-dot{width:20px;height:20px;}.pip-launcher .pip-whatsapp-dot > svg{width:11px;height:11px;}}
+/* With motion off, the global rules force opacity:1; keep the wink arc hidden so the eyes don't double up. */
+.kids-motion-paused .pip-widget .pip-eye-wink {opacity:0 !important;}
+@media(prefers-reduced-motion:reduce){.pip-widget .pip-eye-wink{opacity:0 !important;}}
+/* Pip waves hello: the raised arm swings from the shoulder every few seconds, and twice as
+   eagerly while peeking or when hovered/focused. Global motion-off rules stop it like the rest. */
+.pip-launcher-character > svg {overflow:visible;}
+.pip-launcher .pip-arm {transform-box:view-box;transform-origin:26px 104px;animation:pip-wave 7s ease-in-out 1s infinite;}
+.pip-is-peeking .pip-arm,
+.pip-launcher:is(:hover,:focus-visible) .pip-arm {animation:pip-wave-hello .9s ease-in-out 3;}
+@keyframes pip-wave {0%,58%,82%,100%{rotate:0deg;}62%,70%{rotate:18deg;}66%,74%{rotate:-5deg;}}
+@keyframes pip-wave-hello {0%,100%{rotate:0deg;}25%{rotate:20deg;}75%{rotate:-6deg;}}

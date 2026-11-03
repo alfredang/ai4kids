@@ -31,8 +31,17 @@ export function WhatsAppButton({ number }: { number: string }) {
   const [lastQuestion, setLastQuestion] = useState("");
   const [overFooter, setOverFooter] = useState(false);
   const [peek, setPeek] = useState(false);
-  const [invitation, setInvitation] = useState(0);
-  const invitations = ["Looking for a December workshop?", "Story magic or maths mysteries?", "A little parent + child adventure?", "Need help choosing a workshop?"];
+  // Starts on the last slot so the first peek wraps to the December alert.
+  const [invitation, setInvitation] = useState<number>(HOLIDAY_WORKSHOPS.length);
+  const invitations = [
+    { tag: "🎄 December alert!", text: "Parent + child holiday workshops are open for enquiries." },
+    ...HOLIDAY_WORKSHOPS.map((w) => ({
+      tag: `${w.emoji} ${w.title}`,
+      text: `${w.summary} Ages ${w.ageMin}–${w.ageMax}.`,
+      ask: w.subject,
+    })),
+  ];
+  const invite = invitations[invitation];
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -44,7 +53,7 @@ export function WhatsAppButton({ number }: { number: string }) {
     let hide: ReturnType<typeof setTimeout> | undefined;
     const show = () => {
       if (document.hidden || reduced.matches || document.documentElement.classList.contains("kids-motion-paused") || document.activeElement?.closest("form")) return;
-      setInvitation(current => (current + 1) % 4);
+      setInvitation(current => (current + 1) % (HOLIDAY_WORKSHOPS.length + 1));
       setPeek(true);
       hide = setTimeout(() => setPeek(false), 6500);
     };
@@ -246,7 +255,12 @@ export function WhatsAppButton({ number }: { number: string }) {
       )}
       <button
         ref={triggerRef}
-        onClick={() => (open ? close() : setOpen(true))}
+        onClick={() => {
+          if (open) return close();
+          // Tapping a workshop invitation opens the chat on that workshop.
+          if (peek && "ask" in invite && invite.ask) ask(invite.ask);
+          setOpen(true);
+        }}
         aria-label={
           open
             ? "Close Pip workshop helper"
@@ -261,7 +275,8 @@ export function WhatsAppButton({ number }: { number: string }) {
             "Sending you sunshine!"
           ) : (
             <>
-              {invitations[invitation]}
+              <span className="pip-bubble-tag">{invite.tag}</span>
+              {invite.text}
               <small>
                 Ask Pip! <span aria-hidden="true">♡</span>
               </small>
