@@ -135,7 +135,7 @@ Every public form (contact form, SSG ATO consultation form, etc.) POSTs to `/api
 - **Bright kids/public theme — the DEFAULT** (everything a child or parent sees: the landing page, `/login`, `/dashboard`, and all `/learn` games, activities, and escape rooms). Cream/white backgrounds, `coral`/`sky`/`mint`/`grape`/`sunny`/`bubble` accents, big rounded cards, soft shadows, emoji icons, gentle hover/float motion. Fonts: `font-fun` (Fredoka, display) + `font-round` (Nunito, body). This is the `html/body` default in globals.css.
 - **Dark sci-fi/robotics theme — ADMIN ONLY**, scoped to `.admin-shell` (the `/admin` back-office) and `.prose-dark` (CMS/blog HTML). Near-black backgrounds, `cyan`/`purple` accents, utility classes `glass`, `card-hover`, `btn-primary`, `kicker`, `gradient-text`, `gradient-text-warm`, `glow-blob`. Fonts: Exo 2 (display), Inter (sans), JetBrains Mono (mono). Only use these inside `/admin`.
 
-All UI work in this repo should follow [.claude/skills/frontend-design/SKILL.md](.claude/skills/frontend-design/SKILL.md), which is locked to the bright kids/public theme (with a note on the admin-only dark theme).
+All UI work in this repo should follow the user-level `tia-frontend-design` skill and [.claude/skills/tia-frontend-design-site/SKILL.md](.claude/skills/tia-frontend-design-site/SKILL.md), which is locked to the bright kids/public theme (with a note on the admin-only dark theme).
 
 ### The Android app is a downstream consumer of `/learn` — this repo is the origin
 

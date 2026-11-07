@@ -1,13 +1,39 @@
 ---
-name: frontend-design
-description: Project-locked frontend design skill for the AI Kids portal. Enforces the bright, playful kid aesthetic used across the public site and the /learn games — Fredoka + Nunito typography, cream/white backgrounds, coral/sky/mint/grape/sunny accents, rounded cards, soft shadows, emoji icons, gentle hover/float motion. Use whenever building or refining any public-facing or learner UI in this repo. (The dark robotics theme is scoped ONLY to the /admin back-office — see the note at the bottom.)
+name: tia-frontend-design-site
+description: Project-locked frontend design skill for the AI Kids portal. Enforces the bright, playful kid aesthetic used across the public site and the /learn games — Fredoka + Nunito typography, cream/white backgrounds, coral/sky/mint/grape/sunny accents, rounded cards, soft shadows, emoji icons, gentle hover/float motion. Use whenever building or refining any public-facing or learner UI in this repo. (The dark robotics theme is scoped ONLY to the /admin back-office — see the note at the bottom.) Load with the user-level tia-frontend-design skill.
 ---
 
 # AI Kids — Bright & Friendly Aesthetic
 
+**Load the user-level `tia-frontend-design` skill as well.** It owns the group's rules: no dead space or gaps, no chips, no template layouts, an animated hero, generated images and a lighter theme by default. This file records how they apply on this site and wins on theme and look.
+
 This skill is locked to ONE design direction for everything a child or parent sees: the public marketing pages and the `/learn` games, activities, and escape rooms. Think **warm, rounded, chunky, joyful** — a kid should feel like they're playing, not using software. Do not invent new palettes, fonts, or moods.
 
 > There is a second, SEPARATE dark theme for the admin back-office (`.admin-shell`). Never mix the two. If you're building anything under `/learn`, `/login`, `/dashboard`, the landing page, or any kid/parent screen, you are in THIS theme.
+
+## Where the group rules apply
+
+| Screens | Spacing and chips |
+|---|---|
+| **Parent-facing pages:** the landing page, `/programs`, `/free-trial`, `/blog`, `/parent/*`, legal pages | Follow `tia-frontend-design` fully: compact sections, no dead space, no chips, no template layouts |
+| **Play screens:** `/learn` games, activities, escape rooms and other screens children play on | The one exception: big, rounded and roomy, with large pill buttons |
+
+The theme, fonts and recipes below apply to both. Where this file says "big" or "breathable", it means play screens.
+
+## Theme, hero and images
+
+- **Theme:** bright and light, because the audience is children and parents. Dark is for `/admin` only.
+- **Hero:** [FamilyBanner.tsx](src/components/public/FamilyBanner.tsx) is the animated homepage hero, with [PipMascot.tsx](src/components/public/PipMascot.tsx) and `ToyboxArt` in [WorkshopArt.tsx](src/components/public/WorkshopArt.tsx). It pauses for reduced motion and the site's motion toggle. Keep it animated; do not replace it with a static image.
+- **Images:** generate new images; do not use stock or library images. Match the warm, sunny Singapore family scenes in `public/images/`, and save them as WebP there. Generated people are illustrations, never real families, students or testimonials.
+- **Chat widget:** [WhatsAppButton.tsx](src/components/ui/WhatsAppButton.tsx), with Pip leading to WhatsApp.
+- **Footer:** [SiteFooter.tsx](src/components/public/SiteFooter.tsx).
+
+## Known violations
+
+Do not copy these. Fix them when you touch the file.
+
+- **Chips on parent-facing pages:** `app/blog/page.tsx`, `app/blog/tags/page.tsx`, `app/programs/[slug]/page.tsx`, `app/free-trial/page.tsx`, `app/parent/bookings/page.tsx`.
+- **Oversized section spacing:** `app/blog/page.tsx`, `app/blog/tags/page.tsx`, `app/privacy/page.tsx`, `app/terms/page.tsx`, `app/free-trial/page.tsx`.
 
 ## Design tokens (LOCK these)
 
@@ -52,7 +78,7 @@ Kid/public UI should feel rounded, soft, and tactile. Reach for these:
 - **Selectable tiles / answer cards**: white with `ring-1 ring-slate-200`; selected = `scale-[1.05] bg-<accent> text-white ring-2 ring-<accent>/60`.
 - **Forms / inputs**: `rounded-2xl border-2 border-amber-100 bg-amber-50/40 px-4 py-3 font-round text-lg outline-none focus:border-coral`. Big, rounded, friendly — never tight admin inputs.
 - **Success / error feedback**: success = `bg-mint/20 text-emerald-700 ring-1 ring-mint/40`; gentle error/nudge = `bg-coral/10 text-coral ring-1 ring-coral/20`. Keep error copy kind ("So close! Try again 🙂"), never harsh.
-- **Pills / badges**: `rounded-full bg-slate-50 px-3 py-1 font-fun text-xs font-700 text-slate-500 ring-1 ring-slate-100`.
+- **Pills / badges (play screens only; on parent pages use plain text labels)**: `rounded-full bg-slate-50 px-3 py-1 font-fun text-xs font-700 text-slate-500 ring-1 ring-slate-100`.
 
 ## Motion
 
@@ -64,7 +90,7 @@ Kid/public UI should feel rounded, soft, and tactile. Reach for these:
 
 - ❌ The dark/admin palette in kid UI — no cyan (`#59EBFD`), purple (`#5C00E5`), `glass`, `btn-primary`, `kicker`, `gradient-text`, near-black backgrounds. Those are admin-only.
 - ❌ Exo 2 / Inter for kid headings or body. Use `font-fun` + `font-round`.
-- ❌ Hard borders, sharp corners, tiny dense controls. Everything is big, rounded, breathable.
+- ❌ Hard borders, sharp corners, tiny dense controls. Everything is rounded; play screens are also big and breathable, while parent pages stay compact.
 - ❌ Cold/clinical copy or scary red error states. Be warm and encouraging.
 - ❌ Off-palette colours (random teals, hot magentas) outside the token set above.
 - ❌ Low contrast — keep headings `slate-800/900` on white so kids can read easily.
@@ -78,7 +104,8 @@ When asked to build or refresh a public/kid/learner UI:
 3. `font-fun font-700` for titles/buttons, `font-round` for body.
 4. Round everything (`rounded-3xl` / `rounded-full`), add `shadow-sm ring-1`, and a `hover:scale` on interactive elements.
 5. Add an emoji or two for warmth, and a gentle hover/float.
-6. Stress-test on mobile (375px): tap targets ≥ 44px, text never overflows, cards stack cleanly.
+6. On parent-facing pages, run the `tia-frontend-design` checks for dead space, gaps and chips.
+7. Stress-test on mobile (375px): tap targets ≥ 44px, text never overflows, cards stack cleanly.
 
 Good references already in the repo: the Brain Arcade hub ([src/app/learn/cards/page.tsx](src/app/learn/cards/page.tsx)), the card game player, the escape-room player, and the unified login ([src/app/login/page.tsx](src/app/login/page.tsx)).
 

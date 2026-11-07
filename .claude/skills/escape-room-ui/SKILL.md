@@ -1,11 +1,11 @@
 ---
 name: escape-room-ui
-description: Build and polish the top-down escape-room games at /learn/escape-room (RoomMap engine). Use whenever the task touches escape-room layout, decor props, floor textures/tiles, machine placement, collision, doors, ceiling fixtures (cables/bunting/lanterns), fog of war, touch controls, or scene theming. Covers the data model in src/lib/escape-rooms.ts and the renderer in EscapeRoomPlayer.tsx, plus the non-obvious gotchas (z-index layering, % vs px alignment, spawn-trap collision, cultural accuracy of themed art). Follows frontend-design (bright kids theme).
+description: Build and polish the top-down escape-room games at /learn/escape-room (RoomMap engine). Use whenever the task touches escape-room layout, decor props, floor textures/tiles, machine placement, collision, doors, ceiling fixtures (cables/bunting/lanterns), fog of war, touch controls, or scene theming. Covers the data model in src/lib/escape-rooms.ts and the renderer in EscapeRoomPlayer.tsx, plus the non-obvious gotchas (z-index layering, % vs px alignment, spawn-trap collision, cultural accuracy of themed art). Follows tia-frontend-design-site (bright kids theme).
 ---
 
 # Escape Room UI
 
-Top-down, walk-around escape rooms under `/learn/escape-room/[slug]`. A child moves an emoji avatar around a grid of rooms, walks up to "machines" (puzzle stations), solves them, and leaves through a themed door. Load `frontend-design` alongside this — the modals/cards use the bright kids theme.
+Top-down, walk-around escape rooms under `/learn/escape-room/[slug]`. A child moves an emoji avatar around a grid of rooms, walks up to "machines" (puzzle stations), solves them, and leaves through a themed door. Load `tia-frontend-design-site` alongside this — the modals/cards use the bright kids theme.
 
 ## Architecture (one engine)
 
