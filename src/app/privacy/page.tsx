@@ -37,28 +37,7 @@ export default function PrivacyPage() {
   return (
     <>
       <Navbar />
-      <main className="relative overflow-hidden pt-32 pb-24">
-        <div className="grid-bg opacity-40" />
-        <div
-          className="glow-blob"
-          style={{
-            top: "-10%",
-            left: "10%",
-            width: 480,
-            height: 480,
-            background: "radial-gradient(circle, #5C00E5 0%, transparent 70%)",
-          }}
-        />
-        <div
-          className="glow-blob"
-          style={{
-            bottom: "-15%",
-            right: "5%",
-            width: 420,
-            height: 420,
-            background: "radial-gradient(circle, #59EBFD 0%, transparent 70%)",
-          }}
-        />
+      <main className="relative pt-6 pb-10">
 
         <Container>
           <div className="max-w-3xl mx-auto">
@@ -108,9 +87,9 @@ export default function PrivacyPage() {
                     admin users, email address and securely hashed password.
                   </li>
                   <li>
-                    <strong className="text-white">Course / training data</strong>{" "}
-                    — name, NRIC/FIN (where required for SSG-funded courses),
-                    employer details, and course progress.
+                    <strong className="text-white">Course data</strong>{" "}
+                    — a parent&apos;s name and contact details, a child&apos;s
+                    name or nickname, age group, and course progress.
                   </li>
                   <li>
                     <strong className="text-white">Media and likeness</strong> —
@@ -139,8 +118,7 @@ export default function PrivacyPage() {
                     requested;
                   </li>
                   <li>
-                    Process course enrolments, including submissions to SSG /
-                    SkillsFuture Singapore where applicable;
+                    Process course enquiries, enrolments and bookings;
                   </li>
                   <li>
                     Send service-related communications and, with consent,
@@ -163,7 +141,7 @@ export default function PrivacyPage() {
                   Under the PDPA we process personal data on the basis of your
                   consent (express or deemed), legitimate interests (e.g.
                   responding to your enquiry), or as permitted or required by
-                  law (e.g. SSG funding administration, tax records).
+                  law (e.g. tax records).
                 </p>
               </section>
 
@@ -252,8 +230,7 @@ export default function PrivacyPage() {
                 </p>
                 <ul className="list-disc pl-6 mt-3 space-y-2">
                   <li>
-                    Government agencies where required by law (e.g. SSG /
-                    SkillsFuture Singapore for funded courses);
+                    Government agencies where required by law;
                   </li>
                   <li>
                     Service providers who process data on our behalf — including
@@ -293,10 +270,9 @@ export default function PrivacyPage() {
                 <p>
                   We retain personal data only for as long as necessary to
                   fulfil the purposes for which it was collected, or as
-                  required by law (e.g. accounting and SSG record-retention
-                  rules). Enquiry records are typically retained for up to 3
-                  years; training records for up to 7 years as required by
-                  regulators.
+                  required by law (e.g. accounting rules). Enquiry records are
+                  typically retained for up to 3 years; course records for up
+                  to 7 years.
                 </p>
               </section>
 

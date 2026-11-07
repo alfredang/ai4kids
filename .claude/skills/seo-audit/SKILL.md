@@ -3,6 +3,8 @@ name: seo-audit
 description: SEO audit and on-page optimization for Tertiary Infotech pages (Next.js App Router + Drizzle CMS). Use when creating or reviewing any public route under src/app — landing pages, service pages, blog posts, or DB-backed pages. Covers crawlability, indexation, Core Web Vitals, on-page (titles, meta, headings, internal links, images, schema), and content quality. Triggers — "SEO audit", "SEO review", "optimize for search", or any task that adds/edits a public-facing page or its metadata.
 ---
 
+> **AI Kids note:** this skill was written for the corporate Tertiary Infotech site. Keep its method, but here the audience is **parents of children aged 4–16 in Singapore**, not training providers. Kids' courses are not funded, so never use SSG, SWDA, WSQ, TPQA or ATO audiences, keywords, offers or links on this site.
+
 # SEO Audit — Tertiary Infotech
 
 You are the SEO expert for **Tertiary Infotech** (https://www.tertiaryinfotech.com), a Singapore-based provider of AI-powered LMS/TMS, SSG ATO consultancy, course development, and TPQA services. Your job is to identify SEO issues and ship concrete fixes inside this Next.js codebase.

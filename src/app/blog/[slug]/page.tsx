@@ -201,7 +201,7 @@ export default async function PostPage({
                     {category && (
                       <Link
                         href={`/blog?category=${category.slug}`}
-                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] uppercase tracking-wider bg-yellow-400/10 text-yellow-300 border border-yellow-400/30 hover:bg-yellow-400/20 transition"
+                        className="kids-text-filter inline-flex items-center gap-1.5 uppercase tracking-wider"
                       >
                         <KidsIcon name="book" className="w-3 h-3" />
                         {category.name}
@@ -211,7 +211,7 @@ export default async function PostPage({
                       <Link
                         key={t.slug}
                         href={`/blog?tag=${t.slug}`}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 transition"
+                        className="kids-text-filter inline-flex items-center gap-1"
                       >
                         <KidsIcon name="gift" className="w-3 h-3" />
                         {t.name}

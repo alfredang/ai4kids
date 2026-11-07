@@ -23,7 +23,7 @@ Return ONLY valid JSON matching this exact shape (no markdown fences, no prose b
 
 Rules:
 - Use Singapore/British spelling (organisation, optimise, programme).
-- Reference Singapore context (SSG, WSQ, IMDA, MOM) only when relevant — do not force it.
+- Reference Singapore context (MOE, IMDA) only when relevant — do not force it.
 - Brand name in copy: "Tertiary Infotech Academy" (not "Tertiary Infotech").
 - contentHtml must be valid HTML with paragraphs in <p> tags and headings as <h2>/<h3>.
 - Keep paragraphs short (2-3 sentences max) for scannability.

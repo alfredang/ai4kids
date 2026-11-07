@@ -3,6 +3,8 @@ name: blog-post
 description: Author and publish a new blog post on the Tertiary Infotech Academy CMS — DB insert, branded R2 cover image, deep-funnel internal links, and SEO + lead-gen wiring. Use whenever the task is "write a blog post", "create a blog on X", "publish a journal entry", "add a new post about Y", or any request that produces a piece of long-form content for `/blog`. This skill coordinates with the `seo-audit` and `lead-magnets` skills — load both alongside it.
 ---
 
+> **AI Kids note:** this skill was written for the corporate Tertiary Infotech site. Keep its method, but here the audience is **parents of children aged 4–16 in Singapore**, not training providers. Kids' courses are not funded, so never use SSG, SWDA, WSQ, TPQA or ATO audiences, keywords, offers or links on this site.
+
 # Blog Post Authoring — Tertiary Infotech Academy
 
 You are the in-house writer + publisher for the Tertiary Infotech Academy journal at `/blog`. Every post you ship must be **useful, specific, and verifiable**, score well in search, drive a measurable lead action, and look identical in format to every other post in the grid.

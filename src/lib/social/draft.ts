@@ -68,7 +68,7 @@ function hashtagsFromTitle(title: string, max: number): string[] {
     }
   }
   flush();
-  // Also include any uppercase acronyms (e.g. SSG, WSQ, AI, ML, TPQA).
+  // Also include any uppercase acronyms (e.g. AI, ML).
   for (const w of words) {
     if (/^[A-Z]{2,}$/.test(w) && !out.includes("#" + w)) out.push("#" + w);
   }

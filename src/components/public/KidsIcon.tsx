@@ -290,16 +290,15 @@ export function KidsIcon({ name, className = "", ...props }: Props) {
         <>
           <path
             d="M7 35C-4 13 11 3 25 5c18-2 27 21 13 32-6 5-17 5-23 1L5 43l2-8Z"
-            fill="#C8E7D9"
-            stroke="#478D77"
-            strokeWidth="2"
+            fill="#BDEFD3"
+            stroke="#3E8A70"
+            strokeWidth="2.2"
           />
-          <path
-            d="m16 14-3 5c2 9 8 15 17 16l5-5-6-5-4 3c-3-1-5-3-6-6l3-3-6-5Z"
-            fill="#fff"
-            stroke="#478D77"
-            strokeWidth="1.5"
-          />
+          <ellipse cx="17" cy="20" rx="2.6" ry="3.3" fill="#3E8A70" />
+          <ellipse cx="29" cy="20" rx="2.6" ry="3.3" fill="#3E8A70" />
+          <ellipse cx="12" cy="26.5" rx="3.2" ry="2" fill="#F5A9B8" />
+          <ellipse cx="34" cy="26.5" rx="3.2" ry="2" fill="#F5A9B8" />
+          <path d="M18 27c3 4 7 4 10 0" fill="none" stroke="#3E8A70" strokeWidth="2.2" strokeLinecap="round" />
         </>
       ) : name === "download" ? (
         <>

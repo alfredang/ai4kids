@@ -36,28 +36,7 @@ export default function TermsPage() {
   return (
     <>
       <Navbar />
-      <main className="relative overflow-hidden pt-32 pb-24">
-        <div className="grid-bg opacity-40" />
-        <div
-          className="glow-blob"
-          style={{
-            top: "-10%",
-            left: "10%",
-            width: 480,
-            height: 480,
-            background: "radial-gradient(circle, #5C00E5 0%, transparent 70%)",
-          }}
-        />
-        <div
-          className="glow-blob"
-          style={{
-            bottom: "-15%",
-            right: "5%",
-            width: 420,
-            height: 420,
-            background: "radial-gradient(circle, #59EBFD 0%, transparent 70%)",
-          }}
-        />
+      <main className="relative pt-6 pb-10">
 
         <Container>
           <div className="max-w-3xl mx-auto">

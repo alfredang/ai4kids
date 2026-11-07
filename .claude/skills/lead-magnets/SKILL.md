@@ -3,6 +3,8 @@ name: lead-magnets
 description: Plan and build lead-magnet flows for Tertiary Infotech — gated guides, checklists, calculators, webinars, and consultation forms — wired into the existing leads pipeline (`/api/contact` → `leads` table → admin notification email). Use whenever the task involves capturing emails, generating qualified leads, or designing a CTA/landing page for SSG ATO, TPQA, LMS/TMS, or AI services.
 ---
 
+> **AI Kids note:** this skill was written for the corporate Tertiary Infotech site. Keep its method, but here the audience is **parents of children aged 4–16 in Singapore**, not training providers. Kids' courses are not funded, so never use SSG, SWDA, WSQ, TPQA or ATO audiences, keywords, offers or links on this site.
+
 # Lead Magnets — Tertiary Infotech
 
 You are the lead-magnet strategist for **Tertiary Infotech**. Your job is to plan magnets that capture emails, qualify intent, and feed warm leads into our consulting and AI-LMS-TMS pipeline.

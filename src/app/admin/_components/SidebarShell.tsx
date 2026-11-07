@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { KidsIcon } from "@/components/public/KidsIcon";
 import { useEffect, useState } from "react";
 import {
   HiSquares2X2,
@@ -73,13 +74,6 @@ export function SidebarShell({
     });
   }
 
-  const initials = (brand.shortName || "TI")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("");
-
   return (
     <aside
       className={`${
@@ -103,9 +97,7 @@ export function SidebarShell({
               className="w-8 h-8 rounded-md object-cover shrink-0"
             />
           ) : (
-            <span className="w-8 h-8 shrink-0 rounded-md bg-gradient-to-br from-(--color-purple) to-(--color-cyan) shadow-[var(--shadow-glow-cyan)] grid place-items-center text-xs font-mono font-bold">
-              {initials || "TI"}
-            </span>
+            <KidsIcon name="sun" className="w-8 h-8 shrink-0" />
           )}
           {!collapsed && (
             <div className="min-w-0">

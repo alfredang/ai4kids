@@ -18,9 +18,7 @@ export default async function ParentLayout({
     <div className="min-h-screen bg-cream">
       <header className="kids-parent-header">
         <div className="kids-wrap kids-parent-nav">
-          <Link href="/parent" className="flex items-center gap-2 font-fun text-lg font-700 text-slate-800">
-            <KidsLogo />
-          </Link>
+          <KidsLogo />
           <nav className="flex items-center gap-5 font-fun font-600 text-slate-500">
             <Link href="/parent" className="hover:text-coral">Home</Link>
             <Link href="/parent/play" className="hover:text-coral">Play together</Link>

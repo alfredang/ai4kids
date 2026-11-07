@@ -22,7 +22,33 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     // Dynamic redirects (from `redirects` DB table) are handled in middleware.
-    return [];
+    // Everything else lands on app/not-found.tsx.
+    const home = (source: string, destination = "/") => ({ source, destination, permanent: true });
+    return [
+      // Addresses a parent is likely to type or trim down to.
+      home("/holiday-workshops", "/#workshops"),
+      home("/workshops", "/#workshops"),
+      home("/book", "/programs"),
+      home("/courses", "/programs"),
+      home("/services", "/programs"),
+      home("/about", "/contact"),
+      // Corporate URLs inherited from the CMS this site was cloned from. Kids'
+      // courses are not funded, so none of these pages exist here.
+      ...[
+        "/ssg-ato-application",
+        "/tpqa-consultancy",
+        "/wsq-course-development",
+        "/learning-management-system",
+        "/training-management-system",
+        "/hr-management-system",
+        "/content-management-system",
+        "/ai-solutions",
+        "/ai-agent-deployment",
+        "/ai-chatbot-portfolio",
+        "/real-clients",
+        "/edtools",
+      ].map((source) => home(source)),
+    ];
   },
 };
 

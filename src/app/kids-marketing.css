@@ -3550,3 +3550,191 @@
 .pip-launcher:is(:hover,:focus-visible) .pip-arm {animation:pip-wave-hello .9s ease-in-out 3;}
 @keyframes pip-wave {0%,58%,82%,100%{rotate:0deg;}62%,70%{rotate:18deg;}66%,74%{rotate:-5deg;}}
 @keyframes pip-wave-hello {0%,100%{rotate:0deg;}25%{rotate:20deg;}75%{rotate:-6deg;}}
+/* Pip is easier to spot: bigger, with a soft sunny halo and twinkling sparks. The bubble is its own
+   button, so the empty row around Pip never blocks clicks on the page underneath. */
+.pip-widget {pointer-events:none;}
+.pip-chat {pointer-events:auto;}
+.pip-launcher-row {display:flex;align-items:center;justify-content:flex-end;pointer-events:none;}
+.pip-launcher {pointer-events:auto;margin-left:0;}
+.pip-launcher-character {width:112px;height:123px;}
+.pip-launcher-character::before {content:"";position:absolute;inset:6% -4% 0;z-index:-1;border-radius:50%;background:radial-gradient(circle,#ffe58f 0%,rgba(255,229,143,.55) 55%,rgba(255,229,143,0) 72%);animation:pip-halo 3.4s ease-in-out infinite;}
+@keyframes pip-halo {0%,100%{scale:.94;opacity:.75;}50%{scale:1.1;opacity:1;}}
+.pip-launcher-spark {animation:pip-twinkle 2.6s ease-in-out infinite;}
+@keyframes pip-twinkle {0%,100%{scale:1;opacity:1;}50%{scale:.55;opacity:.45;}}
+/* WhatsApp arrives as a smiling chat bubble on Pip's cap, not a stock phone icon. */
+.pip-launcher .pip-whatsapp-dot {left:48%;top:14%;width:34px;height:34px;background:#fffefa;border:2px solid #3e8a70;box-shadow:0 2px 0 #714936;animation:pip-badge-glow 3s ease-out 1s infinite,pip-badge-bounce 7s ease-in-out 2s infinite;}
+.pip-launcher .pip-whatsapp-dot > svg {width:24px;height:24px;}
+@keyframes pip-badge-bounce {0%,82%,100%{rotate:0deg;}87%{rotate:-14deg;}92%{rotate:12deg;}}
+.pip-bubble-wrap {position:relative;margin-right:-6px;}
+.pip-launcher-bubble {width:250px;max-width:none;margin:0 0 13px;cursor:pointer;font-family:inherit;}
+.pip-launcher-row:is(.pip-is-peeking,:hover,:focus-within) .pip-launcher-bubble {opacity:1;transform:translateX(0) scale(1) rotate(-3deg);pointer-events:auto;}
+.pip-launcher-row:not(.pip-is-peeking) .pip-launcher-bubble[aria-hidden="true"] {visibility:hidden;}
+.pip-launcher-row:is(:hover,:focus-within) .pip-launcher-bubble {visibility:visible !important;}
+.pip-is-peeking .pip-launcher-bubble {animation:pip-bubble-pop .55s cubic-bezier(.2,1.5,.4,1) both;}
+@keyframes pip-bubble-pop {0%{scale:.6;}100%{scale:1;}}
+/* A plain label rather than a pill: small rounded tags are chips. */
+.pip-bubble-tag {display:flex;align-items:center;gap:5px;width:auto;margin-bottom:2px;padding:0;border-radius:0;background:none;color:#a2461c;font-family:var(--font-fun);font-size:15px;font-weight:700;letter-spacing:0;}
+.pip-bubble-tag .kids-icon {width:20px;height:20px;}
+.pip-bubble-dismiss {position:absolute;top:-8px;left:-6px;z-index:1;display:grid;place-items:center;width:30px;height:30px;padding:0;border:2px solid #a185b6;border-radius:50%;background:#fffefa;color:#86539d;cursor:pointer;pointer-events:auto;}
+.pip-bubble-dismiss svg {width:14px;height:14px;}
+@media(max-width:600px){
+  .pip-launcher-character {width:92px;height:101px;}
+  .pip-launcher .pip-whatsapp-dot {width:29px;height:29px;}
+  .pip-launcher .pip-whatsapp-dot > svg {width:20px;height:20px;}
+  .pip-launcher-bubble {width:205px;max-width:none;}
+}
+/* Quiet the new loops and entrances with the rest of the site's motion controls. */
+.kids-motion-paused .kids-workshop-page *,
+.kids-motion-paused .kids-rise,
+.kids-motion-paused .pip-launcher-character::before {animation:none !important;}
+@media(prefers-reduced-motion:reduce){.kids-rise,.kids-workshop-page *,.pip-launcher-character::before,.pip-launcher-bubble,.kids-lost-pip,.kids-games-friends img{animation:none !important;}}
+
+/* Shared entrance for the inner pages. */
+@keyframes kids-rise {0%{opacity:0;transform:translateY(16px) scale(.98);}100%{opacity:1;transform:none;}}
+.kids-rise {animation:kids-rise .55s cubic-bezier(.2,1.2,.35,1) both;}
+.kids-plain-label {color:#b53c72;font-family:var(--font-fun);font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+.kids-text-filter {color:#8a52a5;font-weight:800;text-decoration:none;border-bottom:3px solid transparent;}
+.kids-text-filter.is-active,.kids-text-filter:hover {color:#bd4b8d;border-bottom-color:currentColor;}
+
+/* 404: Pip beside the way back, never an empty page. */
+.kids-lost {display:grid;grid-template-columns:minmax(180px,300px) 1fr;align-items:center;gap:32px;padding-block:24px;}
+.kids-lost-pip {animation:kid-bob 3s ease-in-out infinite;}
+.kids-lost-pip svg {width:100%;height:auto;overflow:visible;}
+.kids-lost-label {color:#b53c72;font-family:var(--font-fun);font-weight:700;}
+.kids-lost h1 {color:#8653a4;font-size:clamp(2rem,4.4vw,3.4rem);margin-block:4px 8px;}
+.kids-lost h1 span {color:#2c8c8a;}
+.kids-lost-ways {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px;}
+.kids-lost-ways a {display:flex;flex-direction:column;gap:2px;padding:16px;border:2px solid #b7a2cd;border-radius:26px 18px 30px 20px;background:#fbf8ff;color:#80529d;transition:transform .2s;animation:kids-rise .5s cubic-bezier(.2,1.2,.35,1) both;}
+.kids-lost-ways a:nth-child(2){animation-delay:80ms;background:#fff8e3;border-radius:18px 28px 20px 30px;}
+.kids-lost-ways a:nth-child(3){animation-delay:160ms;background:#eef9f2;}
+.kids-lost-ways a:nth-child(4){animation-delay:240ms;background:#f7eefb;border-radius:18px 28px 20px 30px;}
+.kids-lost-ways a:hover {transform:translateY(-4px) rotate(-1.2deg);}
+.kids-lost-ways .kids-icon {width:48px;height:48px;}
+.kids-lost-ways small {color:#505d87;font-size:15px;}
+@media(max-width:900px){.kids-lost{grid-template-columns:1fr;gap:8px;}.kids-lost-pip{width:150px;}.kids-lost-ways{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+/* Empty journal. */
+.kids-journal-empty {display:grid;grid-template-columns:150px 1fr;align-items:center;gap:24px;padding:20px 24px;border:2px solid #c6b5db;border-radius:30px 22px 34px 24px;background:#fffefa;box-shadow:4px 6px 0 #ded7eb;}
+.kids-journal-empty > svg {width:100%;height:auto;overflow:visible;animation:kid-bob 3s ease-in-out infinite;}
+.kids-journal-empty h2 {color:#8653a4;font-size:clamp(1.5rem,3vw,2.2rem);}
+.kids-journal-empty .kids-button {margin-top:12px;}
+@media(max-width:600px){.kids-journal-empty{grid-template-columns:90px 1fr;gap:12px;padding:16px;}}
+
+/* Programmes: the promo sits beside the heading, and the grid is irregular rather than three equal
+   cards repeated. Spans repeat 5-4-3 then 3-4-5, and a short last row stretches so no cell is empty. */
+.kids-catalogue-top {display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:24px;align-items:stretch;}
+.kids-catalogue-promo {position:relative;display:flex;align-items:flex-end;min-height:230px;overflow:hidden;border:2px solid #bab0d0;border-radius:30px 18px 33px 21px;animation:kids-rise .6s cubic-bezier(.2,1.2,.35,1) both;}
+.kids-catalogue-promo img {object-fit:cover;transition:transform .6s;}
+.kids-catalogue-promo:hover img {transform:scale(1.06);}
+.kids-catalogue-promo > span {position:relative;display:block;width:100%;padding:12px 18px;background:#fffefaf2;color:#505d87;font-size:16px;line-height:1.35;}
+.kids-catalogue-promo strong {display:block;color:#8654a6;font-family:var(--font-story-import),Georgia,serif;font-size:20px;}
+.kids-catalogue-grid {display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-top:14px;}
+.kids-catalogue-grid > a {grid-column:span 4;animation:kids-rise .55s cubic-bezier(.2,1.2,.35,1) both;}
+.kids-catalogue-grid > a:nth-child(6n+1),.kids-catalogue-grid > a:nth-child(6n){grid-column:span 5;}
+.kids-catalogue-grid > a:nth-child(6n+3),.kids-catalogue-grid > a:nth-child(6n+4){grid-column:span 3;}
+.kids-catalogue-grid > a:nth-child(3n+1):last-child {grid-column:span 12;}
+.kids-catalogue-grid > a:nth-child(6n+2):last-child {grid-column:span 7;}
+.kids-catalogue-grid > a:nth-child(6n+5):last-child {grid-column:span 9;}
+.kids-catalogue-grid > a:nth-child(2){animation-delay:70ms;}
+.kids-catalogue-grid > a:nth-child(3){animation-delay:140ms;}
+.kids-catalogue-grid > a:nth-child(4){animation-delay:210ms;}
+.kids-catalogue-grid > a:nth-child(5){animation-delay:280ms;}
+.kids-catalogue-grid > a:nth-child(n+6){animation-delay:350ms;}
+.kids-catalogue-card:hover {transform:translateY(-5px) rotate(-1deg);}
+.kids-catalogue-card:hover .kids-catalogue-tile {animation:kids-tile-wiggle .6s ease-in-out;}
+@keyframes kids-tile-wiggle {0%,100%{rotate:0deg;scale:1;}30%{rotate:-10deg;scale:1.12;}70%{rotate:9deg;scale:1.12;}}
+@media(max-width:900px){
+  .kids-catalogue-top {grid-template-columns:1fr;}
+  .kids-catalogue-promo {min-height:190px;}
+  .kids-catalogue-grid > a,.kids-catalogue-grid > a:nth-child(n),.kids-catalogue-grid > a:nth-child(n):last-child {grid-column:span 6;}
+  .kids-catalogue-grid > a:nth-child(2n+1):last-child {grid-column:span 12;}
+}
+@media(max-width:600px){.kids-catalogue-grid > a:nth-child(n),.kids-catalogue-grid > a:nth-child(n):last-child{grid-column:span 12;}}
+
+/* Games: split hero with the workshop friends, and cards in uneven sizes. */
+.kids-games-hero {display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:24px;align-items:center;}
+.kids-games-hero p {font-size:20px;color:#497e88;margin-bottom:14px;}
+.kids-games-friends {display:flex;justify-content:flex-end;}
+.kids-games-friends img {width:32%;height:auto;margin-left:-6%;animation:kid-bob 3.6s ease-in-out infinite;transition:scale .25s;}
+.kids-games-friends img:nth-child(2){animation-delay:.5s;translate:0 14px;}
+.kids-games-friends img:nth-child(3){animation-delay:1s;}
+.kids-games-friends img:nth-child(4){animation-delay:1.5s;translate:0 14px;}
+.kids-games-grid {grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin:18px 0;}
+.kids-game-preview {grid-column:span 4;animation:kids-rise .55s cubic-bezier(.2,1.2,.35,1) both;transition:transform .2s;}
+.kids-game-preview:nth-child(1),.kids-game-preview:nth-child(6){grid-column:span 5;}
+.kids-game-preview:nth-child(3),.kids-game-preview:nth-child(4){grid-column:span 3;}
+.kids-game-preview:nth-child(2){animation-delay:70ms;}
+.kids-game-preview:nth-child(3){animation-delay:140ms;}
+.kids-game-preview:nth-child(4){animation-delay:210ms;}
+.kids-game-preview:nth-child(5){animation-delay:280ms;}
+.kids-game-preview:nth-child(6){animation-delay:350ms;}
+.kids-game-preview:hover {transform:translateY(-5px) rotate(-1deg);}
+.kids-game-preview:hover > .kids-icon {animation:kids-tile-wiggle .6s ease-in-out;}
+.kids-games-note {margin-top:0;}
+@media(max-width:900px){
+  .kids-games-hero {grid-template-columns:1fr;}
+  .kids-games-friends {justify-content:flex-start;}
+  .kids-games-friends img {width:26%;}
+  .kids-game-preview:nth-child(n) {grid-column:span 6;}
+}
+@media(max-width:600px){.kids-game-preview:nth-child(n){grid-column:span 12;}}
+
+/* Free trial: a generated scene fills the column, so it ends level with the form. */
+.kids-trial-photo {position:relative;flex:1;min-height:190px;margin-top:16px;overflow:hidden;border:2px solid #bab0d0;border-radius:30px 18px 33px 21px;}
+.kids-trial-photo img {object-fit:cover;object-position:50% 40%;}
+
+/* Workshop pages: generated scenes fill the shorter columns, so both sides end level. */
+.kids-workshop-description > div,.kids-workshop-enquire > div:first-child {display:flex;flex-direction:column;align-items:flex-start;}
+.kids-workshop-enquire {align-items:stretch;}
+.kids-workshop-scene {position:relative;flex:1;align-self:stretch;min-height:200px;margin-top:16px;overflow:hidden;border:2px solid #bab0d0;border-radius:30px 18px 33px 21px;}
+.kids-workshop-scene img {object-fit:cover;object-position:50% 35%;transition:transform .6s;}
+.kids-workshop-scene:hover img {transform:scale(1.05);}
+.kids-workshop-banner {animation:kids-rise .55s cubic-bezier(.2,1.2,.35,1) both;}
+.kids-workshop-emoji {animation:kid-bob 3.6s ease-in-out infinite;}
+
+/* Sign-in: the welcome on the left, the form on the right, ending level. */
+.kids-signin {display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:28px;align-items:stretch;padding-block:20px;}
+.kids-signin-welcome {display:flex;flex-direction:column;align-items:flex-start;animation:kids-rise .55s cubic-bezier(.2,1.2,.35,1) both;}
+.kids-signin-welcome .kids-plain-label {color:#b53c72;}
+.kids-signin-welcome h1 {color:#8653a4;font-family:var(--font-story-import),Georgia,serif;font-size:clamp(2.1rem,4vw,3.3rem);font-variation-settings:"SOFT" 100,"WONK" 1;font-weight:750;letter-spacing:-.025em;line-height:1.1;margin-block:4px 8px;}
+.kids-signin-welcome h1 span {color:#2c8c8a;}
+.kids-signin-welcome > p:not(.kids-plain-label) {color:#505d87;font-size:19px;line-height:1.5;}
+.kids-signin-welcome ul {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px;}
+.kids-signin-welcome li {display:flex;flex-direction:column;gap:4px;font-size:15px;line-height:1.35;color:#505d87;}
+.kids-signin-welcome li > .kids-icon {width:46px;height:46px;transition:transform .25s;}
+.kids-signin-welcome li:hover > .kids-icon {animation:kids-tile-wiggle .6s ease-in-out;}
+.kids-signin-welcome li strong {display:block;color:#7a50a0;font-size:16px;}
+.kids-signin-welcome .kids-text-link {margin-top:10px;}
+.kids-signin-scene {position:relative;flex:1;align-self:stretch;min-height:210px;margin-top:14px;border:2px solid #bab0d0;border-radius:30px 18px 33px 21px;}
+.kids-signin-scene > img {border-radius:28px 16px 31px 19px;object-fit:cover;object-position:50% 30%;}
+.kids-signin-pip {position:absolute;right:-16px;bottom:-14px;width:112px;animation:kid-bob 3s ease-in-out infinite;}
+.kids-signin-pip svg {width:100%;height:auto;overflow:visible;}
+.kids-signin-card {height:100%;padding:24px 28px;border:2px solid #a185b6;border-radius:26px 34px 22px 36px;background:#fffefa;box-shadow:5px 7px 0 #ddd0ed;color:#505d87;animation:kids-rise .55s cubic-bezier(.2,1.2,.35,1) 120ms both;}
+.kids-signin-card h2 {color:#7a50a0;font-family:var(--font-story-import),Georgia,serif;font-size:clamp(1.6rem,2.6vw,2.2rem);font-variation-settings:"SOFT" 100,"WONK" 1;font-weight:750;line-height:1.15;}
+.kids-signin-card label {display:block;margin:12px 0 5px;color:#3c7f7c;font-size:17px;font-weight:800;}
+.kids-signin-card input:not([type="checkbox"]) {width:100%;min-height:50px;padding:10px 14px;border:2px solid #c5b6da;border-radius:16px 12px 15px 13px;background:#fff;color:#343c79;font-size:18px;outline:none;transition:border-color .2s,box-shadow .2s;}
+.kids-signin-card input:focus {border-color:#7a50a0;box-shadow:0 0 0 3px #e6dbf3;}
+.kids-signin-card .kids-button {width:100%;margin-top:16px;}
+.kids-signin-card small {display:block;margin-top:12px;color:#505d87;font-size:15px;text-align:center;}
+.kids-signin-card small a {color:#7a50a0;font-weight:800;text-decoration:underline;}
+.kids-signin-tabs {display:flex;gap:22px;margin-bottom:14px;border-bottom:2px solid #e6def2;}
+.kids-signin-tabs button {display:inline-flex;align-items:center;gap:7px;min-height:48px;margin-bottom:-2px;padding:6px 2px;border:0;border-bottom:3px solid transparent;background:none;color:#6a5a92;cursor:pointer;font-size:18px;font-weight:800;}
+.kids-signin-tabs button .kids-icon {width:28px;height:28px;}
+.kids-signin-tabs button.is-active {border-bottom-color:#b53c72;color:#b53c72;}
+.kids-signin-tabs button:hover {color:#b53c72;}
+.kids-signin-staff .kids-button {margin-top:16px;}
+.kids-signin-error {margin-top:10px;color:#a93226;font-size:16px;font-weight:700;}
+.kids-signin-google {display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:50px;margin-top:12px;border:2px solid #c5b6da;border-radius:16px 12px 15px 13px;background:#fff;color:#343c79;cursor:pointer;font-weight:800;transition:background .2s;}
+.kids-signin-google:hover {background:#f6efff;}
+.kids-signin-staff-page {min-height:100vh;align-content:center;}
+.kids-motion-paused :is(.kids-signin-pip,.kids-signin-welcome,.kids-signin-card) {animation:none !important;}
+@media(prefers-reduced-motion:reduce){:is(.kids-signin-pip,.kids-signin-welcome,.kids-signin-card){animation:none !important;}}
+@media(max-width:900px){
+  .kids-signin {grid-template-columns:minmax(0,1fr);gap:14px;}
+  .kids-signin-card {padding:18px;}
+  .kids-signin-tabs {gap:14px;}
+  /* Pip must not sit on the sign-in button. */
+  body:has(.kids-signin-card) .pip-widget {display:none;}
+  .kids-signin-welcome ul,.kids-signin-scene,.kids-signin-welcome .kids-text-link {display:none;}
+  .kids-signin-staff-page {min-height:0;}
+}

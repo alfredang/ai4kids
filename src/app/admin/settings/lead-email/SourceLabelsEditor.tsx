@@ -39,7 +39,7 @@ export function SourceLabelsEditor({ initial }: { initial: Record<string, string
         <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-3 items-center">
           <input
             type="text"
-            placeholder="source-code (e.g. ssg-ato-page)"
+            placeholder="source-code (e.g. free-trial)"
             value={r.code}
             onChange={(e) => update(i, "code", e.target.value)}
             className="px-3 py-2 bg-white/3 border border-white/10 rounded-lg font-mono text-xs focus:outline-none focus:border-(--color-cyan) focus:ring-2 focus:ring-(--color-cyan)/20 transition"

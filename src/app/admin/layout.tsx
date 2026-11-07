@@ -26,7 +26,7 @@ export default async function AdminLayout({
     h.get("x-pathname") ?? h.get("next-url") ?? h.get("x-invoke-path") ?? "";
   const isLoginPage = pathname === "/admin/login" || pathname.endsWith("/admin/login");
 
-  if (isLoginPage) return <>{children}</>;
+  if (isLoginPage) return <div className="admin-shell">{children}</div>;
 
   const cookieStore = await cookies();
   // Two ways to hold a staff session:
@@ -82,7 +82,7 @@ export default async function AdminLayout({
         items={items}
         signOutAction={signOutAction}
       />
-      <main className="flex-1 min-w-0 px-8 py-10">{children}</main>
+      <main className="flex-1 min-w-0 px-6 py-6">{children}</main>
     </div>
   );
 }

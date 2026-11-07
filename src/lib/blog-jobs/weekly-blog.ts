@@ -13,7 +13,7 @@ import {
 import { runClaudeWithSystemPrompt } from "@/lib/ai/claude";
 import { renderAndUploadCover } from "@/lib/post-cover";
 import { getR2Config } from "@/lib/r2";
-import { SERVICES } from "@/lib/site-content";
+import { HOLIDAY_WORKSHOPS } from "@/lib/holiday-workshops";
 import { slugify } from "@/lib/slugify";
 import {
   getRecentVideos,
@@ -52,7 +52,9 @@ async function getSetting<T = string>(key: string, fallback: T): Promise<T> {
 }
 
 function buildInternalLinkCatalog(): string {
-  const lines = SERVICES.map((s) => `- ${s.href} — ${s.title}: ${s.description.slice(0, 120)}`);
+  const lines = HOLIDAY_WORKSHOPS.map((w) => `- /holiday-workshops/${w.slug} — ${w.title}: ${w.summary}`);
+  lines.unshift("- /games — AI games a parent unlocks for their child");
+  lines.unshift("- /programs — small live AI classes for kids");
   lines.unshift("- /blog — index of all Tertiary Infotech Academy journal posts");
   lines.unshift("- /contact — lead-capture form (CTA target with ?source=blog-… tokens)");
   return lines.join("\n");

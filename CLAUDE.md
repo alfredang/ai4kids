@@ -8,6 +8,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Short name / brand**: **Tertiary Infotech Academy** (not "Tertiary Infotech")
 - Use the short name in UI copy, page titles, OG/Twitter metadata, footer, and lead-notification emails. The legal name is for schema.org `Organization`, T&Cs, and invoices only.
 
+## No funding content
+
+Kids' courses are **not funded**. This site must have no pages, copy, keywords, admin screens or lead sources about SSG, SWDA, SkillsFuture, WSQ, IBF, TPQA or ATO. The repo was cloned from the corporate CMS, so corporate material still survives in `/api/chat`, the weekly blog job's prompts and `scripts/` seeders. Don't bring it back, and don't copy examples from it.
+
 ## Commands
 
 ```bash
@@ -52,7 +56,7 @@ Self-hosted CMS on Next.js 16 App Router + Drizzle (Postgres) + Auth.js v5. The 
 
 Several UI surfaces render from the DB **with a code-level fallback** that takes over on DB failure. When the user asks you to change one of these, you usually have to update the DB **AND** the fallback **AND** any seeder script that recreates it. Otherwise the change is invisible in some environments.
 
-- **Header / footer nav** — [src/components/layout/Navbar.tsx](src/components/layout/Navbar.tsx) reads `menus` + `menu_items` from Postgres; on failure or empty result it falls back to the `FALLBACK` const in the same file. The canonical "rebuild the menu from code" script is [scripts/reset-header-menu.ts](scripts/reset-header-menu.ts) — when you rename a menu item you usually need to touch three places: DB row, `FALLBACK`, and the reset script.
+- **Header / footer nav** — hardcoded in [src/components/public/SiteHeader.tsx](src/components/public/SiteHeader.tsx) and [SiteFooter.tsx](src/components/public/SiteFooter.tsx). `layout/Navbar.tsx` and `layout/Footer.tsx` only re-export them. The `menus` tables and `scripts/reset-header-menu.ts` are corporate leftovers and don't affect the site.
 - **Site brand (name, logo)** — [src/lib/site-settings.ts](src/lib/site-settings.ts) reads `settings` rows; defaults are inline.
 - **Pages + Posts** — fully DB-only via `pages` / `posts` (no code fallback). Slug is the natural key; status is `draft|published|archived`.
 
@@ -119,23 +123,25 @@ Both the public AI chatbot ([src/app/api/chat](src/app/api/chat)) and the admin 
 
 ### Public route layout & SEO
 
-- Single landing page composes section components from [src/components/sections/](src/components/sections/) — `SERVICES` in [src/lib/site-content.ts](src/lib/site-content.ts) is the source of truth for the services grid; items can carry an optional `href` to make the card route to a dedicated page (see the SSG ATO example).
-- `[slug]` (dynamic CMS page) and `blog/[slug]` consult `redirects` first before 404'ing — preserves WordPress URLs after migration.
+- The landing page is [src/app/page.tsx](src/app/page.tsx), composed from [src/components/public/](src/components/public/). The December workshops come from [src/lib/holiday-workshops.ts](src/lib/holiday-workshops.ts).
+- `blog/[slug]` consults `redirects` first before 404'ing — preserves WordPress URLs after migration.
+- Unknown URLs land on [src/app/not-found.tsx](src/app/not-found.tsx). Parent paths (`/holiday-workshops`), likely typed addresses and retired corporate URLs redirect from `redirects()` in [next.config.ts](next.config.ts). When adding a `/x/[slug]` route, make sure `/x` resolves too.
 - Each public route exports `metadata` (or `generateMetadata`) plus inline JSON-LD via `dangerouslySetInnerHTML`. `sitemap.ts` enumerates hardcoded routes + DB-published pages and posts.
 - The SEO conventions for this codebase (canonical URL, OG, money keywords, schema choices per page type, British/Singapore spelling) are in [.claude/skills/seo-audit/SKILL.md](.claude/skills/seo-audit/SKILL.md) — load that skill whenever creating or auditing a public route.
 
 ### Lead capture
 
-Every public form (contact form, SSG ATO consultation form, etc.) POSTs to `/api/contact` with `{ name, email, phone?, company?, message, source }`. The `source` field identifies which page/magnet produced the lead — set it per form (e.g. `"home"`, `"ssg-ato-page"`). Submissions land in `leads` and also send a Gmail notification via the OAuth2 credentials stored in the vault. The lead-magnet conventions for this codebase (ICPs, form-field rules, page anatomy) are in [.claude/skills/lead-magnets/SKILL.md](.claude/skills/lead-magnets/SKILL.md).
+Every public form (contact form, SSG ATO consultation form, etc.) POSTs to `/api/contact` with `{ name, email, phone?, company?, message, source }`. The `source` field identifies which page/magnet produced the lead — set it per form (e.g. `"home"`, `"free-trial"`). Submissions land in `leads` and also send a Gmail notification via the OAuth2 credentials stored in the vault. The lead-magnet conventions for this codebase (ICPs, form-field rules, page anatomy) are in [.claude/skills/lead-magnets/SKILL.md](.claude/skills/lead-magnets/SKILL.md).
 
 ### Design system
 
-**Two distinct themes live in this repo — do not mix them.** Tailwind 4 with `@theme` design tokens in [src/app/globals.css](src/app/globals.css); fonts are loaded once in [src/app/layout.tsx](src/app/layout.tsx) via `next/font` (do not re-import Google Fonts elsewhere).
+**One light theme across the whole app, `/admin` included.** Nothing from `ai-cms`'s dark sci-fi design belongs here. Tailwind 4 with `@theme` design tokens in [src/app/globals.css](src/app/globals.css); fonts are loaded once in [src/app/layout.tsx](src/app/layout.tsx) via `next/font` (do not re-import Google Fonts elsewhere).
 
-- **Bright kids/public theme — the DEFAULT** (everything a child or parent sees: the landing page, `/login`, `/dashboard`, and all `/learn` games, activities, and escape rooms). Cream/white backgrounds, `coral`/`sky`/`mint`/`grape`/`sunny`/`bubble` accents, big rounded cards, soft shadows, emoji icons, gentle hover/float motion. Fonts: `font-fun` (Fredoka, display) + `font-round` (Nunito, body). This is the `html/body` default in globals.css.
-- **Dark sci-fi/robotics theme — ADMIN ONLY**, scoped to `.admin-shell` (the `/admin` back-office) and `.prose-dark` (CMS/blog HTML). Near-black backgrounds, `cyan`/`purple` accents, utility classes `glass`, `card-hover`, `btn-primary`, `kicker`, `gradient-text`, `gradient-text-warm`, `glow-blob`. Fonts: Exo 2 (display), Inter (sans), JetBrains Mono (mono). Only use these inside `/admin`.
+- **Parent pages and sign-in** use the sky-blue and lavender scrapbook in [src/app/kids-marketing.css](src/app/kids-marketing.css), with Fraunces + Nunito and lots of gentle motion. Sign-in pages are two columns: a welcome panel on the left, the form on the right.
+- **Play screens** (`/learn`) use cream/white backgrounds, `coral`/`sky`/`mint`/`grape`/`sunny`/`bubble` accents, big rounded cards and emoji icons, with `font-fun` (Fredoka) + `font-round` (Nunito).
+- **Admin** (`.admin-shell`) uses the same tokens and fonts, kept compact. Its markup still has old utilities like `text-white` and `bg-white/5`, mapped to the light palette in [src/app/admin-theme.css](src/app/admin-theme.css). Use `--color-*` tokens in new admin UI.
 
-All UI work in this repo should follow the user-level `tia-frontend-design` skill and [.claude/skills/tia-frontend-design-site/SKILL.md](.claude/skills/tia-frontend-design-site/SKILL.md), which is locked to the bright kids/public theme (with a note on the admin-only dark theme).
+All UI work in this repo should follow the user-level `tia-frontend-design` skill and [.claude/skills/tia-frontend-design-site/SKILL.md](.claude/skills/tia-frontend-design-site/SKILL.md).
 
 ### The Android app is a downstream consumer of `/learn` — this repo is the origin
 

@@ -1,0 +1,78 @@
+/* The admin back-office uses the family site's light theme. Its markup still has old utilities from the
+   CMS this repo was cloned from, so this file restyles them in one place.
+   Write new admin UI with the --color-* tokens, not text-white or bg-white/N. Tailwind compiles those
+   opacity classes to fixed colours, so they can't follow a token, and each needs a rule below. */
+.admin-shell {
+  --kid-yellow: #ffda70;
+  --kid-ink: #343c79;
+  --color-coral: #b8322a;
+  --color-red-200: #a93226;
+  --color-red-300: #a93226;
+  --color-red-400: #b8322a;
+  --color-amber-200: #a8590c;
+  --color-amber-300: #a8590c;
+  --color-yellow-300: #8a6100;
+  --color-emerald-300: #147a56;
+  --color-blue-300: #2563a8;
+  --font-mono: var(--font-round-import), system-ui, sans-serif;
+}
+.admin-shell main :is(h1, h2) {
+  color: #7a50a0 !important;
+  font-family: var(--font-story-import), Georgia, serif;
+  font-variation-settings: "SOFT" 100, "WONK" 1;
+  font-weight: 750;
+}
+.admin-shell main > * { animation: kids-rise 0.45s cubic-bezier(0.2, 1.2, 0.35, 1) both; }
+.admin-shell main :is(table, .glass) { box-shadow: 3px 4px 0 #ded7eb; }
+.admin-shell main tbody tr { transition: background-color 0.15s; }
+.admin-shell main tbody tr:hover { background-color: #f6efff; }
+@media (prefers-reduced-motion: reduce) { .admin-shell main > * { animation: none; } }
+.admin-shell :is([class~="text-[10px]"], [class~="text-[11px]"]) { font-size: 12px; }
+.admin-shell > aside { box-shadow: 2px 0 0 #e6def2; }
+
+/* Form fields read as white wells on the page. */
+.admin-shell :is(input, textarea, select):not([type="checkbox"], [type="radio"], [type="range"], [type="file"]) {
+  background-color: #fff;
+  color: #343c79;
+}
+.admin-shell option { background: #fff; color: #343c79; }
+
+/* Generated from the classes the admin actually uses. */
+.admin-shell [class~="bg-white/10"] {background-color:rgb(122 80 160 / 0.160);}
+.admin-shell [class~="bg-white/15"] {background-color:rgb(122 80 160 / 0.220);}
+.admin-shell [class~="bg-white/3"] {background-color:#fffefa;}
+.admin-shell [class~="bg-white/5"] {background-color:#fffefa;}
+.admin-shell :is(thead, tr)[class~="bg-white/5"] {background-color:#f3ecfb;}
+.admin-shell [class~="border-white/10"] {border-color:rgb(90 80 150 / 0.266);}
+.admin-shell [class~="border-white/15"] {border-color:rgb(90 80 150 / 0.285);}
+.admin-shell [class~="border-white/5"] {border-color:rgb(90 80 150 / 0.266);}
+.admin-shell [class~="hover:bg-white/10"]:hover {background-color:rgb(122 80 160 / 0.160);}
+.admin-shell [class~="hover:bg-white/15"]:hover {background-color:rgb(122 80 160 / 0.220);}
+.admin-shell [class~="hover:bg-white/5"]:hover {background-color:rgb(122 80 160 / 0.080);}
+.admin-shell [class~="hover:bg-white/90"]:hover {background-color:rgb(122 80 160 / 0.220);}
+.admin-shell [class~="hover:border-white/30"]:hover {border-color:rgb(90 80 150 / 0.570);}
+.admin-shell [class~="hover:text-white"]:hover {color:#343c79;}
+.admin-shell [class~="hover:text-white/60"]:hover {color:#505d87;}
+.admin-shell [class~="hover:text-white/80"]:hover {color:#343c79;}
+.admin-shell [class~="placeholder:text-white/30"]::placeholder {color:#6b7699;}
+.admin-shell [class~="placeholder:text-white/40"]::placeholder {color:#6b7699;}
+.admin-shell [class~="text-white"]:not([class*="bg-["],[class*="from-("]) {color:#343c79;}
+.admin-shell [class~="text-white/20"] {color:#505d87;}
+.admin-shell [class~="text-white/30"] {color:#505d87;}
+.admin-shell [class~="text-white/40"] {color:#505d87;}
+.admin-shell [class~="text-white/45"] {color:#505d87;}
+.admin-shell [class~="text-white/50"] {color:#505d87;}
+.admin-shell [class~="text-white/60"] {color:#505d87;}
+.admin-shell [class~="text-white/65"] {color:#343c79;}
+.admin-shell [class~="text-white/70"] {color:#343c79;}
+.admin-shell [class~="text-white/80"] {color:#343c79;}
+.admin-shell [class~="text-white/85"] {color:#343c79;}
+
+/* Small status pills are chips: show them as coloured text. */
+.admin-shell [class~="py-0.5"][class*="bg-"]:not(button, a) {
+  padding-inline: 0;
+  border: 0;
+  background: none;
+  font-weight: 800;
+}
+.admin-shell main table { background: #fffefa; }

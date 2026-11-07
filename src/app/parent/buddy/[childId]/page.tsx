@@ -38,7 +38,7 @@ export default async function ParentBuddyPage({ params }: { params: Promise<{ ch
                 <span className="max-w-[80%] rounded-2xl rounded-br-md bg-coral px-4 py-2 font-round text-white shadow-sm">
                   {m.content}
                 </span>
-                <span className="mt-0.5 pr-1 text-[10px] text-slate-400">{fmt(m.createdAt)}</span>
+                <span className="mt-0.5 pr-1 text-xs text-slate-400">{fmt(m.createdAt)}</span>
               </div>
             ) : (
               <div key={i} className="flex flex-col items-start">
@@ -48,7 +48,7 @@ export default async function ParentBuddyPage({ params }: { params: Promise<{ ch
                     {m.content}
                   </span>
                 </div>
-                <span className="mt-0.5 pl-10 text-[10px] text-slate-400">{fmt(m.createdAt)}</span>
+                <span className="mt-0.5 pl-10 text-xs text-slate-400">{fmt(m.createdAt)}</span>
               </div>
             ),
           )}

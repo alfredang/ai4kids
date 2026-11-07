@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
+import Image from "next/image";
+import { KidsLogo } from "@/components/public/KidsLogo";
+import { PipMascot } from "@/components/public/PipMascot";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -50,21 +53,31 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
-      <div className="grid-bg opacity-60" />
-      <div className="glow-blob" style={{ top: "-15%", left: "20%", width: 480, height: 480, background: "radial-gradient(circle, #5C00E5 0%, transparent 70%)" }} />
-      <div className="glow-blob" style={{ bottom: "-15%", right: "10%", width: 420, height: 420, background: "radial-gradient(circle, #59EBFD 0%, transparent 70%)" }} />
-
-      <form onSubmit={onSubmit} className="relative glass p-8 w-full max-w-md space-y-5 reveal">
-        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-(--color-cyan) to-transparent" />
-        <div>
-          <div className="kicker mb-2">[ ADMIN ACCESS ]</div>
-          <h1 className="font-display text-3xl font-extrabold text-white">
-            Sign in to <span className="gradient-text">AI Kids Admin</span>
-          </h1>
+    <div className="kids-wrap kids-signin kids-signin-staff-page">
+      <section className="kids-signin-welcome">
+        <KidsLogo />
+        <p className="kids-plain-label">Staff sign-in</p>
+        <h1>
+          Welcome back, <span>team!</span>
+        </h1>
+        <p>Look after the programmes, classes, bookings and family enquiries that keep AI Kids running.</p>
+        <div className="kids-signin-scene">
+          <Image
+            src="/images/story-workshop-banner.webp"
+            alt="Illustration of a parent and child making a storybook with a workshop teacher"
+            fill
+            priority
+            sizes="(max-width: 900px) 0px, 700px"
+          />
+          <div className="kids-signin-pip" aria-hidden="true">
+            <PipMascot />
+          </div>
         </div>
+      </section>
+      <form onSubmit={onSubmit} className="kids-signin-card space-y-4">
+        <h2>Sign in to AI Kids</h2>
         <div>
-          <label className="kicker block mb-2">Email</label>
+          <label>Email</label>
           <input
             type="email"
             required
@@ -75,7 +88,7 @@ export default function LoginPage() {
           />
         </div>
         <div>
-          <label className="kicker block mb-2">Password</label>
+          <label>Password</label>
           <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
@@ -109,11 +122,10 @@ export default function LoginPage() {
           </div>
         </div>
         {error && (
-          <p className="text-red-400 text-sm font-mono">[ ERROR ] {error}</p>
+          <p className="kids-signin-error" role="alert">{error}</p>
         )}
         {!error && oauthError && (
-          <p className="text-red-400 text-sm font-mono">
-            [ ERROR ]{" "}
+          <p className="kids-signin-error" role="alert">
             {oauthError === "not-authorized"
               ? "This Google account is not authorised for admin access."
               : "Google sign-in failed — please try again."}
@@ -122,14 +134,14 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="btn-primary w-full justify-center disabled:opacity-50"
+          className="kids-button w-full disabled:opacity-50"
         >
-          {loading ? "Signing in…" : "Sign in →"}
+          {loading ? "Signing in…" : "Sign in"}
         </button>
 
         {googleEnabled && <><div className="relative flex items-center gap-3 py-1">
           <div className="flex-1 h-px bg-white/10" />
-          <span className="kicker text-xs">or</span>
+          <span className="text-sm text-(--color-muted)">or</span>
           <div className="flex-1 h-px bg-white/10" />
         </div>
 
@@ -137,7 +149,7 @@ export default function LoginPage() {
           type="button"
           onClick={onGoogleSignIn}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg bg-white text-slate-900 font-medium hover:bg-white/90 transition disabled:opacity-50"
+          className="kids-signin-google disabled:opacity-50"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09Z" fill="#4285F4" />

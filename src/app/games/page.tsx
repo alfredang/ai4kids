@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { SiteHeader } from "@/components/public/SiteHeader";
 import { SiteFooter } from "@/components/public/SiteFooter";
@@ -8,6 +9,7 @@ export const metadata = {
     "Explore our story adventures, AI art, phonics, coding puzzles, escape rooms and card games. A parent signs in and chooses a child’s profile before play.",
   alternates: { canonical: "/games" },
 };
+const FRIENDS = ["story", "art", "maths", "science"];
 const GAMES: {
   title: string;
   icon: KidsIconName;
@@ -56,18 +58,24 @@ export default function GamesPage() {
     <div className="kids-marketing">
       <SiteHeader />
       <main id="main-content" className="kids-wrap kids-games-main">
-        <div className="kids-centred-heading">
-          <KidsIcon name="wand" style={{ width: 64, height: 64 }} />
-          <h1>
-            Little players. <span>Big adventures!</span>
-          </h1>
-          <p>
-            Our games are ready to explore.{" "}
-            <strong>Parents unlock the fun.</strong>
-          </p>
-          <Link className="kids-button" href="/parent/play">
-            Let’s play together <KidsIcon name="arrow" />
-          </Link>
+        <div className="kids-games-hero">
+          <div>
+            <h1>
+              Little players. <span>Big adventures!</span>
+            </h1>
+            <p>
+              Our games are ready to explore.{" "}
+              <strong>Parents unlock the fun.</strong>
+            </p>
+            <Link className="kids-button" href="/parent/play">
+              Let’s play together <KidsIcon name="arrow" />
+            </Link>
+          </div>
+          <div className="kids-games-friends" aria-hidden="true">
+            {FRIENDS.map((friend) => (
+              <Image key={friend} src={`/icons/${friend}-friend.webp`} alt="" width={220} height={220} />
+            ))}
+          </div>
         </div>
         <div className="kids-games-grid">
           {GAMES.map((game) => (

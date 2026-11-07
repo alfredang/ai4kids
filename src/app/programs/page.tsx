@@ -1,4 +1,5 @@
 import { PlayfulText } from "@/components/public/PlaySymbol";
+import Image from "next/image";
 import Link from "next/link";
 import { db } from "@/db";
 import { programs, classes } from "@/db/schema";
@@ -50,53 +51,58 @@ export default async function ProgramsPage({
     <div className="kids-workshop-page min-h-screen">
       <SiteHeader />
       <div className="kids-wrap kids-catalogue">
-        <h1 className="kids-catalogue-heading">Explore programs</h1>
-        <p className="kids-catalogue-intro">
-          Small live classes where kids build real things with AI.
-        </p>
-        <Link
-          href="/#workshops"
-          className="mt-6 block rounded-3xl border border-amber-200 bg-amber-50 p-5 font-round text-amber-900 transition hover:bg-amber-100"
-        >
-          <span className="font-fun text-xl"><PlayfulText text={" ☀ A December to remember, together "} /></span>
-          <span className="mt-1 block text-sm">
-            Explore the parent-child holiday adventure album: stories, art,
-            maths and science. →
-          </span>
-        </Link>
-
-        {/* Filters */}
-        <div className="mt-6 flex flex-wrap gap-2">
-          <CatalogueFilter
-            href="/programs"
-            active={!category && !age}
-            label="All"
-          />
-          {CATEGORIES.map((c) => (
-            <CatalogueFilter
-              key={c.slug}
-              href={`/programs?category=${c.slug}`}
-              active={category === c.slug}
-              label={`${c.emoji} ${c.title}`}
+        <div className="kids-catalogue-top">
+          <div>
+            <h1 className="kids-catalogue-heading">Explore programs</h1>
+            <p className="kids-catalogue-intro">
+              Small live classes where kids build real things with AI.
+            </p>
+            {/* Filters */}
+            <div className="mt-3 flex flex-wrap">
+              <CatalogueFilter
+                href="/programs"
+                active={!category && !age}
+                label="All"
+              />
+              {CATEGORIES.map((c) => (
+                <CatalogueFilter
+                  key={c.slug}
+                  href={`/programs?category=${c.slug}`}
+                  active={category === c.slug}
+                  label={`${c.emoji} ${c.title}`}
+                />
+              ))}
+            </div>
+            <div className="flex flex-wrap">
+              {AGE_BANDS.map((b) => (
+                <CatalogueFilter
+                  key={b.slug}
+                  href={`/programs?age=${b.slug}`}
+                  active={age === b.slug}
+                  label={`${b.emoji} Ages ${b.slug}`}
+                  subtle
+                />
+              ))}
+            </div>
+          </div>
+          <Link href="/#workshops" className="kids-catalogue-promo">
+            <Image
+              src="/images/story-workshop-banner.webp"
+              alt="Illustration of a parent and child making a storybook at a workshop"
+              fill
+              sizes="(max-width: 900px) 100vw, 480px"
             />
-          ))}
-        </div>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {AGE_BANDS.map((b) => (
-            <CatalogueFilter
-              key={b.slug}
-              href={`/programs?age=${b.slug}`}
-              active={age === b.slug}
-              label={`${b.emoji} Ages ${b.slug}`}
-              subtle
-            />
-          ))}
+            <span>
+              <strong>A December to remember, together</strong>
+              Stories, art, maths and science. Peek inside →
+            </span>
+          </Link>
         </div>
 
         {filtered.length === 0 ? (
-          <div className="mt-12 rounded-3xl bg-white p-10 text-center text-slate-500 shadow-sm"><PlayfulText text={" No programs match yet — check back soon! 🐣 "} /></div>
+          <div className="mt-6 rounded-3xl bg-white p-7 text-center text-slate-500 shadow-sm"><PlayfulText text={" No programs match yet — check back soon! 🐣 "} /></div>
         ) : (
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="kids-catalogue-grid">
             {filtered.map((p) => {
               const cat = CATEGORY_BY_SLUG[p.category];
               const open = openByProgram.get(p.id) ?? 0;
@@ -108,7 +114,7 @@ export default async function ProgramsPage({
                 >
                   <div className="flex items-start justify-between">
                     <div
-                      className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl text-2xl ${cat?.accent ?? ""}`}
+                      className={`kids-catalogue-tile inline-flex h-16 w-16 items-center justify-center rounded-2xl text-4xl ${cat?.accent ?? ""}`}
                     >
                       {p.emoji ?? cat?.emoji ?? "✨"}
                     </div>

@@ -250,7 +250,7 @@ export function PostEditorForm({ initial, save, kind }: Props) {
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
                   rows={3}
-                  placeholder="Enter a topic. e.g. 'WSQ funding changes 2026 for SME training providers' — Claude will draft the title, slug, content, excerpt, and all SEO fields."
+                  placeholder="Enter a topic. e.g. 'Fun ways to explore AI with your child this December' — Claude will draft the title, slug, content, excerpt, and all SEO fields."
                   className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-sm"
                 />
                 <p className="text-[11px] text-white/40">
@@ -430,7 +430,7 @@ export function PostEditorForm({ initial, save, kind }: Props) {
                       .filter(Boolean),
                   )
                 }
-                placeholder="claude-code, agentic-ai, wsq"
+                placeholder="parents, ai-for-kids, december-workshops"
                 className="w-full px-3 py-2 bg-white/3 border border-white/10 rounded-lg focus:outline-none focus:border-(--color-cyan) focus:ring-2 focus:ring-(--color-cyan)/20 transition text-sm font-mono"
               />
             </div>

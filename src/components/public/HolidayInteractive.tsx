@@ -251,9 +251,12 @@ type FormState = "idle" | "sending" | "success" | "error";
 export function HolidayEnquiryForm({
   number,
   initialWorkshop = "",
+  source = "december-holiday-workshop",
 }: {
   number: string;
   initialWorkshop?: string;
+  /** Lead source, so /admin/leads shows which page produced the enquiry. */
+  source?: string;
 }) {
   const [state, setState] = useState<FormState>("idle");
   const [error, setError] = useState("");
@@ -275,7 +278,7 @@ export function HolidayEnquiryForm({
           phone: data.get("phone"),
           company: "Singapore parent / family",
           message: `December 2026 holiday workshop enquiry\nWorkshop: ${data.get("workshop")}\nChild age band: ${data.get("age")}\n${data.get("message") || "Please share dates, fees and the parent-child format."}\nParent or guardian confirmed consent to contact about this enquiry.`,
-          source: "december-holiday-workshop",
+          source,
           turnstileToken: token,
         }),
       });

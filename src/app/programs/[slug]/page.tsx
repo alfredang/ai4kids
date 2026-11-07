@@ -10,11 +10,11 @@ import { CATEGORY_BY_SLUG, formatPrice } from "@/lib/portal-content";
 export const dynamic = "force-dynamic";
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  open: { label: "Open", cls: "bg-mint/20 text-emerald-600" },
-  full: { label: "Full", cls: "bg-coral/20 text-coral" },
-  closed: { label: "Closed", cls: "bg-slate-200 text-slate-500" },
-  cancelled: { label: "Cancelled", cls: "bg-slate-200 text-slate-500" },
-  completed: { label: "Completed", cls: "bg-slate-200 text-slate-500" },
+  open: { label: "Open", cls: "text-emerald-700" },
+  full: { label: "Full", cls: "text-coral" },
+  closed: { label: "Closed", cls: "text-slate-500" },
+  cancelled: { label: "Cancelled", cls: "text-slate-500" },
+  completed: { label: "Completed", cls: "text-slate-500" },
 };
 
 export default async function ProgramDetail({
@@ -45,14 +45,13 @@ export default async function ProgramDetail({
           ← All programs
         </Link>
 
-        <div className={`mt-4 rounded-[2rem] bg-white p-8 shadow-sm ring-1 ${cat?.ring ?? "ring-amber-100"}`}>
+        <div className={`mt-4 rounded-[2rem] bg-white p-7 shadow-sm ring-1 ${cat?.ring ?? "ring-amber-100"}`}>
           <div className={`inline-flex h-16 w-16 items-center justify-center rounded-3xl text-4xl ${cat?.accent ?? ""}`}>
             {program.emoji ?? cat?.emoji ?? "✨"}
           </div>
           <h1 className="mt-4 font-fun text-4xl font-700 text-slate-900">{program.title}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-3 font-fun text-slate-500">
-            <span className="rounded-full bg-amber-50 px-3 py-1 text-sm">Ages {program.ageMin}–{program.ageMax}</span>
-            <span className="rounded-full bg-amber-50 px-3 py-1 text-sm">{cat?.title}</span>
+            <span className="text-sm">Ages {program.ageMin}–{program.ageMax} · {cat?.title}</span>
             <span className="text-lg font-700 text-coral">{formatPrice(program.priceCents)}</span>
           </div>
           {program.summary && (
@@ -61,7 +60,7 @@ export default async function ProgramDetail({
         </div>
 
         {/* Cohorts */}
-        <h2 className="mt-10 font-fun text-2xl font-700 text-slate-900">Upcoming classes</h2>
+        <h2 className="mt-6 font-fun text-2xl font-700 text-slate-900">Upcoming classes</h2>
         <div className="mt-4 space-y-3">
           {cohorts.length === 0 && (
             <div className="rounded-3xl bg-white p-6 text-slate-500 shadow-sm">
@@ -80,7 +79,7 @@ export default async function ProgramDetail({
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-fun text-lg font-700 text-slate-800">{c.title}</h3>
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-600 ${s.cls}`}>{s.label}</span>
+                    <span className={`font-fun text-sm font-700 ${s.cls}`}>{s.label}</span>
                   </div>
                   <p className="mt-1 text-sm text-slate-500">
                     {c.schedule ?? "Schedule TBA"} · {c.mode === "onsite" ? c.location ?? "On-site" : "Online"}

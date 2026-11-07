@@ -64,7 +64,7 @@ AI storytelling · coding · game design · phonics · escape rooms — a gamifi
 |----------|--------------|
 | **Framework** | Next.js 16 (App Router, Server Actions), React 19 |
 | **Language** | TypeScript 5 |
-| **Styling** | Tailwind CSS 4 (bright kids theme + dark admin theme), Framer Motion, Fredoka / Nunito fonts |
+| **Styling** | Tailwind CSS 4 (one bright family theme, admin included), Framer Motion, Fraunces / Fredoka / Nunito fonts |
 | **Database** | PostgreSQL 16 + Drizzle ORM |
 | **Auth** | Auth.js v5 (Credentials + Google OAuth), JWT sessions, role-based access |
 | **AI/LLM** | **Claude Agent SDK** for CMS/admin tools · **DeepSeek V4.1 Flash** for kids’ game text and chat · **NVIDIA FLUX** + **Cloudflare Flux** for kid-safe image generation |
@@ -106,6 +106,9 @@ ai-kids/
 │   │   ├── login/                   # Kid + Parent/Admin login tabs
 │   │   ├── dashboard/               # Role dispatcher
 │   │   ├── programs/                # Catalog + program detail
+│   │   ├── holiday-workshops/[slug]/ # December workshop pages
+│   │   ├── games/  free-trial/  contact/  blog/  # Public family pages
+│   │   ├── not-found.tsx            # Friendly Pip 404
 │   │   ├── book/[classId]/          # Booking flow
 │   │   ├── parent/                  # Parent dashboard (kids, bookings, add child)
 │   │   ├── learn/                   # Kid playground (activities, leaderboard)
@@ -224,6 +227,8 @@ Set `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `NEXT_PUBLIC_SITE_URL`, and Googl
 ### December family workshops and parent-unlocked games
 
 - Photo-first Singapore family homepage, three-scene Tetris photo banner and original sunny / plush characters.
+- **Pip**, the floating helper: winks, hops, waves and wears a smiling chat bubble on the cap. Pop-ups rotate a December alert and each workshop; tapping one opens Pip's chat on that workshop, which hands off to WhatsApp. Visitors can dismiss them for the session.
+- Friendly 404 page, with redirects for parent paths and retired URLs in `next.config.ts`. Family courses are not funded, so the site carries no SSG, SWDA or WSQ content.
 - December AI story writing, math, science and creative-content workshop enquiries; dates and fees are confirmed by the team.
 - Free printable family activity pack and adult-guided tools.
 - `Explore games` opens `/parent/play`. Parent authentication and live child ownership are required for every `/learn` page and API; direct child logins do not unlock games.

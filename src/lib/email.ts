@@ -62,8 +62,8 @@ export const LEAD_EMAIL_VARIABLES = [
   { token: "{PHONE}", description: "Sender's phone (blank if not provided)" },
   { token: "{COMPANY}", description: "Sender's company (blank if not provided)" },
   { token: "{MESSAGE}", description: "The message body" },
-  { token: "{SOURCE}", description: "Raw source code (e.g. ssg-ato-page)" },
-  { token: "{SOURCE_LABEL}", description: "Friendly source label (e.g. Courseware) — configured below" },
+  { token: "{SOURCE}", description: "Raw source code (e.g. free-trial)" },
+  { token: "{SOURCE_LABEL}", description: "Friendly source label (e.g. Free Trial) — configured below" },
 ] as const;
 
 function renderTemplate(

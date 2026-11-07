@@ -106,11 +106,11 @@ export function enforceLinks(
   }
 
   const internalCandidates = [
-    { href: "/ai-solutions", text: "Full Stack AI-Enabled Solutions" },
-    { href: "/ai-agent-deployment", text: "AI Agent Deployment" },
-    { href: "/learning-management-system", text: "Learning Management System" },
-    { href: "/training-management-system", text: "Training Management System" },
-    { href: "/wsq-course-development", text: "WSQ Course Development" },
+    { href: "/#workshops", text: "December family workshops" },
+    { href: "/programs", text: "AI programmes for kids" },
+    { href: "/games", text: "AI games for kids" },
+    { href: "/free-trial", text: "Free trial class" },
+    { href: "/downloads/family-ai-starter-pack.html", text: "Free family activity pack" },
   ];
   const tcCandidates = [
     {

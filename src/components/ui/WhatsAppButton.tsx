@@ -7,10 +7,14 @@ import { usePathname } from "next/navigation";
 
 
 import { PipMascot } from "@/components/public/PipMascot";
+import { PlayfulText } from "@/components/public/PlaySymbol";
 import {
   HOLIDAY_WORKSHOPS,
   workshopWhatsAppUrl,
 } from "@/lib/holiday-workshops";
+
+// Pop-ups per browser session; dismissing the bubble mutes them for the session.
+const POP_UP_CAP = 10;
 
 type Message = {
   who: "pip" | "you";
@@ -34,7 +38,7 @@ export function WhatsAppButton({ number }: { number: string }) {
   // Starts on the last slot so the first peek wraps to the December alert.
   const [invitation, setInvitation] = useState<number>(HOLIDAY_WORKSHOPS.length);
   const invitations = [
-    { tag: "🎄 December alert!", text: "Parent + child holiday workshops are open for enquiries." },
+    { tag: "✨ December alert!", text: "Parent + child holiday workshops are open for enquiries." },
     ...HOLIDAY_WORKSHOPS.map((w) => ({
       tag: `${w.emoji} ${w.title}`,
       text: `${w.summary} Ages ${w.ageMin}–${w.ageMax}.`,
@@ -53,6 +57,9 @@ export function WhatsAppButton({ number }: { number: string }) {
     let hide: ReturnType<typeof setTimeout> | undefined;
     const show = () => {
       if (document.hidden || reduced.matches || document.documentElement.classList.contains("kids-motion-paused") || document.activeElement?.closest("form")) return;
+      const shown = Number(sessionStorage.getItem("pip-pop-ups") ?? 0);
+      if (sessionStorage.getItem("pip-muted") || shown >= POP_UP_CAP) return;
+      sessionStorage.setItem("pip-pop-ups", String(shown + 1));
       setInvitation(current => (current + 1) % (HOLIDAY_WORKSHOPS.length + 1));
       setPeek(true);
       hide = setTimeout(() => setPeek(false), 6500);
@@ -91,6 +98,17 @@ export function WhatsAppButton({ number }: { number: string }) {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
+  function openFromInvitation() {
+    // Tapping a workshop invitation opens the chat on that workshop.
+    if ("ask" in invite && invite.ask) ask(invite.ask);
+    setPeek(false);
+    setOpen(true);
+  }
+  function dismissInvitation() {
+    sessionStorage.setItem("pip-muted", "1");
+    setPeek(false);
+    triggerRef.current?.focus();
+  }
   function ask(question: string) {
     const text = question.trim().slice(0, 500);
     if (!text) return;
@@ -253,46 +271,63 @@ export function WhatsAppButton({ number }: { number: string }) {
           </div>
         </section>
       )}
-      <button
-        ref={triggerRef}
-        onClick={() => {
-          if (open) return close();
-          // Tapping a workshop invitation opens the chat on that workshop.
-          if (peek && "ask" in invite && invite.ask) ask(invite.ask);
-          setOpen(true);
-        }}
-        aria-label={
-          open
-            ? "Close Pip workshop helper"
-            : "Open Pip, your cute family workshop helper"
-        }
-        aria-expanded={open}
-        aria-controls="pip-chat-panel"
-        className={`pip-launcher ${open ? "pip-is-open" : ""} ${peek ? "pip-is-peeking" : ""}`}
-      >
-        <span className="pip-launcher-bubble" aria-hidden="true">
-          {open ? (
-            "Sending you sunshine!"
-          ) : (
-            <>
-              <span className="pip-bubble-tag">{invite.tag}</span>
+      <div className={`pip-launcher-row ${open ? "pip-is-open" : ""} ${peek ? "pip-is-peeking" : ""}`}>
+        {!open && (
+          <div className="pip-bubble-wrap">
+            <button
+              type="button"
+              className="pip-launcher-bubble"
+              onClick={openFromInvitation}
+              tabIndex={peek ? 0 : -1}
+              aria-hidden={!peek}
+            >
+              <span className="pip-bubble-tag">
+                <PlayfulText text={invite.tag} />
+              </span>
               {invite.text}
               <small>
                 Ask Pip! <span aria-hidden="true">♡</span>
               </small>
-            </>
-          )}
-        </span>
-        <span className="pip-launcher-character">
-          <PipMascot />
-          <span className="pip-whatsapp-dot">
-            <KidsIcon name="chat" />
+            </button>
+            {peek && (
+              <button
+                type="button"
+                className="pip-bubble-dismiss"
+                onClick={dismissInvitation}
+                aria-label="Hide Pip’s messages"
+              >
+                <KidsIcon name="close" />
+              </button>
+            )}
+          </div>
+        )}
+        <button
+          ref={triggerRef}
+          onClick={() => {
+            if (open) return close();
+            if (peek) return openFromInvitation();
+            setOpen(true);
+          }}
+          aria-label={
+            open
+              ? "Close Pip workshop helper"
+              : "Open Pip, your cute family workshop helper"
+          }
+          aria-expanded={open}
+          aria-controls="pip-chat-panel"
+          className="pip-launcher"
+        >
+          <span className="pip-launcher-character">
+            <PipMascot />
+            <span className="pip-whatsapp-dot">
+              <KidsIcon name="chat" />
+            </span>
           </span>
-        </span>
-        <span className="pip-launcher-spark" aria-hidden="true">
-          ✦
-        </span>
-      </button>
+          <span className="pip-launcher-spark" aria-hidden="true">
+            ✦
+          </span>
+        </button>
+      </div>
     </aside>
   );
 }

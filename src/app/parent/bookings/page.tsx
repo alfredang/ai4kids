@@ -11,11 +11,11 @@ import { formatPrice } from "@/lib/portal-content";
 export const dynamic = "force-dynamic";
 
 const STATUS: Record<string, { label: string; cls: string }> = {
-  pending: { label: "Awaiting confirmation", cls: "bg-amber-100 text-amber-700" },
-  awaiting_payment: { label: "Pay now (PayNow)", cls: "bg-sky/20 text-sky-700" },
-  confirmed: { label: "Confirmed", cls: "bg-mint/20 text-emerald-700" },
-  paid: { label: "Paid ✓", cls: "bg-mint/30 text-emerald-700" },
-  cancelled: { label: "Cancelled", cls: "bg-slate-200 text-slate-500" },
+  pending: { label: "Awaiting confirmation", cls: "text-amber-700" },
+  awaiting_payment: { label: "Pay now (PayNow)", cls: "text-sky-700" },
+  confirmed: { label: "Confirmed", cls: "text-emerald-700" },
+  paid: { label: "Paid ✓", cls: "text-emerald-700" },
+  cancelled: { label: "Cancelled", cls: "text-slate-500" },
 };
 
 export default async function ParentBookings({
@@ -88,7 +88,7 @@ export default async function ParentBookings({
                   <div className="text-sm text-slate-400">{r.schedule ?? "Schedule TBA"}</div>
                 </div>
                 <div className="text-right">
-                  <span className={`rounded-full px-3 py-1 text-xs font-600 ${st.cls}`}>{st.label}</span>
+                  <span className={`font-fun text-sm font-700 ${st.cls}`}>{st.label}</span>
                   <div className="mt-1 font-fun font-700 text-coral">{formatPrice(r.booking.amountCents)}</div>
                 </div>
               </div>

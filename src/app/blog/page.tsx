@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { PipMascot } from "@/components/public/PipMascot";
+import { KidsIcon } from "@/components/public/KidsIcon";
 import { db } from "@/db";
 import { posts, categories, tags, postTags } from "@/db/schema";
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
@@ -29,31 +31,28 @@ function snippetFromHtml(html: string | null | undefined, max = 200): string {
 }
 
 export const metadata: Metadata = {
-  title: "Journal",
+  title: "Family Journal",
   description:
-    "Field notes from SSG and AI services and building Agentic AI workflows — AI Agents, LMS and TMS case studies from Tertiary Infotech Academy.",
+    "Little ideas for exploring AI with your child: stories, art, maths and science to try together, from the AI Kids Academy team in Singapore.",
   keywords:
-    "AI agents Singapore, WSQ LMS blog, training provider blog, SSG ATO insights, TPQA case studies, agentic AI Singapore",
+    "AI for kids Singapore, parent child AI activities, AI learning for children, school holiday activities Singapore",
   alternates: { canonical: "/blog" },
   openGraph: {
     type: "website",
     url: "/blog",
-    title: "Journal | Tertiary Infotech Academy",
-    description:
-      "AI Agents, LMS and TMS case studies from the Tertiary Infotech Academy.",
+    title: "Family Journal | AI Kids Academy",
+    description: "Little ideas for exploring AI with your child.",
     locale: "en_SG",
-    siteName: "Tertiary Infotech Academy",
-    images: [{ url: "/icon-192.png", width: 192, height: 192, alt: "Tertiary Infotech Academy" }],
+    siteName: "AI Kids Academy",
+    images: [{ url: "/icon-192.png", width: 192, height: 192, alt: "AI Kids Academy" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Journal | Tertiary Infotech Academy",
-    description:
-      "AI Agents, LMS and TMS case studies from the Tertiary Infotech Academy.",
+    title: "Family Journal | AI Kids Academy",
+    description: "Little ideas for exploring AI with your child.",
     images: ["/icon-192.png"],
   },
 };
-
 type SearchParams = Promise<{
   category?: string;
   tag?: string;
@@ -163,32 +162,20 @@ export default async function BlogIndex({
     <>
       <Navbar />
       <main>
-        <section className="relative pt-8 pb-10 overflow-hidden">
-          <div className="grid-bg opacity-60" />
-          <div
-            className="glow-blob"
-            style={{
-              top: "-30%",
-              left: "20%",
-              width: 500,
-              height: 500,
-              background: "radial-gradient(circle, #5C00E5 0%, transparent 70%)",
-            }}
-          />
+        <section className="relative pt-6 pb-4">
           <Container className="relative">
-            <div className="kicker mb-4">[ JOURNAL ]</div>
+            <div className="kicker mb-3">Family journal</div>
             <h1 className="font-display text-[clamp(1.75rem,4vw,3rem)] font-extrabold leading-[1.15]">
-              Field notes from SSG and AI services and{" "}
-              <span className="gradient-text">building Agentic AI workflows</span>.
+              Little ideas for <span className="gradient-text">curious families</span>.
             </h1>
-            <p className="mt-5 text-(--color-muted) text-lg max-w-2xl">
-              AI Agents, LMS and TMS case studies from the Tertiary Infotech Academy.
+            <p className="mt-3 text-(--color-muted) text-lg">
+              Stories, art, maths and science to explore with your child, and what we learn along the way.
             </p>
           </Container>
         </section>
 
         {/* Filters */}
-        <section className="pb-4">
+        {(total > 0 || q || allCategories.length > 0) && <section className="pb-4">
           <Container>
             <div className="glass p-5 space-y-4">
               <form method="get" action="/blog" className="flex flex-wrap items-center gap-2">
@@ -221,14 +208,10 @@ export default async function BlogIndex({
               </form>
               <div>
                 <div className="kicker mb-2">Categories</div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-x-5 gap-y-1">
                   <Link
                     href={filterHref({ category: null, page: 1 })}
-                    className={`px-3 py-1.5 rounded-full border text-xs font-mono transition ${
-                      !selectedCategory
-                        ? "bg-(--color-cyan)/15 border-(--color-cyan)/40 text-(--color-cyan)"
-                        : "bg-white/3 border-white/10 text-white/70 hover:text-white hover:border-white/30"
-                    }`}
+                    className={`kids-text-filter ${!selectedCategory ? "is-active" : ""}`}
                   >
                     All
                   </Link>
@@ -236,11 +219,7 @@ export default async function BlogIndex({
                     <Link
                       key={c.id}
                       href={filterHref({ category: c.slug, page: 1 })}
-                      className={`px-3 py-1.5 rounded-full border text-xs font-mono transition ${
-                        selectedCategory === c.slug
-                          ? "bg-(--color-cyan)/15 border-(--color-cyan)/40 text-(--color-cyan)"
-                          : "bg-white/3 border-white/10 text-white/70 hover:text-white hover:border-white/30"
-                      }`}
+                      className={`kids-text-filter ${selectedCategory === c.slug ? "is-active" : ""}`}
                     >
                       {c.name}
                     </Link>
@@ -251,14 +230,10 @@ export default async function BlogIndex({
               {allTags.length > 0 && (
                 <div>
                   <div className="kicker mb-2">Tags</div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-x-5 gap-y-1">
                     <Link
                       href={filterHref({ tag: null, page: 1 })}
-                      className={`px-3 py-1 rounded-full border text-xs transition ${
-                        !selectedTag
-                          ? "bg-(--color-purple)/15 border-(--color-purple)/40 text-(--color-purple)"
-                          : "bg-white/3 border-white/10 text-white/60 hover:text-white hover:border-white/30"
-                      }`}
+                      className={`kids-text-filter ${!selectedTag ? "is-active" : ""}`}
                     >
                       All
                     </Link>
@@ -266,11 +241,7 @@ export default async function BlogIndex({
                       <Link
                         key={t.id}
                         href={filterHref({ tag: t.slug, page: 1 })}
-                        className={`px-3 py-1 rounded-full border text-xs transition ${
-                          selectedTag === t.slug
-                            ? "bg-(--color-purple)/15 border-(--color-purple)/40 text-(--color-purple)"
-                            : "bg-white/3 border-white/10 text-white/60 hover:text-white hover:border-white/30"
-                        }`}
+                        className={`kids-text-filter ${selectedTag === t.slug ? "is-active" : ""}`}
                       >
                         #{t.name}
                       </Link>
@@ -278,7 +249,7 @@ export default async function BlogIndex({
                     {allTags.length > TOP_TAG_LIMIT && (
                       <Link
                         href="/blog/tags"
-                        className="px-3 py-1 rounded-full border text-xs transition border-(--color-cyan)/40 text-(--color-cyan) hover:bg-(--color-cyan)/10"
+                        className="kids-text-filter"
                       >
                         See all {allTags.length} tags →
                       </Link>
@@ -293,14 +264,23 @@ export default async function BlogIndex({
               </p>
             </div>
           </Container>
-        </section>
+        </section>}
 
-        <section className="pb-24 pt-6">
+        <section className="pb-8 pt-2">
           <Container>
             {items.length === 0 ? (
-              <p className="text-(--color-muted) font-mono">[ NO POSTS MATCH ]</p>
+              <div className="kids-journal-empty">
+                <PipMascot />
+                <div>
+                  <h2>{q ? "Pip couldn’t find that one." : "Our first stories are on the way!"}</h2>
+                  <p>While you wait, peek at our December workshops or try a free family activity.</p>
+                  <Link className="kids-button" href="/#workshops">
+                    See December workshops <KidsIcon name="arrow" />
+                  </Link>
+                </div>
+              </div>
             ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {items.map((p) => (
                   <Link
                     key={p.id}
@@ -370,7 +350,7 @@ export default async function BlogIndex({
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="mt-10 flex items-center justify-center gap-2 flex-wrap">
+              <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
                 {safePage > 1 && (
                   <Link
                     href={filterHref({ page: safePage - 1 })}

@@ -1,6 +1,7 @@
 import { WORKSHOP_SEO, PUBLIC_SITE_URL } from "@/lib/public-site";
 import { WorkshopSticker } from "@/components/public/WorkshopSticker";
 import { KidsIcon } from "@/components/public/KidsIcon";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -15,6 +16,14 @@ import {
 import { getWhatsAppNumber } from "@/lib/portal-settings";
 
 export const dynamic = "force-dynamic";
+
+// Generated workshop scenes that fill each page's shorter columns.
+const WORKSHOP_SCENE: Record<string, string> = {
+  "creative-story-writing": "story-workshop-banner",
+  "creative-content-studio": "story-workshop-banner",
+  "ai-maths-detectives": "maths-workshop-banner",
+  "ai-science-explorers": "maths-workshop-banner",
+};
 export async function generateMetadata({
   params,
 }: {
@@ -88,6 +97,14 @@ export default async function HolidayWorkshop({
                 <li key={s}>{s}</li>
               ))}
             </ol>
+            <div className="kids-workshop-scene">
+              <Image
+                src={`/images/${WORKSHOP_SCENE[slug] ?? "family-ai-banner"}.webp`}
+                alt="Illustration of a parent and child working together at a family workshop"
+                fill
+                sizes="(max-width: 900px) 100vw, 660px"
+              />
+            </div>
           </div>
           <aside>
             <h3>Something to be proud of</h3>
@@ -125,6 +142,14 @@ export default async function HolidayWorkshop({
             >
               <KidsIcon name="chat" aria-hidden="true" /> Ask our team on WhatsApp
             </a>
+            <div className="kids-workshop-scene">
+              <Image
+                src="/images/family-ai-banner.webp"
+                alt="Illustration of two Singapore families exploring AI together on a laptop and tablet"
+                fill
+                sizes="(max-width: 900px) 100vw, 480px"
+              />
+            </div>
           </div>
           <HolidayEnquiryForm
             number={number}
