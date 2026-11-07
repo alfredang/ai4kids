@@ -106,7 +106,8 @@ ai-kids/
 │   │   ├── login/                   # Kid + Parent/Admin login tabs
 │   │   ├── dashboard/               # Role dispatcher
 │   │   ├── programs/                # Catalog + program detail
-│   │   ├── holiday-workshops/[slug]/ # December workshop pages
+│   │   ├── holiday-workshops/       # AI kids workshops hub + one page per workshop
+│   │   ├── ai-for-stem/             # AI for STEM landing page
 │   │   ├── games/  free-trial/  contact/  blog/  # Public family pages
 │   │   ├── not-found.tsx            # Friendly Pip 404
 │   │   ├── book/[classId]/          # Booking flow
@@ -228,7 +229,8 @@ Set `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `NEXT_PUBLIC_SITE_URL`, and Googl
 
 - Photo-first Singapore family homepage, three-scene Tetris photo banner and original sunny / plush characters.
 - **Pip**, the floating helper: winks, hops, waves and wears a smiling chat bubble on the cap. Pop-ups rotate a December alert and each workshop; tapping one opens Pip's chat on that workshop, which hands off to WhatsApp. Visitors can dismiss them for the session.
-- Friendly 404 page, with redirects for parent paths and retired URLs in `next.config.ts`. Family courses are not funded, so the site carries no SSG, SWDA or WSQ content.
+- SEO landing pages for AI for kids in Singapore: `/holiday-workshops`, `/ai-for-stem` and creative writing with AI, with FAQs and structured data.
+- Friendly 404 page, with redirects for likely typed addresses and retired URLs in `next.config.ts`. Family courses are not funded, so the site carries no SSG, SWDA or WSQ content.
 - December AI story writing, math, science and creative-content workshop enquiries; dates and fees are confirmed by the team.
 - Free printable family activity pack and adult-guided tools.
 - `Explore games` opens `/parent/play`. Parent authentication and live child ownership are required for every `/learn` page and API; direct child logins do not unlock games.

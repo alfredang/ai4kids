@@ -3738,3 +3738,12 @@
   .kids-signin-welcome ul,.kids-signin-scene,.kids-signin-welcome .kids-text-link {display:none;}
   .kids-signin-staff-page {min-height:0;}
 }
+/* Keyword landing pages: links inside copy must read as links, and the side cards respond to hover. */
+.kids-workshop-description p a,
+.kids-section-heading p a {color:var(--kid-coral);font-weight:800;text-decoration:underline;text-underline-offset:3px;}
+.kids-workshop-description h2 a:hover {text-decoration:underline;text-underline-offset:4px;}
+.kids-workshop-main > .kids-album-section {padding-top:12px;}
+@media (prefers-reduced-motion:no-preference) {
+  .kids-workshop-description > aside {transition:transform .2s;}
+  .kids-workshop-description > aside:hover {transform:translateY(-3px) rotate(-.3deg);}
+}

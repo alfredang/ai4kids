@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { db } from "@/db";
 import { programs, classes } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -16,6 +17,36 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   cancelled: { label: "Cancelled", cls: "text-slate-500" },
   completed: { label: "Completed", cls: "text-slate-500" },
 };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const [program] = await db
+    .select()
+    .from(programs)
+    .where(eq(programs.slug, slug))
+    .limit(1);
+  if (!program || !program.published)
+    return { title: "Programme not found", robots: { index: false } };
+  const title = `${program.title} for Kids in Singapore`;
+  const description = `${program.summary ?? `${program.title}, an AI programme for kids.`} For ages ${program.ageMin}–${program.ageMax} in Singapore. See upcoming classes.`;
+  return {
+    title,
+    description,
+    alternates: { canonical: `/programs/${program.slug}` },
+    openGraph: {
+      title: `${title} | AI Kids Academy`,
+      description,
+      url: `/programs/${program.slug}`,
+      type: "website",
+      locale: "en_SG",
+    },
+    twitter: { card: "summary_large_image" },
+  };
+}
 
 export default async function ProgramDetail({
   params,

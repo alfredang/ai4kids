@@ -42,13 +42,13 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   icons: { icon: [{ url: "/sunny-icon.svg", type: "image/svg+xml" }, { url: "/favicon.ico", sizes: "48x48" }], apple: "/apple-icon.png" },
   title: {
-    default: "AI for Kids Singapore | December School Holiday Workshops",
+    default: "AI for Kids in Singapore | AI Kids Academy",
     template: "%s | AI Kids Academy",
   },
   description:
-    "Where kids learn AI by making things — AI storytelling, coding, game design, phonics, escape rooms and free games. Live classes + a gamified learning playground for ages 4–16.",
+    "AI for kids in Singapore: creative writing, storytelling, STEM, coding and game design, with school holiday workshops and a learning playground for ages 4–16.",
   keywords:
-    "AI for kids, kids coding Singapore, AI storytelling for children, kids game development, AI phonics, coding classes for kids, STEM enrichment Singapore",
+    "AI for kids in Singapore, AI for STEM in Singapore, AI kids workshops in Singapore, creative writing with AI for kids, storytelling with AI for kids, school holiday AI programmes for kids",
   openGraph: {
     type: "website",
     siteName: "AI Kids Academy",

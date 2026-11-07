@@ -12,9 +12,10 @@ export function SiteHeader() {
   const hasMainLandmark =
     pathname === "/" ||
     pathname === "/contact" ||
-    pathname.startsWith("/holiday-workshops/");
+    pathname === "/ai-for-stem" ||
+    pathname.startsWith("/holiday-workshops");
   const links: [string, string, KidsIconName][] = [
-    ["/#workshops", "December workshops", "bag"],
+    ["/holiday-workshops", "AI workshops", "bag"],
     ["/games", "Explore games", "wand"],
     ["/#free-tools", "Free goodies", "gift"],
   ];

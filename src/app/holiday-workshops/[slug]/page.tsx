@@ -9,6 +9,7 @@ import type { Metadata } from "next";
 import { SiteHeader } from "@/components/public/SiteHeader";
 import { SiteFooter } from "@/components/public/SiteFooter";
 import { HolidayEnquiryForm } from "@/components/public/HolidayInteractive";
+import { WorkshopFaqs } from "@/components/public/WorkshopFaqs";
 import {
   HOLIDAY_WORKSHOPS,
   workshopWhatsAppUrl,
@@ -34,7 +35,9 @@ export async function generateMetadata({
   if (!workshop)
     return { title: "Workshop not found", robots: { index: false } };
   return {
-    title: { absolute: `${WORKSHOP_SEO[slug].title} Singapore | AI Kids` },
+    title: {
+      absolute: `${WORKSHOP_SEO[slug].metaTitle ?? `${WORKSHOP_SEO[slug].title} Singapore`} | AI Kids`,
+    },
     description: WORKSHOP_SEO[slug].description,
     alternates: { canonical: `/holiday-workshops/${slug}` },
     openGraph: {
@@ -64,12 +67,13 @@ export default async function HolidayWorkshop({
   const workshop = HOLIDAY_WORKSHOPS.find((w) => w.slug === slug);
   if (!workshop) notFound();
   const number = (await getWhatsAppNumber())!;
+  const seo = WORKSHOP_SEO[slug];
   return (
     <div className="kids-workshop-page">
       <SiteHeader />
       <main id="main-content" className="kids-wrap kids-workshop-main">
-        <Link className="kids-breadcrumb" href="/#workshops">
-          ← Back to the adventure album
+        <Link className="kids-breadcrumb" href="/holiday-workshops">
+          ← All AI kids workshops
         </Link>
         <section className={`kids-workshop-banner kids-${workshop.theme}`}>
           <div>
@@ -120,8 +124,65 @@ export default async function HolidayWorkshop({
               location or online format, fees, attendance arrangements and any
               tool requirements.
             </p>
+            <h3>More AI workshops</h3>
+            <p>
+              See all our{" "}
+              <Link href="/holiday-workshops">
+                AI kids workshops in Singapore
+              </Link>
+              {workshop.subject === "Maths" || workshop.subject === "Science" ? (
+                <>
+                  , or how they fit together in{" "}
+                  <Link href="/ai-for-stem">AI for STEM</Link>
+                </>
+              ) : null}
+              .
+            </p>
           </aside>
         </section>
+        {seo.guide && (
+          <section className="kids-workshop-description">
+            <div>
+              <h2>{seo.guide.heading}</h2>
+              {seo.guide.paragraphs.map((p) => (
+                <p key={p}>{p}</p>
+              ))}
+            </div>
+            <aside>
+              <h3>Keep the story going</h3>
+              <p>
+                Try our free{" "}
+                <a href="/downloads/family-ai-starter-pack.html">
+                  family activity pack
+                </a>{" "}
+                at home, play the story adventures in our{" "}
+                <Link href="/games">AI games for kids</Link>, or browse{" "}
+                <Link href="/programs?category=storytelling">
+                  AI storytelling programmes
+                </Link>
+                .
+              </p>
+              <p>
+                Prefer numbers to words? Explore{" "}
+                <Link href="/ai-for-stem">AI for STEM in Singapore</Link>.
+              </p>
+              <h3>Try a story spark at home</h3>
+              <p>
+                With a grown-up at the keyboard, ask: “Help us imagine a story
+                about a tiny Merlion who finds a rainbow in a kaya toast shop.
+                Give us three possible adventures!” Then let your child pick
+                one and change the ending.
+              </p>
+            </aside>
+          </section>
+        )}
+        {seo.faqs && (
+          <WorkshopFaqs
+            heading="Creative writing with AI: your questions"
+            intro="There’s no such thing as a silly question."
+            faqs={seo.faqs}
+          />
+        )}
         <section id="workshop-enquiry" className="kids-workshop-enquire">
           <div>
             <span className="kids-eyebrow">LET’S MAKE A HOLIDAY MEMORY</span>
@@ -130,9 +191,8 @@ export default async function HolidayWorkshop({
               <br />A big adventure.
             </h2>
             <p>
-              Interested in {workshop.shortTitle.toLowerCase()}? Ask for the
-              December details. No payment or reservation is made by this
-              enquiry.
+              Interested in “{workshop.shortTitle}”? Ask for the December
+              details. No payment or reservation is made by this enquiry.
             </p>
             <a
               className="kids-button kids-button-white"

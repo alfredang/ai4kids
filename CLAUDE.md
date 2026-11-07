@@ -125,7 +125,7 @@ Both the public AI chatbot ([src/app/api/chat](src/app/api/chat)) and the admin 
 
 - The landing page is [src/app/page.tsx](src/app/page.tsx), composed from [src/components/public/](src/components/public/). The December workshops come from [src/lib/holiday-workshops.ts](src/lib/holiday-workshops.ts).
 - `blog/[slug]` consults `redirects` first before 404'ing — preserves WordPress URLs after migration.
-- Unknown URLs land on [src/app/not-found.tsx](src/app/not-found.tsx). Parent paths (`/holiday-workshops`), likely typed addresses and retired corporate URLs redirect from `redirects()` in [next.config.ts](next.config.ts). When adding a `/x/[slug]` route, make sure `/x` resolves too.
+- Unknown URLs land on [src/app/not-found.tsx](src/app/not-found.tsx). Likely typed addresses and retired corporate URLs redirect from `redirects()` in [next.config.ts](next.config.ts). When adding a `/x/[slug]` route, make sure `/x` resolves too.
 - Each public route exports `metadata` (or `generateMetadata`) plus inline JSON-LD via `dangerouslySetInnerHTML`. `sitemap.ts` enumerates hardcoded routes + DB-published pages and posts.
 - The SEO conventions for this codebase (canonical URL, OG, money keywords, schema choices per page type, British/Singapore spelling) are in [.claude/skills/seo-audit/SKILL.md](.claude/skills/seo-audit/SKILL.md) — load that skill whenever creating or auditing a public route.
 

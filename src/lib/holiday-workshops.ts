@@ -3,7 +3,7 @@ export const HOLIDAY_WORKSHOPS = [
   {
     slug: "creative-story-writing",
     title: "Storybook Studio",
-    shortTitle: "Creative story writing with AI",
+    shortTitle: "Creative writing and storytelling with AI",
     subject: "Storytelling",
     emoji: "📖",
     theme: "peach",

@@ -26,8 +26,7 @@ const nextConfig: NextConfig = {
     const home = (source: string, destination = "/") => ({ source, destination, permanent: true });
     return [
       // Addresses a parent is likely to type or trim down to.
-      home("/holiday-workshops", "/#workshops"),
-      home("/workshops", "/#workshops"),
+      home("/workshops", "/holiday-workshops"),
       home("/book", "/programs"),
       home("/courses", "/programs"),
       home("/services", "/programs"),

@@ -19,7 +19,11 @@ export function SiteFooter() {
         </div>
         <div>
           <h3>Let’s explore</h3>
-          <Link href="/#workshops">December holiday workshops</Link>
+          <Link href="/holiday-workshops">AI kids workshops in Singapore</Link>
+          <Link href="/holiday-workshops/creative-story-writing">
+            Creative writing with AI
+          </Link>
+          <Link href="/ai-for-stem">AI for STEM</Link>
           <Link href="/programs">All programmes</Link>
           <Link href="/games">Explore games</Link>
           <Link href="/#free-tools">Free AI toolbox</Link>

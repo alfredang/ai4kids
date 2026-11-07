@@ -1,6 +1,7 @@
 import { PlayfulText } from "@/components/public/PlaySymbol";
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { db } from "@/db";
 import { programs, classes } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -14,6 +15,31 @@ import {
 } from "@/lib/portal-content";
 
 export const dynamic = "force-dynamic";
+
+const DESCRIPTION =
+  "AI programmes for kids in Singapore: small live classes in AI storytelling, art, coding, game design and phonics for ages 4–16. Explore and book a class.";
+
+export const metadata: Metadata = {
+  title: "AI Programmes for Kids in Singapore",
+  description: DESCRIPTION,
+  alternates: { canonical: "/programs" },
+  openGraph: {
+    title: "AI programmes for kids in Singapore | AI Kids Academy",
+    description: DESCRIPTION,
+    url: "/programs",
+    type: "website",
+    locale: "en_SG",
+    images: [
+      {
+        url: "/images/story-workshop-banner.webp",
+        width: 3840,
+        height: 2160,
+        alt: "Illustration of a parent and child making a storybook at a workshop",
+      },
+    ],
+  },
+  twitter: { card: "summary_large_image" },
+};
 
 export default async function ProgramsPage({
   searchParams,
@@ -53,7 +79,9 @@ export default async function ProgramsPage({
       <div className="kids-wrap kids-catalogue">
         <div className="kids-catalogue-top">
           <div>
-            <h1 className="kids-catalogue-heading">Explore programs</h1>
+            <h1 className="kids-catalogue-heading">
+              AI programmes for kids in Singapore
+            </h1>
             <p className="kids-catalogue-intro">
               Small live classes where kids build real things with AI.
             </p>

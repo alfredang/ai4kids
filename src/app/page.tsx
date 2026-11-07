@@ -16,24 +16,26 @@ import {
 } from "@/components/public/HolidayInteractive";
 import { FAMILY_FAQS, workshopWhatsAppUrl } from "@/lib/holiday-workshops";
 import { getWhatsAppNumber } from "@/lib/portal-settings";
+import { getCompanyContact } from "@/lib/site-settings";
+import { PUBLIC_SITE_URL } from "@/lib/public-site";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-  title: { absolute: "AI for Kids Singapore | December School Holiday Workshops" },
+  title: { absolute: "AI for Kids in Singapore | School Holiday AI Workshops" },
   description:
-    "AI for kids in Singapore: explore AI story writing, math, science and creative workshops together. Enquire about December school holiday workshops for kids.",
+    "AI for kids in Singapore: creative writing, storytelling, maths and science workshops for ages 7–12. Ask about our December school holiday AI programmes.",
   alternates: { canonical: "/" },
   openGraph: {
-    title: "Little minds. Big adventures. Together.",
+    title: "AI for kids in Singapore. Big ideas, together!",
     description:
-      "December AI holiday workshops for Singapore parents and kids. Stories, art, maths and science, made together.",
+      "School holiday AI programmes for Singapore parents and kids. Stories, art, maths and science, made together.",
     url: "/",
     images: [
       {
         url: "/images/family-ai-banner.webp",
         width: 3840,
         height: 2160,
-        alt: "Singaporean parents and children learning AI together",
+        alt: "Illustration of Singaporean parents and children learning AI together",
       },
     ],
     locale: "en_SG",
@@ -82,7 +84,10 @@ const TOOLS = [
 ];
 
 export default async function HomePage() {
-  const whatsapp = (await getWhatsAppNumber())!;
+  const [whatsapp, contact] = await Promise.all([
+    getWhatsAppNumber().then((n) => n!),
+    getCompanyContact(),
+  ]);
   return (
     <div className="kids-marketing">
       <SiteHeader />
@@ -99,7 +104,7 @@ export default async function HomePage() {
           </div>
           <div className="kids-hero-heading">
             <h1 id="hero-title">
-              <span className="kids-hero-line">AI for kids.</span>
+              <span className="kids-hero-line">AI for kids in Singapore.</span>
               <span className="kids-hero-together">Big ideas, together!</span>
             </h1>
             <div className="kids-hero-intro">
@@ -147,16 +152,58 @@ export default async function HomePage() {
                   The December adventure album
                 </span>
                 <h2>
-                  December school holiday <span>workshops for kids</span>
+                  School holiday AI <br /><span>programmes for kids</span>
                 </h2>
               </div>
-              <p>Four ways to create, explore and giggle.</p>
+              <p>Four AI kids workshops in Singapore to create, explore and giggle.</p>
               <span className="kids-heading-flower" aria-hidden="true">
                 ✿
               </span>
             </div>
             <WorkshopAlbum />
           </div>
+        </section>
+
+        <section id="ai-for-kids" className="kids-wrap kids-workshop-description">
+          <div>
+            <h2>
+              AI for kids in Singapore, <span>led by their own ideas</span>
+            </h2>
+            <p>
+              Children here are growing up with AI, and the best way to
+              understand it is to make something with it. In our workshops, your
+              child invents the story, picks the cause or sets the puzzle. AI
+              offers suggestions, and together you question them, change them and
+              check them.
+            </p>
+            <p>
+              No coding or AI experience is needed. Activities use free tools,
+              and a grown-up operates anything age-restricted, so children can
+              learn to use AI thoughtfully and keep their personal details
+              private.
+            </p>
+          </div>
+          <aside>
+            <h3>Where would you like to start?</h3>
+            <p>
+              <Link href="/holiday-workshops">AI kids workshops in Singapore</Link>
+              : all four school holiday adventures in one place.
+            </p>
+            <p>
+              <Link href="/holiday-workshops/creative-story-writing">
+                Creative writing with AI for kids
+              </Link>
+              : storytelling that ends in their own illustrated book.
+            </p>
+            <p>
+              <Link href="/ai-for-stem">AI for STEM in Singapore</Link>: maths
+              mysteries and a first science experiment.
+            </p>
+            <p>
+              <Link href="/programs">AI programmes for kids</Link>: small live
+              classes where kids build real things with AI.
+            </p>
+          </aside>
         </section>
 
         <section id="together" className="kids-wrap kids-together-section">
@@ -316,6 +363,32 @@ export default async function HomePage() {
         </section>
       </main>
       <SiteFooter />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "EducationalOrganization",
+            name: "AI Kids Academy",
+            legalName: "Tertiary Infotech Academy Pte Ltd",
+            url: PUBLIC_SITE_URL,
+            logo: `${PUBLIC_SITE_URL}/apple-icon.png`,
+            description:
+              "AI for kids in Singapore: school holiday AI workshops in creative writing, storytelling, maths and science.",
+            telephone: contact.tel,
+            address: {
+              "@type": "PostalAddress",
+              streetAddress: contact.address,
+              addressCountry: "SG",
+            },
+            areaServed: { "@type": "Country", name: "Singapore" },
+            sameAs: [
+              "https://apps.apple.com/app/ai4kids/id6780267161",
+              "https://play.google.com/store/apps/details?id=sg.com.tertiarycourses.ai4kids",
+            ],
+          }).replace(/</g, "\\u003c"),
+        }}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

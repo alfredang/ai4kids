@@ -13,6 +13,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]);
   return [
     { url: `${BASE}/`, changeFrequency: "weekly", priority: 1 },
+    { url: `${BASE}/holiday-workshops`, changeFrequency: "weekly", priority: 0.9 },
+    { url: `${BASE}/ai-for-stem`, changeFrequency: "monthly", priority: 0.9 },
     ...HOLIDAY_WORKSHOPS.map((workshop) => ({
       url: `${BASE}/holiday-workshops/${workshop.slug}`,
       changeFrequency: "monthly" as const,
