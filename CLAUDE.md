@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## No funding content
 
-Kids' courses are **not funded**. This site must have no pages, copy, keywords, admin screens or lead sources about SSG, SWDA, SkillsFuture, WSQ, IBF, TPQA or ATO. The repo was cloned from the corporate CMS, so corporate material still survives in `/api/chat`, the weekly blog job's prompts and `scripts/` seeders. Don't bring it back, and don't copy examples from it.
+Kids' courses are **not funded**. This site must have no pages, copy, keywords, admin screens or lead sources about SSG, SWDA, SkillsFuture, WSQ, IBF, TPQA or ATO. The repo was cloned from the corporate CMS, and that material has been removed. Don't bring it back.
 
 ## Commands
 
@@ -26,8 +26,7 @@ npm run db:migrate     # Run generated migrations (prod-safe)
 npm run db:generate    # Generate migrations from schema changes
 npm run db:studio      # Drizzle Studio (DB browser)
 
-npm run seed:admin     # Seed initial admin user + default menus + settings (one-time)
-npm run migrate:wp     # Import a WordPress SQL dump (parses wp_*, downloads images, writes 301 redirects)
+npm run seed:portal    # Seed admin, demo parent + kids, programmes (local setup)
 ```
 
 There is no test suite — verification is `npm run build` + browser smoke-testing the dev server. The Next build also runs the TS type-check, so it's the canonical "is this broken" gate.
@@ -56,15 +55,16 @@ Self-hosted CMS on Next.js 16 App Router + Drizzle (Postgres) + Auth.js v5. The 
 
 Several UI surfaces render from the DB **with a code-level fallback** that takes over on DB failure. When the user asks you to change one of these, you usually have to update the DB **AND** the fallback **AND** any seeder script that recreates it. Otherwise the change is invisible in some environments.
 
-- **Header / footer nav** — hardcoded in [src/components/public/SiteHeader.tsx](src/components/public/SiteHeader.tsx) and [SiteFooter.tsx](src/components/public/SiteFooter.tsx). `layout/Navbar.tsx` and `layout/Footer.tsx` only re-export them. The `menus` tables and `scripts/reset-header-menu.ts` are corporate leftovers and don't affect the site.
+- **Header / footer nav** — hardcoded in [src/components/public/SiteHeader.tsx](src/components/public/SiteHeader.tsx) and [SiteFooter.tsx](src/components/public/SiteFooter.tsx). `layout/Navbar.tsx` and `layout/Footer.tsx` only re-export them.
 - **Site brand (name, logo)** — [src/lib/site-settings.ts](src/lib/site-settings.ts) reads `settings` rows; defaults are inline.
-- **Pages + Posts** — fully DB-only via `pages` / `posts` (no code fallback). Slug is the natural key; status is `draft|published|archived`.
+- **Posts** — fully DB-only via `posts` (no code fallback). Slug is the natural key; status is `draft|published|archived`.
+- **Leftover tables** — `menus`, `menu_items`, `pages` and `social_posts` remain in the schema and database, but no code reads them. Dropping them needs its own deliberate migration.
 
 ### Credentials & secrets pipeline
 
 `AUTH_SECRET` is load-bearing — it both signs Auth.js sessions **and** derives (via SHA-256) the AES-256-GCM key for the admin credentials vault. Rotating `AUTH_SECRET` makes every encrypted credential undecryptable; if you must rotate it, re-save every credential in `/admin/settings/credentials` afterwards.
 
-Credential lookup pattern, used for Gmail OAuth, Anthropic OAuth, Firecrawl, Tavily — see [src/lib/secrets.ts](src/lib/secrets.ts):
+Credential lookup pattern, used for Gmail OAuth, Anthropic OAuth, DeepSeek, R2 — see [src/lib/secrets.ts](src/lib/secrets.ts):
 
 1. `getCredential(key)` first reads `settings` where `key = 'cred:<name>'` and decrypts.
 2. Falls back to the matching `process.env.<NAME>` if no DB row.
@@ -74,11 +74,11 @@ When adding a new secret, **prefer DB-stored** (extend `CredentialKey`, add an `
 
 ### Local → Remote DB sync
 
-The production DB isn't directly reachable. To push local CMS data (menus, settings, pages, posts, taxonomy) to production, use the dedicated sync layer:
+The production DB isn't directly reachable. To push local CMS data (settings, posts, taxonomy) to production, use the dedicated sync layer:
 
-- **HTTPS API**: `POST /api/admin/sync/{menus,settings,taxonomy,pages,posts}` under [src/app/api/admin/sync/](src/app/api/admin/sync/).
+- **HTTPS API**: `POST /api/admin/sync/{settings,taxonomy,posts}` under [src/app/api/admin/sync/](src/app/api/admin/sync/).
 - **Auth**: shared by [src/lib/sync-auth.ts](src/lib/sync-auth.ts) — accepts **either** `Authorization: Bearer <SYNC_API_TOKEN>` (matching env on both sides) or `Authorization: Basic <base64(email:password)>` (validated against the `users` table via bcrypt). Fails closed.
-- **CLI**: [scripts/push-to-remote.ts](scripts/push-to-remote.ts) — reads local DB, resolves FKs by natural key (authors by email, categories/tags by slug), POSTs in dependency order (`taxonomy → settings → menus → pages → posts`). The CLI auto-picks bearer if `SYNC_API_TOKEN` is set locally, otherwise Basic with `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
+- **CLI**: [scripts/push-to-remote.ts](scripts/push-to-remote.ts) — reads local DB, resolves FKs by natural key (authors by email, categories/tags by slug), POSTs in dependency order (`taxonomy → settings → posts`). The CLI auto-picks bearer if `SYNC_API_TOKEN` is set locally, otherwise Basic with `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
 - **Slash command**: `/push-to-remote [resource...|all]` — wraps the CLI with a preview + confirmation flow. See [.claude/commands/push-to-remote.md](.claude/commands/push-to-remote.md).
 
 To extend the sync surface to a new table, follow the pattern in [.claude/skills/remote-db-sync/SKILL.md](.claude/skills/remote-db-sync/SKILL.md): natural-key upsert, Zod-bounded payload, register the resource in `scripts/push-to-remote.ts` in the correct FK-dependency order.
@@ -113,13 +113,12 @@ Also load `seo-audit`, `lead-magnets`, and `blog-cover-image` skills alongside i
 
 ### AI features run through the Claude Agent SDK with OAuth subscription auth
 
-Both the public AI chatbot ([src/app/api/chat](src/app/api/chat)) and the admin AI Assist buttons ([src/app/api/ai/assist](src/app/api/ai/assist)) use `@anthropic-ai/claude-agent-sdk` rather than the metered Anthropic API. The `anthropic_auth_token` (an `sk-ant-oat-...` OAuth subscription token from `claude setup-token`) is read via `getCredential()` and injected into the SDK subprocess env by [src/lib/anthropic-auth.ts](src/lib/anthropic-auth.ts) — it's never exposed to the browser. No per-call API billing.
+The admin AI Assist buttons ([src/app/api/ai/assist](src/app/api/ai/assist)) use `@anthropic-ai/claude-agent-sdk` rather than the metered Anthropic API. The `anthropic_auth_token` (an `sk-ant-oat-...` OAuth subscription token from `claude setup-token`) is read via `getCredential()` and injected into the SDK subprocess env by [src/lib/anthropic-auth.ts](src/lib/anthropic-auth.ts) — it's never exposed to the browser. No per-call API billing. Kids' games use DeepSeek for text; see [src/lib/kids-ai.ts](src/lib/kids-ai.ts). The public helper, Pip, is local prepared content, not an LLM.
 
 **HARD POLICY — DO NOT VIOLATE:**
 - **Never** call the Anthropic Messages API (`https://api.anthropic.com/v1/messages`) directly from this codebase.
 - **Never** add an Anthropic API key (`sk-ant-api*`) anywhere — not in env, not in DB credentials, not in code.
-- The **only** LLM path in this app is the Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) authenticated with the OAuth **subscription** token (`sk-ant-oat*`) stored under `anthropic_auth_token` in the encrypted credentials store.
-- If the chatbot needs to be faster, add deterministic FAQ / pattern matching in [src/lib/chatbot-harness.ts](src/lib/chatbot-harness.ts) — never an HTTP API call.
+- The **only** Claude path in this app is the Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) authenticated with the OAuth **subscription** token (`sk-ant-oat*`) stored under `anthropic_auth_token` in the encrypted credentials store.
 
 ### Public route layout & SEO
 
@@ -131,7 +130,7 @@ Both the public AI chatbot ([src/app/api/chat](src/app/api/chat)) and the admin 
 
 ### Lead capture
 
-Every public form (contact form, SSG ATO consultation form, etc.) POSTs to `/api/contact` with `{ name, email, phone?, company?, message, source }`. The `source` field identifies which page/magnet produced the lead — set it per form (e.g. `"home"`, `"free-trial"`). Submissions land in `leads` and also send a Gmail notification via the OAuth2 credentials stored in the vault. The lead-magnet conventions for this codebase (ICPs, form-field rules, page anatomy) are in [.claude/skills/lead-magnets/SKILL.md](.claude/skills/lead-magnets/SKILL.md).
+Every public form (contact form, workshop enquiry form, etc.) POSTs to `/api/contact` with `{ name, email, phone?, company?, message, source }`. The `source` field identifies which page/magnet produced the lead — set it per form (e.g. `"home"`, `"free-trial"`). Submissions land in `leads` and also send a Gmail notification via the OAuth2 credentials stored in the vault. The lead-magnet conventions for this codebase (ICPs, form-field rules, page anatomy) are in [.claude/skills/lead-magnets/SKILL.md](.claude/skills/lead-magnets/SKILL.md).
 
 ### Design system
 

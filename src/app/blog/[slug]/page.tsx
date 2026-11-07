@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { PUBLIC_SITE_URL } from "@/lib/public-site";
 import { db } from "@/db";
 import { posts, categories, tags, postTags, redirects } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -132,7 +133,7 @@ export default async function PostPage({
   const bodyHtml = stripLeadingImage(post.contentHtml ?? "", post.featuredImage);
   const { intro: introHtml, rest: restHtml } = splitIntroSection(bodyHtml);
 
-  const SITE_URL = "https://www.tertiaryinfotech.com";
+  const SITE_URL = PUBLIC_SITE_URL;
   const postUrl = `${SITE_URL}/blog/${post.slug}`;
   const articleLd = {
     "@context": "https://schema.org",

@@ -60,7 +60,6 @@ export const DEFAULT_LEAD_SOURCE_LABELS: Record<string, string> = {
   "free-trial": "Free Trial",
   "december-holiday-workshop": "December Holiday Workshop",
   "family-ai-starter-pack": "Family AI Starter Pack",
-  nemo: "Nemo Chatbot",
   "admin-test-email": "Admin Test",
 };
 
@@ -190,43 +189,5 @@ export async function getCompanyContact(): Promise<CompanyContact> {
     };
   } catch {
     return CONTACT_DEFAULTS;
-  }
-}
-
-// --- Social links (Footer) --------------------------------------------------
-
-export type SocialLink = {
-  platform: "facebook" | "linkedin" | "youtube" | "instagram" | "x" | "tiktok" | "whatsapp" | "github";
-  href: string;
-  label: string;
-};
-
-export const SOCIAL_DEFAULTS: SocialLink[] = [
-  { platform: "facebook", href: "https://www.facebook.com/TertiaryCourses/", label: "Facebook" },
-  { platform: "youtube", href: "https://www.youtube.com/@TertiaryCourses", label: "YouTube" },
-  {
-    platform: "linkedin",
-    href: "https://www.linkedin.com/company/tertiaryinfotech/?originalSubdomain=sg",
-    label: "LinkedIn",
-  },
-  { platform: "whatsapp", href: "https://wa.me/6588666375", label: "WhatsApp" },
-];
-
-export async function getSocialLinks(): Promise<SocialLink[]> {
-  try {
-    const [row] = await db
-      .select()
-      .from(settings)
-      .where(inArray(settings.key, ["social_links"] as unknown as string[]));
-    if (!row) return SOCIAL_DEFAULTS;
-    const v = row.value;
-    if (Array.isArray(v)) {
-      return (v as SocialLink[]).filter(
-        (l) => l && typeof l.href === "string" && typeof l.platform === "string",
-      );
-    }
-    return SOCIAL_DEFAULTS;
-  } catch {
-    return SOCIAL_DEFAULTS;
   }
 }

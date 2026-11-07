@@ -82,14 +82,13 @@ export function computeLeadScore(input: LeadScoreInput): number {
   score += keenHits;
 
   // Qualification-signal bonuses — each distinct factor surfaced in the
-  // transcript adds +1 (cap +3). Mirrors the five factors Nemo probes for:
-  // interest, use-case, budget, timeline, implementation.
+  // message adds +1 (cap +3): interest, use-case, budget, timeline, readiness.
   const QUALIFICATION_FACTORS: Array<RegExp> = [
-    /\b(lms|tms|cms|hrms|ato|tpqa|wsq|agent|chatbot|n8n|claude|openclaw|hermes|nebula)\b/, // interest in solution
-    /\b(because|currently|today we|replace|migrate|audit|gap|trigger|need to|trying to|problem|use case)\b/, // use case clarity
-    /\b(budget|spend|s\$|sgd|\$\s?\d|funding|skillsfuture|grant)\b/, // budget intent
-    /\b(q[1-4]|this (month|quarter|year)|next (month|quarter|year)|by\s+\w+|deadline|go[- ]live|asap|urgent|timeline|when can)\b/, // timeline urgency
-    /\b(deploy|implement|roll[- ]?out|onboard|integrate|self[- ]?host|end[- ]to[- ]end|co[- ]deliver)\b/, // implementation interest
+    /\b(workshops?|class(es)?|programmes?|trial|story|stories|art|maths?|science|stem|coding|games?|phonics)\b/, // interest in an offer
+    /\b(because|my (son|daughter|child|kid)|years? old|interested in|loves?|enjoys?|looking for|need to|trying to)\b/, // use case clarity
+    /\b(budget|fees?|price|cost|s\$|sgd|\$\s?\d)\b/, // budget intent
+    /\b(december|november|school holidays?|this (week|month|year)|next (week|month|year)|asap|dates?|when can|schedule)\b/, // timeline urgency
+    /\b(sign up|register|enrol|book|join|reserve|siblings?)\b/, // readiness to join
   ];
   let factorHits = 0;
   for (const re of QUALIFICATION_FACTORS) {

@@ -10,7 +10,7 @@
  *      build.nvidia.com. Free tier, no billing required. Needs an `nvidia_api_key`.
  *
  * Both are the sanctioned non-Anthropic image path, scoped to the children's
- * games — the CMS chatbot + admin AI Assist still go through the Claude Agent
+ * games — admin AI Assist still goes through the Claude Agent
  * SDK only (see CLAUDE.md). Keys come from the encrypted vault, never the
  * browser. Returns null when no provider is configured or all error, so callers
  * degrade gracefully (mirrors `askClaude` in src/lib/ai.ts).

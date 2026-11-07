@@ -78,10 +78,6 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   );
 }
 
-export const isGoogleAuthEnabled = Boolean(
-  process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
-);
-
 export const { auth, handlers, signIn, signOut } = NextAuth({
   ...authConfig,
   providers,

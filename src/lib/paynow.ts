@@ -79,12 +79,3 @@ export async function generatePayNowQrDataUrl(opts: PayNowOptions): Promise<stri
   });
 }
 
-/** Returns the raw PNG buffer (for attaching to emails as inline CID). */
-export async function generatePayNowQrBuffer(opts: PayNowOptions): Promise<Buffer> {
-  const payload = buildPayNowPayload(opts);
-  return QRCode.toBuffer(payload, {
-    errorCorrectionLevel: "M",
-    margin: 2,
-    width: 320,
-  });
-}

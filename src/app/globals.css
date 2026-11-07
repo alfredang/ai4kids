@@ -3,7 +3,6 @@
 @import "./admin-theme.css";
 
 @source not "../../.claude";
-@source not "../../legacy";
 @source not "../../node_modules";
 
 @theme {

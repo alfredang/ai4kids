@@ -164,24 +164,6 @@ export async function getLearnerBadges(learnerId: number) {
     .where(eq(learnerAchievements.learnerId, learnerId));
 }
 
-/** Leaderboard for one activity (only if leaderboard is enabled). Top N by score. */
-export async function getActivityLeaderboard(activityId: number, limit = 20) {
-  return db
-    .select({
-      learnerId: activityCompletions.learnerId,
-      name: users.name,
-      avatar: users.avatar,
-      best: sql<number>`max(${activityCompletions.score})::int`,
-      plays: sql<number>`count(*)::int`,
-    })
-    .from(activityCompletions)
-    .innerJoin(users, eq(activityCompletions.learnerId, users.id))
-    .where(eq(activityCompletions.activityId, activityId))
-    .groupBy(activityCompletions.learnerId, users.name, users.avatar)
-    .orderBy(desc(sql`max(${activityCompletions.score})`))
-    .limit(limit);
-}
-
 /** Global leaderboard across all leaderboard-enabled activities. */
 export async function getGlobalLeaderboard(limit = 20) {
   const enabled = await db

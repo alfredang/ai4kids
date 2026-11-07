@@ -1,7 +1,7 @@
 ---
 name: seo-auditor
 description: |
-  Full-site SEO auditor and fixer for the Tertiary Infotech Academy CMS (Next.js
+  Full-site SEO auditor and fixer for the AI Kids Academy site (Next.js
   16 App Router + Drizzle + Postgres). Use when the user asks for an "SEO audit",
   "SEO review", "fix SEO across the site", or any sweep that touches metadata,
   robots.txt, sitemap.xml, image alt text, URL slugs, or JSON-LD across multiple
@@ -50,7 +50,6 @@ Site copy and SEO defaults live in:
 - `src/lib/site-settings.ts` — brand identity, contact, social links
 - `src/lib/site-content.ts` — Services grid + FAQ
 - `src/lib/service-pages.ts` — per-service hero, timeline, benefits, FAQ
-- `src/lib/chatbot-settings.ts` — chatbot system prompt + FAQ
 
 ## Brand & locale ground rules
 
@@ -63,13 +62,12 @@ Site copy and SEO defaults live in:
 
 Weave naturally into titles, H1s, intro copy — never stuff. One primary + one secondary keyword per page.
 
-- `SSG ATO application Singapore`, `apply ATO Singapore`, `become accredited training organisation Singapore`
-- `TPGateway organisation registration`, `WSQ training provider registration`, `RTP registration`
-- `TPQA audit consultancy Singapore`, `TPQA compliance`, `WSQ course development`
-- `LMS for training providers Singapore`, `WSQ LMS`, `Singapore training LMS`
-- `Training Management System Singapore`, `TMS for training providers`
-- `Agentic AI Singapore`, `custom AI agent Singapore`, `AI chatbot Singapore`
-- `CMS for training providers`, `WordPress migration Singapore`
+Kids' courses are not funded, so never use SSG, SWDA, WSQ, TPQA or ATO keywords.
+
+- `AI for kids in Singapore` — `/`
+- `AI for STEM in Singapore` — `/ai-for-stem`
+- `AI kids workshops in Singapore`, `school holiday AI programmes for kids` — `/holiday-workshops`
+- `creative writing with AI for kids`, `storytelling with AI for kids` — `/holiday-workshops/creative-story-writing`
 
 ## Audit checklist — apply this to EVERY public route
 

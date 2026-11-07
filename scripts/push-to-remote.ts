@@ -2,25 +2,22 @@
  * Push local DB → remote DB via /api/admin/sync/* endpoints.
  *
  * Usage:
- *   REMOTE_SYNC_URL=https://www.tertiaryinfotech.com \
+ *   REMOTE_SYNC_URL=https://ai4kids.tertiarycourses.com.sg \
  *   SYNC_API_TOKEN=<token> \
  *   npx tsx scripts/push-to-remote.ts <resource> [...]
  *
- * Resources: menus, settings, taxonomy, pages, posts, all
+ * Resources: settings, taxonomy, posts, all
  *
  * Examples:
- *   npx tsx scripts/push-to-remote.ts menus
- *   npx tsx scripts/push-to-remote.ts settings pages
+ *   npx tsx scripts/push-to-remote.ts posts
+ *   npx tsx scripts/push-to-remote.ts settings taxonomy
  *   npx tsx scripts/push-to-remote.ts all
  */
 
 import { eq, asc } from "drizzle-orm";
 import { db } from "../src/db";
 import {
-  menus,
-  menuItems,
   settings,
-  pages,
   posts,
   categories,
   tags,
@@ -28,16 +25,16 @@ import {
   users,
 } from "../src/db/schema";
 
-type Resource = "menus" | "settings" | "taxonomy" | "pages" | "posts" | "users";
+type Resource = "settings" | "taxonomy" | "posts" | "users";
 // `users` is intentionally NOT in ALL — must be explicitly requested.
-const ALL: Resource[] = ["menus", "settings", "taxonomy", "pages", "posts"];
-// taxonomy must run before posts (FK by slug); users runs first so pages/posts can resolve authors
-const ORDER: Resource[] = ["users", "taxonomy", "settings", "menus", "pages", "posts"];
+const ALL: Resource[] = ["settings", "taxonomy", "posts"];
+// taxonomy must run before posts (FK by slug); users runs first so posts can resolve authors
+const ORDER: Resource[] = ["users", "taxonomy", "settings", "posts"];
 
 function getEnv() {
   const baseUrl = process.env.REMOTE_SYNC_URL?.replace(/\/$/, "");
   if (!baseUrl)
-    throw new Error("REMOTE_SYNC_URL is not set (e.g. https://www.tertiaryinfotech.com)");
+    throw new Error("REMOTE_SYNC_URL is not set (e.g. https://ai4kids.tertiarycourses.com.sg)");
   const token = process.env.SYNC_API_TOKEN;
   const email = process.env.ADMIN_EMAIL;
   const password = process.env.ADMIN_PASSWORD;
@@ -68,42 +65,6 @@ async function postJson(path: string, body: unknown) {
   const text = await res.text();
   if (!res.ok) throw new Error(`POST ${path} → ${res.status}: ${text}`);
   return text;
-}
-
-// ---- menus ------------------------------------------------------------------
-
-async function pushMenus() {
-  const locations = ["header", "footer"] as const;
-  for (const location of locations) {
-    const [menu] = await db
-      .select()
-      .from(menus)
-      .where(eq(menus.location, location))
-      .limit(1);
-    if (!menu) {
-      console.log(`  [menus:${location}] skipped (no local menu)`);
-      continue;
-    }
-    const items = await db
-      .select()
-      .from(menuItems)
-      .where(eq(menuItems.menuId, menu.id))
-      .orderBy(asc(menuItems.sortOrder));
-    if (items.length === 0) {
-      console.log(`  [menus:${location}] skipped (no items)`);
-      continue;
-    }
-    const res = await postJson("/api/admin/sync/menus", {
-      location,
-      items: items.map((it) => ({
-        label: it.label,
-        href: it.href,
-        sortOrder: it.sortOrder,
-        openInNewTab: it.openInNewTab,
-      })),
-    });
-    console.log(`  [menus:${location}] ${res}`);
-  }
 }
 
 // ---- settings ---------------------------------------------------------------
@@ -143,50 +104,12 @@ async function pushTaxonomy() {
   console.log(`  [taxonomy] ${res}`);
 }
 
-// ---- pages ------------------------------------------------------------------
+// ---- authors ------------------------------------------------------------------
 
 async function authorEmailById(id: number | null): Promise<string | null> {
   if (id == null) return null;
   const [u] = await db.select().from(users).where(eq(users.id, id)).limit(1);
   return u?.email ?? null;
-}
-
-async function pushPages() {
-  const rows = await db.select().from(pages);
-  if (rows.length === 0) {
-    console.log("  [pages] skipped (no rows)");
-    return;
-  }
-  const allCats = await db.select().from(categories);
-  const catById = new Map(allCats.map((c) => [c.id, c.slug]));
-  const payload = [];
-  for (const p of rows) {
-    payload.push({
-      slug: p.slug,
-      title: p.title,
-      excerpt: p.excerpt,
-      content: p.content,
-      contentHtml: p.contentHtml,
-      status: p.status,
-      seoTitle: p.seoTitle,
-      seoDescription: p.seoDescription,
-      seoKeywords: p.seoKeywords,
-      ogImage: p.ogImage,
-      canonicalUrl: p.canonicalUrl,
-      noIndex: p.noIndex,
-      authorEmail: await authorEmailById(p.authorId),
-      categorySlug: p.categoryId != null ? catById.get(p.categoryId) ?? null : null,
-      publishedAt: p.publishedAt ? p.publishedAt.toISOString() : null,
-      createdAt: p.createdAt ? p.createdAt.toISOString() : null,
-    });
-  }
-  // The server caps each request at 200 rows. Chunk to stay under that.
-  const CHUNK = 150;
-  for (let i = 0; i < payload.length; i += CHUNK) {
-    const slice = payload.slice(i, i + CHUNK);
-    const res = await postJson("/api/admin/sync/pages", { pages: slice });
-    console.log(`  [pages] ${i + slice.length}/${payload.length} — ${res}`);
-  }
 }
 
 // ---- posts ------------------------------------------------------------------
@@ -270,10 +193,8 @@ async function pushUsers() {
 
 const HANDLERS: Record<Resource, () => Promise<void>> = {
   users: pushUsers,
-  menus: pushMenus,
   settings: pushSettings,
   taxonomy: pushTaxonomy,
-  pages: pushPages,
   posts: pushPosts,
 };
 

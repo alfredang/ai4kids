@@ -3,7 +3,6 @@ import { settings } from "@/db/schema";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { SavedToast } from "@/app/admin/_components/SavedToast";
-import { SOCIAL_DEFAULTS, type SocialLink } from "@/lib/site-settings";
 import { LogoUploader } from "@/components/admin/LogoUploader";
 import { requireStaff } from "@/lib/admin-guard";
 
@@ -44,30 +43,10 @@ const FIELDS: Array<{
   },
 ];
 
-const PLATFORMS: SocialLink["platform"][] = [
-  "facebook",
-  "linkedin",
-  "youtube",
-  "instagram",
-  "x",
-  "tiktok",
-  "whatsapp",
-  "github",
-];
-
-const MAX_SOCIAL_SLOTS = 6;
 
 export default async function CompanyInfoPage() {
   const rows = await db.select().from(settings);
   const map = new Map(rows.map((s) => [s.key, s.value]));
-
-  const storedSocial = map.get("social_links");
-  const socialLinks: SocialLink[] = Array.isArray(storedSocial)
-    ? (storedSocial as SocialLink[])
-    : SOCIAL_DEFAULTS;
-  const socialSlots: (SocialLink | null)[] = Array.from({ length: MAX_SOCIAL_SLOTS }, (_, i) =>
-    socialLinks[i] ?? null,
-  );
 
   async function save(formData: FormData) {
     "use server";
@@ -82,27 +61,6 @@ export default async function CompanyInfoPage() {
           set: { value: v as unknown as object, updatedAt: new Date() },
         });
     }
-    // social links — collect filled rows
-    const links: SocialLink[] = [];
-    for (let i = 0; i < MAX_SOCIAL_SLOTS; i++) {
-      const platform = String(formData.get(`social_${i}_platform`) ?? "").trim();
-      const href = String(formData.get(`social_${i}_href`) ?? "").trim();
-      const label = String(formData.get(`social_${i}_label`) ?? "").trim();
-      if (platform && href && PLATFORMS.includes(platform as SocialLink["platform"])) {
-        links.push({
-          platform: platform as SocialLink["platform"],
-          href,
-          label: label || platform,
-        });
-      }
-    }
-    await db
-      .insert(settings)
-      .values({ key: "social_links", value: links as unknown as object })
-      .onConflictDoUpdate({
-        target: settings.key,
-        set: { value: links as unknown as object, updatedAt: new Date() },
-      });
     revalidatePath("/admin/settings/company");
     revalidatePath("/");
     revalidatePath("/contact");
@@ -143,45 +101,6 @@ export default async function CompanyInfoPage() {
               )}
             </div>
           ))}
-        </div>
-
-        <div className="border-t border-white/5 pt-6">
-          <h3 className="font-display font-bold text-base mb-1">Social links</h3>
-          <p className="text-xs text-(--color-muted) mb-4">
-            Shown as icons in the footer. Leave a row blank to hide it.
-          </p>
-          <div className="space-y-3">
-            {socialSlots.map((slot, i) => (
-              <div key={i} className="grid grid-cols-1 md:grid-cols-[160px_1fr_180px] gap-3">
-                <select
-                  name={`social_${i}_platform`}
-                  defaultValue={slot?.platform ?? ""}
-                  className="px-3 py-2.5 bg-white/3 border border-white/10 rounded-lg focus:outline-none focus:border-(--color-cyan) focus:ring-2 focus:ring-(--color-cyan)/20 transition text-sm"
-                >
-                  <option value="">— platform —</option>
-                  {PLATFORMS.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  name={`social_${i}_href`}
-                  type="url"
-                  defaultValue={slot?.href ?? ""}
-                  placeholder="https://..."
-                  className="px-4 py-2.5 bg-white/3 border border-white/10 rounded-lg focus:outline-none focus:border-(--color-cyan) focus:ring-2 focus:ring-(--color-cyan)/20 transition text-sm"
-                />
-                <input
-                  name={`social_${i}_label`}
-                  type="text"
-                  defaultValue={slot?.label ?? ""}
-                  placeholder="aria-label (optional)"
-                  className="px-4 py-2.5 bg-white/3 border border-white/10 rounded-lg focus:outline-none focus:border-(--color-cyan) focus:ring-2 focus:ring-(--color-cyan)/20 transition text-sm"
-                />
-              </div>
-            ))}
-          </div>
         </div>
 
         <div className="flex items-center justify-end pt-4 border-t border-white/5">

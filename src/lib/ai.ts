@@ -7,10 +7,6 @@ import { query } from "@anthropic-ai/claude-agent-sdk";
 import { getCredential } from "@/lib/secrets";
 import { buildClaudeEnv, SDK_ISOLATION } from "@/lib/anthropic-auth";
 
-export async function isAiConfigured(): Promise<boolean> {
-  return (await getCredential("anthropic_auth_token")) !== null;
-}
-
 export async function askClaude(
   prompt: string,
   opts: { system?: string; model?: "haiku" | "sonnet"; maxTurns?: number } = {},
@@ -62,27 +58,3 @@ export async function askClaude(
   return resultText.trim();
 }
 
-/** Ask Claude for a JSON object and parse it; returns null on any failure. */
-export async function askClaudeJson<T>(
-  prompt: string,
-  opts: { system?: string; model?: "haiku" | "sonnet" } = {},
-): Promise<T | null> {
-  const text = await askClaude(prompt, opts);
-  if (!text) return null;
-  // Strip code fences if present.
-  const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
-  try {
-    return JSON.parse(cleaned) as T;
-  } catch {
-    // Try to find the first {...} or [...] block.
-    const match = cleaned.match(/[[{][\s\S]*[}\]]/);
-    if (match) {
-      try {
-        return JSON.parse(match[0]) as T;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  }
-}

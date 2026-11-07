@@ -9,28 +9,13 @@ import { requireStaff } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
 
-type SP = { tab?: string };
-
-export default async function CategoriesAdmin({
-  searchParams,
-}: {
-  searchParams: Promise<SP>;
-}) {
-  const sp = await searchParams;
-  const tab = sp.tab === "post" ? "post" : "page";
-
+export default async function CategoriesAdmin() {
   const list = await db.select().from(categories).orderBy(asc(categories.name));
 
-  // Counts per category — pages.category_id and posts.category_id.
-  const pageCounts = await db
-    .select({ id: pages.categoryId, n: sql<number>`count(*)::int` })
-    .from(pages)
-    .groupBy(pages.categoryId);
   const postCounts = await db
     .select({ id: posts.categoryId, n: sql<number>`count(*)::int` })
     .from(posts)
     .groupBy(posts.categoryId);
-  const pageCountById = new Map(pageCounts.map((r) => [r.id, r.n]));
   const postCountById = new Map(postCounts.map((r) => [r.id, r.n]));
 
   const rows = list.map((c) => ({
@@ -38,7 +23,6 @@ export default async function CategoriesAdmin({
     slug: c.slug,
     name: c.name,
     type: c.type as "page" | "post",
-    pageCount: pageCountById.get(c.id) ?? 0,
     postCount: postCountById.get(c.id) ?? 0,
   }));
 
@@ -54,7 +38,7 @@ export default async function CategoriesAdmin({
       .values({ name, slug: slugify(name), type })
       .onConflictDoNothing();
     revalidatePath("/admin/categories");
-    redirect(`/admin/categories?tab=${type}`);
+    redirect("/admin/categories");
   }
 
   async function update(formData: FormData) {
@@ -71,7 +55,7 @@ export default async function CategoriesAdmin({
       .set({ name, slug: slugify(slug), type })
       .where(eq(categories.id, id));
     revalidatePath("/admin/categories");
-    redirect(`/admin/categories?tab=${type}`);
+    redirect("/admin/categories");
   }
 
   async function remove(formData: FormData) {
@@ -91,7 +75,6 @@ export default async function CategoriesAdmin({
       <h1 className="text-3xl font-bold mb-6">Categories</h1>
       <CategoriesAdminTabs
         rows={rows}
-        activeTab={tab}
         add={add}
         update={update}
         remove={remove}

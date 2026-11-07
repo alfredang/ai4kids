@@ -87,46 +87,46 @@ export function buildPostCoverSvg(title: string, kicker?: string): string {
     .join("");
 
   const kickerEl = kicker
-    ? `<text x="${COVER_PADDING_X}" y="${startY - fontSize - 20}" fill="#59EBFD" font-family="monospace" font-size="20" letter-spacing="4">[ ${escapeXml(kicker.toUpperCase())} ]</text>`
+    ? `<text x="${COVER_PADDING_X}" y="${startY - fontSize - 20}" fill="#b53c72" font-family="sans-serif" font-size="20" letter-spacing="4">[ ${escapeXml(kicker.toUpperCase())} ]</text>`
     : "";
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${COVER_WIDTH}" height="${COVER_HEIGHT}" viewBox="0 0 ${COVER_WIDTH} ${COVER_HEIGHT}">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0a0118"/>
-      <stop offset="50%" stop-color="#1a0533"/>
-      <stop offset="100%" stop-color="#020611"/>
+      <stop offset="0%" stop-color="#edf7ff"/>
+      <stop offset="50%" stop-color="#fff8e3"/>
+      <stop offset="100%" stop-color="#f3ecfb"/>
     </linearGradient>
     <radialGradient id="glow1" cx="20%" cy="30%" r="60%">
-      <stop offset="0%" stop-color="#5C00E5" stop-opacity="0.55"/>
-      <stop offset="100%" stop-color="#5C00E5" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#ffda70" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#ffda70" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="glow2" cx="85%" cy="80%" r="55%">
-      <stop offset="0%" stop-color="#59EBFD" stop-opacity="0.35"/>
-      <stop offset="100%" stop-color="#59EBFD" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#a185b6" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#a185b6" stop-opacity="0"/>
     </radialGradient>
     <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#59EBFD" stroke-width="0.5" stroke-opacity="0.08"/>
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#a185b6" stroke-width="0.5" stroke-opacity="0"/>
     </pattern>
     <linearGradient id="text" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="100%" stop-color="#cbd5ff"/>
+      <stop offset="0%" stop-color="#7a50a0"/>
+      <stop offset="100%" stop-color="#b53c72"/>
     </linearGradient>
   </defs>
   <rect width="${COVER_WIDTH}" height="${COVER_HEIGHT}" fill="url(#bg)"/>
   <rect width="${COVER_WIDTH}" height="${COVER_HEIGHT}" fill="url(#grid)"/>
   <rect width="${COVER_WIDTH}" height="${COVER_HEIGHT}" fill="url(#glow1)"/>
   <rect width="${COVER_WIDTH}" height="${COVER_HEIGHT}" fill="url(#glow2)"/>
-  <line x1="0" y1="0" x2="${COVER_WIDTH}" y2="0" stroke="#59EBFD" stroke-width="2" stroke-opacity="0.4"/>
+  <line x1="0" y1="0" x2="${COVER_WIDTH}" y2="0" stroke="#a185b6" stroke-width="2" stroke-opacity="0.4"/>
   ${kickerEl}
   <text x="${COVER_PADDING_X}" y="${startY}" fill="url(#text)" font-family="sans-serif" font-size="${fontSize}" font-weight="800" letter-spacing="-1">
     ${titleTspans}
   </text>
   <g transform="translate(${COVER_PADDING_X}, ${COVER_HEIGHT - 75})">
-    <rect width="48" height="48" rx="8" fill="url(#glow1)" stroke="#5C00E5" stroke-opacity="0.6"/>
-    <text x="24" y="32" fill="#ffffff" font-family="monospace" font-size="20" font-weight="700" text-anchor="middle">TI</text>
-    <text x="64" y="22" fill="#ffffff" font-family="sans-serif" font-size="18" font-weight="600">Tertiary Infotech Academy</text>
-    <text x="64" y="42" fill="#59EBFD" font-family="monospace" font-size="13" letter-spacing="1.5">tertiaryinfotech.com</text>
+    <rect width="48" height="48" rx="8" fill="#ffda70" stroke="#41467d" stroke-opacity="1"/>
+    <text x="24" y="32" fill="#343c79" font-family="sans-serif" font-size="20" font-weight="700" text-anchor="middle">AK</text>
+    <text x="64" y="22" fill="#343c79" font-family="sans-serif" font-size="18" font-weight="600">AI Kids Academy</text>
+    <text x="64" y="42" fill="#2c8c8a" font-family="sans-serif" font-size="13" letter-spacing="0.5">ai4kids.tertiarycourses.com.sg</text>
   </g>
 </svg>`;
 }

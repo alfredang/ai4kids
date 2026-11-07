@@ -4,8 +4,6 @@ import { useState, useTransition } from "react";
 
 type Key =
   | "anthropic_auth_token"
-  | "firecrawl_api_key"
-  | "tavily_api_key"
   | "deepseek_api_key"
   | "gemini_api_key"
   | "nvidia_api_key"
@@ -21,15 +19,7 @@ type Key =
   | "r2_endpoint"
   | "cloudflare_ai_token"
   | "turnstile_site_key"
-  | "turnstile_secret"
-  | "n8n_api_url"
-  | "n8n_api_key"
-  | "linkedin_client_id"
-  | "linkedin_client_secret"
-  | "linkedin_access_token"
-  | "linkedin_author_urn"
-  | "facebook_page_access_token"
-  | "facebook_page_id";
+  | "turnstile_secret";
 
 type Group = { title: string; description?: string; keys: Key[] };
 
@@ -41,16 +31,6 @@ const FIELDS: Record<
     label: "Claude (Anthropic) — OAuth subscription token",
     hint: "Generate locally with `claude setup-token`. Powers admin AI Assist and the AI chatbot via the Claude Agent SDK.",
     placeholder: "sk-ant-oat01-…",
-  },
-  firecrawl_api_key: {
-    label: "Firecrawl — API key",
-    hint: "Used for crawling competitor / reference URLs into draft posts.",
-    placeholder: "fc-…",
-  },
-  tavily_api_key: {
-    label: "Tavily — Search API key",
-    hint: "Used by AI Assist to gather up-to-date research context before drafting.",
-    placeholder: "tvly-…",
   },
   deepseek_api_key: {
     label: "DeepSeek — API key (kids AI text games)",
@@ -133,53 +113,13 @@ const FIELDS: Record<
     hint: "Server-side key for verifying tokens. Shown once when the widget is created.",
     placeholder: "0x4AAAAAAA…",
   },
-  n8n_api_url: {
-    label: "n8n — Base URL",
-    hint: "Root URL of your self-hosted n8n instance (no trailing slash). Used to create + manage workflows from the CMS — e.g. the auto-post-to-LinkedIn/Facebook flow.",
-    placeholder: "https://n8n.yourdomain.com",
-  },
-  n8n_api_key: {
-    label: "n8n — API key",
-    hint: "Personal access token from n8n UI → Settings → API. Pair with the URL above. Encrypted at rest.",
-    placeholder: "n8n_api_…",
-  },
-  linkedin_client_id: {
-    label: "LinkedIn — App Client ID",
-    hint: "From your LinkedIn Developer app → Auth tab. Pair with the secret below, then click Connect to run OAuth.",
-    placeholder: "861pi1j0lx24ir",
-  },
-  linkedin_client_secret: {
-    label: "LinkedIn — App Client Secret",
-    hint: "Primary Client Secret from the same LinkedIn app. Stored encrypted; used server-side to exchange the OAuth code.",
-    placeholder: "WPL_AP1.…",
-  },
-  linkedin_access_token: {
-    label: "LinkedIn — Access token (auto-filled by Connect)",
-    hint: "Populated automatically by the Connect LinkedIn flow below. You can also paste a token manually if you have one.",
-    placeholder: "AQV…",
-  },
-  linkedin_author_urn: {
-    label: "LinkedIn — Author URN (auto-filled by Connect)",
-    hint: "Populated automatically by the Connect flow (urn:li:person:<id>). Override manually for company-page posting (urn:li:organization:<id>) if your app has Marketing Developer Platform access.",
-    placeholder: "urn:li:person:abcDEF123",
-  },
-  facebook_page_access_token: {
-    label: "Facebook — Page access token",
-    hint: "Long-lived Page Access Token from Graph API Explorer. Scope: pages_manage_posts + pages_read_engagement.",
-    placeholder: "EAAB…",
-  },
-  facebook_page_id: {
-    label: "Facebook — Page ID",
-    hint: "Numeric ID of the Facebook Page to post to (Settings → About → Page ID).",
-    placeholder: "1234567890",
-  },
 };
 
 const GROUPS: Group[] = [
   {
     title: "AI integrations",
-    description: "API keys for Claude, research, and content tooling.",
-    keys: ["anthropic_auth_token", "firecrawl_api_key", "tavily_api_key", "deepseek_api_key", "gemini_api_key", "nvidia_api_key", "cloudflare_ai_token"],
+    description: "API keys for Claude, the kids' AI games and image generation.",
+    keys: ["anthropic_auth_token", "deepseek_api_key", "gemini_api_key", "nvidia_api_key", "cloudflare_ai_token"],
   },
   {
     title: "Gmail OAuth (lead notification email)",
@@ -205,25 +145,6 @@ const GROUPS: Group[] = [
     description:
       "Invisible CAPTCHA on public lead forms. Leave blank to disable verification (forms still work).",
     keys: ["turnstile_site_key", "turnstile_secret"],
-  },
-  {
-    title: "n8n (workflow automation)",
-    description:
-      "Self-hosted n8n credentials. Optional — used for outbound workflows from the CMS.",
-    keys: ["n8n_api_url", "n8n_api_key"],
-  },
-  {
-    title: "Social media auto-posting (LinkedIn + Facebook)",
-    description:
-      "When a blog post is published, the CMS auto-queues a draft social post per platform under /admin/social. Approve or edit, schedule, and a cron dispatcher publishes via each platform's API.",
-    keys: [
-      "linkedin_client_id",
-      "linkedin_client_secret",
-      "linkedin_access_token",
-      "linkedin_author_urn",
-      "facebook_page_access_token",
-      "facebook_page_id",
-    ],
   },
 ];
 
@@ -370,23 +291,8 @@ export function CredentialsForm({ status, sources, previews }: Props) {
     ? Object.values(sources).some((s) => s === "env")
     : false;
 
-  const linkedinFlag =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("linkedin")
-      : null;
-
   return (
     <div className="space-y-6">
-      {linkedinFlag === "ok" && (
-        <div className="glass p-3 border border-(--color-green)/40 text-(--color-green) text-sm">
-          LinkedIn connected — access token and author URN saved.
-        </div>
-      )}
-      {linkedinFlag && linkedinFlag !== "ok" && (
-        <div className="glass p-3 border border-red-500/40 text-red-400 text-sm">
-          LinkedIn connect failed: {linkedinFlag}
-        </div>
-      )}
       {GROUPS.map((group) => (
         <div key={group.title} className="glass p-6 space-y-5">
           <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -396,27 +302,6 @@ export function CredentialsForm({ status, sources, previews }: Props) {
                 <p className="text-xs text-(--color-muted) mt-1">{group.description}</p>
               )}
             </div>
-            {group.keys.includes("linkedin_client_id" as Key) && (() => {
-              const ready =
-                status["linkedin_client_id" as Key] &&
-                status["linkedin_client_secret" as Key];
-              return ready ? (
-                <a
-                  href="/api/admin/linkedin/auth"
-                  className="px-4 py-2 rounded-lg bg-[#0a66c2] hover:bg-[#004182] text-white text-sm font-semibold whitespace-nowrap"
-                  title="Run the LinkedIn OAuth flow and auto-fill the access token + author URN"
-                >
-                  Connect LinkedIn →
-                </a>
-              ) : (
-                <span
-                  className="px-4 py-2 rounded-lg bg-white/5 text-white/40 text-sm font-semibold whitespace-nowrap cursor-not-allowed border border-white/10"
-                  title="Save the Client ID and Client Secret first — the OAuth flow reads them from the vault."
-                >
-                  Save Client ID + Secret first
-                </span>
-              );
-            })()}
           </div>
           <div className="grid md:grid-cols-2 gap-x-6 gap-y-7">
             {group.keys.map((k) => {

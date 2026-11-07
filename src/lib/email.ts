@@ -152,8 +152,3 @@ export async function sendEmail(opts: {
   await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
 }
 
-export function isGmailConfigured(): Promise<boolean> {
-  return loadGmailCreds()
-    .then(() => true)
-    .catch(() => false);
-}

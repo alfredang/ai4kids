@@ -77,7 +77,6 @@ Do not copy these. Fix them when you touch the file.
 
 - **Old Tailwind recipes on parent pages:** `app/programs/[slug]/page.tsx`, `app/book/`, `app/parent/*` and `FreeTrialForm` still use the cream-era classes, restyled by `.kids-public-shell`.
 - **Old class names in `/admin` and `/blog`:** `text-white`, `bg-white/N` and similar still appear in markup, restyled by `admin-theme.css` and `.kids-legacy-page`. Replace them when you touch the file.
-- **Corporate back-office leftovers:** `/api/chat` with its chatbot settings and knowledge, the weekly blog job's prompts, and `scripts/` seeders still describe the corporate business. Nothing public links to them, but don't copy from them.
 - **Repo skills:** `seo-audit`, `lead-magnets` and `blog-post` were written for the corporate site. Use their method, not their audience or keywords.
 
 ## Design tokens (LOCK these)

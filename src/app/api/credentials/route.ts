@@ -11,8 +11,6 @@ import {
 
 const ALLOWED: CredentialKey[] = [
   "anthropic_auth_token",
-  "firecrawl_api_key",
-  "tavily_api_key",
   "deepseek_api_key",
   "gemini_api_key",
   "nvidia_api_key",
@@ -29,14 +27,6 @@ const ALLOWED: CredentialKey[] = [
   "cloudflare_ai_token",
   "turnstile_site_key",
   "turnstile_secret",
-  "n8n_api_url",
-  "n8n_api_key",
-  "linkedin_client_id",
-  "linkedin_client_secret",
-  "linkedin_access_token",
-  "linkedin_author_urn",
-  "facebook_page_access_token",
-  "facebook_page_id",
 ];
 
 const payloadSchema = z.record(z.string(), z.string().min(1).max(2000));

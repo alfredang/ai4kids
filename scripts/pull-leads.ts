@@ -13,7 +13,7 @@ import { db } from "../src/db";
 import { leads } from "../src/db/schema";
 import { inArray } from "drizzle-orm";
 
-const REMOTE = process.env.REMOTE_SYNC_URL ?? "https://www.tertiaryinfotech.com";
+const REMOTE = process.env.REMOTE_SYNC_URL ?? "https://ai4kids.tertiarycourses.com.sg";
 const TOKEN = process.env.SYNC_API_TOKEN;
 const EMAIL = process.env.ADMIN_EMAIL;
 const PASSWORD = process.env.ADMIN_PASSWORD;

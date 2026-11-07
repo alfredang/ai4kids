@@ -13,10 +13,6 @@ export async function getActivityBySlug(slug: string) {
   return a ?? null;
 }
 
-export async function listActivities() {
-  return db.select().from(activities).orderBy(activities.sortOrder);
-}
-
 /** Award a badge by slug if the learner doesn't have it yet (best-effort). */
 async function awardBadge(learnerId: number, badgeSlug: string) {
   const [badge] = await db

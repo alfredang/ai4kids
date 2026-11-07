@@ -2,15 +2,14 @@ import { tmpdir } from "os";
 
 /**
  * Lock the Agent SDK subprocess down to just our own prompt. Spread this into
- * EVERY `query()` call — see the four call sites in src/lib/ai.ts,
- * src/lib/ai/claude.ts, src/lib/nemo-reflect.ts and /api/chat.
+ * EVERY `query()` call — see the call sites in src/lib/ai.ts and
+ * src/lib/ai/claude.ts.
  *
  * `query()` defaults to full CLI behaviour: it loads all filesystem settings,
  * this repo's CLAUDE.md (~18KB), discovered skills, AND the developer's
- * per-project memory — into the context of every call, including the PUBLIC
- * anonymous chatbot. Probing the model confirmed it could recite the dev port
+ * per-project memory — into the context of every call. Probing the model confirmed it could recite the dev port
  * and memory file paths; the memory here holds a local Postgres URL and its
- * password. None of that belongs in a kids' story or a stranger's chat.
+ * password. None of that belongs in a kids' story.
  *
  * All three keys are load-bearing — measured with a leak probe:
  *  - `settingSources: []` drops settings.json + CLAUDE.md, but memory STILL leaked

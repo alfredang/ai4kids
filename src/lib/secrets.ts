@@ -32,8 +32,6 @@ export function decryptSecret(blob: string): string {
 
 export type CredentialKey =
   | "anthropic_auth_token"
-  | "firecrawl_api_key"
-  | "tavily_api_key"
   | "deepseek_api_key"
   | "gemini_api_key"
   | "nvidia_api_key"
@@ -49,15 +47,7 @@ export type CredentialKey =
   | "r2_endpoint"
   | "cloudflare_ai_token"
   | "turnstile_site_key"
-  | "turnstile_secret"
-  | "n8n_api_url"
-  | "n8n_api_key"
-  | "linkedin_client_id"
-  | "linkedin_client_secret"
-  | "linkedin_access_token"
-  | "linkedin_author_urn"
-  | "facebook_page_access_token"
-  | "facebook_page_id";
+  | "turnstile_secret";
 
 /**
  * Read a credential. DB-stored encrypted value wins over the env var fallback.
@@ -78,8 +68,6 @@ export async function getCredential(key: CredentialKey): Promise<string | null> 
   }
   const envMap: Record<CredentialKey, string | undefined> = {
     anthropic_auth_token: process.env.ANTHROPIC_AUTH_TOKEN,
-    firecrawl_api_key: process.env.FIRECRAWL_API_KEY,
-    tavily_api_key: process.env.TAVILY_API_KEY,
     deepseek_api_key: process.env.DEEPSEEK_API_KEY,
     gemini_api_key: process.env.GEMINI_API_KEY,
     nvidia_api_key: process.env.NVIDIA_API_KEY,
@@ -96,14 +84,6 @@ export async function getCredential(key: CredentialKey): Promise<string | null> 
     cloudflare_ai_token: process.env.CLOUDFLARE_AI_TOKEN,
     turnstile_site_key: process.env.TURNSTILE_SITE_KEY,
     turnstile_secret: process.env.TURNSTILE_SECRET,
-    n8n_api_url: process.env.N8N_API_URL,
-    n8n_api_key: process.env.N8N_API_KEY,
-    linkedin_client_id: process.env.LINKEDIN_CLIENT_ID,
-    linkedin_client_secret: process.env.LINKEDIN_CLIENT_SECRET,
-    linkedin_access_token: process.env.LINKEDIN_ACCESS_TOKEN,
-    linkedin_author_urn: process.env.LINKEDIN_AUTHOR_URN,
-    facebook_page_access_token: process.env.FACEBOOK_PAGE_ACCESS_TOKEN,
-    facebook_page_id: process.env.FACEBOOK_PAGE_ID,
   };
   return envMap[key] ?? null;
 }
@@ -121,10 +101,6 @@ export async function setCredential(key: CredentialKey, plaintext: string): Prom
 
 export async function clearCredential(key: CredentialKey): Promise<void> {
   await db.delete(settings).where(eq(settings.key, `cred:${key}`));
-}
-
-export async function isCredentialSet(key: CredentialKey): Promise<boolean> {
-  return (await getCredential(key)) !== null;
 }
 
 /**
@@ -148,8 +124,6 @@ export async function getCredentialSource(key: CredentialKey): Promise<Credentia
   }
   const envMap: Record<CredentialKey, string | undefined> = {
     anthropic_auth_token: process.env.ANTHROPIC_AUTH_TOKEN,
-    firecrawl_api_key: process.env.FIRECRAWL_API_KEY,
-    tavily_api_key: process.env.TAVILY_API_KEY,
     deepseek_api_key: process.env.DEEPSEEK_API_KEY,
     gemini_api_key: process.env.GEMINI_API_KEY,
     nvidia_api_key: process.env.NVIDIA_API_KEY,
@@ -166,14 +140,6 @@ export async function getCredentialSource(key: CredentialKey): Promise<Credentia
     cloudflare_ai_token: process.env.CLOUDFLARE_AI_TOKEN,
     turnstile_site_key: process.env.TURNSTILE_SITE_KEY,
     turnstile_secret: process.env.TURNSTILE_SECRET,
-    n8n_api_url: process.env.N8N_API_URL,
-    n8n_api_key: process.env.N8N_API_KEY,
-    linkedin_client_id: process.env.LINKEDIN_CLIENT_ID,
-    linkedin_client_secret: process.env.LINKEDIN_CLIENT_SECRET,
-    linkedin_access_token: process.env.LINKEDIN_ACCESS_TOKEN,
-    linkedin_author_urn: process.env.LINKEDIN_AUTHOR_URN,
-    facebook_page_access_token: process.env.FACEBOOK_PAGE_ACCESS_TOKEN,
-    facebook_page_id: process.env.FACEBOOK_PAGE_ID,
   };
   return envMap[key] ? "env" : "none";
 }

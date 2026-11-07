@@ -4,9 +4,6 @@ import { sql, eq, desc } from "drizzle-orm";
 import { db } from "@/db";
 import { posts, users, categories, tags, postTags } from "@/db/schema";
 import { syncAuthorized } from "@/lib/sync-auth";
-import { createDraftSocialPosts } from "@/lib/social/draft";
-import { dispatchDueSocialPosts } from "@/lib/social/dispatch";
-import { getSocialAutoPublish } from "@/lib/social/settings";
 
 const postSchema = z.object({
   slug: z.string().min(1).max(255),
@@ -68,10 +65,6 @@ export async function POST(req: Request) {
   }
 
   let upserted = 0;
-  const autoPublishEnabled = await getSocialAutoPublish();
-  // Track posts that newly transitioned to published in this sync run so we
-  // can fire social drafts + auto-publish once the upserts settle.
-  const newlyPublishedIds: number[] = [];
   for (const p of parsed.data.posts) {
     const [authorId, categoryId, tagIds] = await Promise.all([
       resolveAuthorId(p.authorEmail),
@@ -80,13 +73,6 @@ export async function POST(req: Request) {
     ]);
     // Snapshot previous state so we can detect a draft→published transition
     // (and avoid re-firing for posts that were already published).
-    const [previous] = await db
-      .select({ status: posts.status, publishedAt: posts.publishedAt })
-      .from(posts)
-      .where(eq(posts.slug, p.slug))
-      .limit(1);
-    const wasAlreadyPublished =
-      previous?.status === "published" && previous?.publishedAt != null;
     const row = {
       slug: p.slug,
       title: p.title,
@@ -127,47 +113,13 @@ export async function POST(req: Request) {
           .insert(postTags)
           .values(tagIds.map((tagId) => ({ postId: postRow.id, tagId })));
       }
-      // Did this sync flip the post into a published state for the first time?
-      if (p.status === "published" && !wasAlreadyPublished) {
-        newlyPublishedIds.push(postRow.id);
-      }
     }
     upserted += 1;
-  }
-
-  // Fire social pipeline for newly-published posts. Wrapped so a LinkedIn /
-  // Facebook failure never breaks the sync transaction.
-  const socialResults: Array<{
-    postId: number;
-    draftIds: number[];
-    dispatched?: { published: number; failed: number };
-    error?: string;
-  }> = [];
-  for (const postId of newlyPublishedIds) {
-    try {
-      const draftIds = await createDraftSocialPosts(postId);
-      const entry: (typeof socialResults)[number] = { postId, draftIds };
-      if (autoPublishEnabled && draftIds.length > 0) {
-        const r = await dispatchDueSocialPosts({ ids: draftIds });
-        entry.dispatched = { published: r.published, failed: r.failed };
-      }
-      socialResults.push(entry);
-    } catch (e) {
-      socialResults.push({
-        postId,
-        draftIds: [],
-        error: e instanceof Error ? e.message : String(e),
-      });
-    }
   }
 
   return NextResponse.json({
     ok: true,
     upserted,
-    social: {
-      autoPublish: autoPublishEnabled,
-      processed: socialResults,
-    },
   });
 }
 

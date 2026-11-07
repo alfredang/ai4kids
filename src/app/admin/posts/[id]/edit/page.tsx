@@ -6,9 +6,6 @@ import { eq, inArray } from "drizzle-orm";
 import { PostEditorForm, type PostFormData } from "@/components/admin/PostEditorForm";
 import type { JSONContent } from "@tiptap/react";
 import { getAdminSession } from "@/lib/admin-role";
-import { createDraftSocialPosts } from "@/lib/social/draft";
-import { dispatchDueSocialPosts } from "@/lib/social/dispatch";
-import { getSocialAutoPublish } from "@/lib/social/settings";
 import { requireStaff } from "@/lib/admin-guard";
 
 function slugify(input: string): string {
@@ -162,60 +159,15 @@ export default async function EditPost({
       }
     }
 
-    // Auto-queue social drafts when transitioning to published.
-    // Safe by design — createDraftSocialPosts is a no-op if drafts already
-    // exist for this post, so re-saving a published post doesn't duplicate.
-    if (data.status === "published" && !p.publishedAt) {
-      try {
-        const draftIds = await createDraftSocialPosts(data.id);
-        // If the operator has flipped the "Auto-publish on blog publish"
-        // switch on /admin/social, fire the dispatcher immediately so LinkedIn
-        // + Facebook posts go live the moment the blog does.
-        const autoPublish = await getSocialAutoPublish();
-        if (autoPublish && draftIds.length > 0) {
-          await dispatchDueSocialPosts({ ids: draftIds });
-        }
-        revalidatePath("/admin/social");
-      } catch (e) {
-        console.error("social auto-queue failed:", e);
-      }
-    }
-
     revalidatePath(`/blog/${data.slug}`);
     revalidatePath("/blog");
     revalidatePath("/");
     revalidatePath("/sitemap.xml");
   }
 
-  async function queueSocialDrafts() {
-    "use server";
-    await requireStaff();
-    const ids = await createDraftSocialPosts(p.id);
-    // If the operator has flipped auto-publish ON, treat the manual Queue
-    // Drafts click as "go live now" — saves a second trip to /admin/social.
-    if ((await getSocialAutoPublish()) && ids.length > 0) {
-      await dispatchDueSocialPosts({ ids });
-    }
-    revalidatePath("/admin/social");
-    redirect("/admin/social?queued=1");
-  }
-
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <h1 className="text-2xl font-bold">Edit Post</h1>
-        {p.status === "published" && (
-          <form action={queueSocialDrafts}>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-lg border border-(--color-cyan)/40 text-(--color-cyan) hover:bg-(--color-cyan)/10 text-sm font-mono"
-              title="Create LinkedIn + Facebook draft social posts for this blog post (idempotent — no-op if drafts already exist)"
-            >
-              Queue social drafts →
-            </button>
-          </form>
-        )}
-      </div>
+      <h1 className="text-2xl font-bold mb-6">Edit Post</h1>
       <PostEditorForm initial={initial} save={save} kind="post" />
     </div>
   );

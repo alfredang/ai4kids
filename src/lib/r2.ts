@@ -63,6 +63,3 @@ export async function deleteFromR2(cfg: R2Config, key: string): Promise<void> {
   await client.send(new DeleteObjectCommand({ Bucket: cfg.bucket, Key: key }));
 }
 
-export async function isR2Enabled(): Promise<boolean> {
-  return (await getR2Config()) !== null;
-}

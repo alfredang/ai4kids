@@ -84,7 +84,7 @@ AI storytelling · coding · game design · phonics · escape rooms — a gamifi
 │  Auth.js v5 (role guard: learner / parent / admin)                 │
 │  ┌──────────────┬────────────────┬───────────────┬───────────────┐ │
 │  │  Booking +   │  AI activities │  Gamification │  Admin CRUD   │ │
-│  │  PayNow QR   │  (Claude SDK)  │  scores/badge │  programs/... │ │
+│  │  PayNow QR   │  (DeepSeek)    │  scores/badge │  programs/... │ │
 │  │  + agentic   │                │  leaderboard  │               │ │
 │  │  auto-close  │                │               │               │ │
 │  └──────┬───────┴───────┬────────┴──────┬────────┴─────┬─────────┘ │
@@ -103,7 +103,7 @@ ai-kids/
 ├── src/
 │   ├── app/
 │   │   ├── page.tsx                 # Bright public homepage
-│   │   ├── login/                   # Kid + Parent/Admin login tabs
+│   │   ├── login/                   # Two-column family sign-in (admin: /admin/login)
 │   │   ├── dashboard/               # Role dispatcher
 │   │   ├── programs/                # Catalog + program detail
 │   │   ├── holiday-workshops/       # AI kids workshops hub + one page per workshop
@@ -231,6 +231,7 @@ Set `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `NEXT_PUBLIC_SITE_URL`, and Googl
 - **Pip**, the floating helper: winks, hops, waves and wears a smiling chat bubble on the cap. Pop-ups rotate a December alert and each workshop; tapping one opens Pip's chat on that workshop, which hands off to WhatsApp. Visitors can dismiss them for the session.
 - SEO landing pages for AI for kids in Singapore: `/holiday-workshops`, `/ai-for-stem` and creative writing with AI, with FAQs and structured data.
 - Friendly 404 page, with redirects for likely typed addresses and retired URLs in `next.config.ts`. Family courses are not funded, so the site carries no SSG, SWDA or WSQ content.
+- The back end carries only what the family site uses. The corporate CMS's chatbot, scheduled blog writer, social auto-posting, CMS pages and menus, and one-off migration scripts have been removed. Admin settings are General, Company, Lead Email and Credentials.
 - December AI story writing, math, science and creative-content workshop enquiries; dates and fees are confirmed by the team.
 - Free printable family activity pack and adult-guided tools.
 - `Explore games` opens `/parent/play`. Parent authentication and live child ownership are required for every `/learn` page and API; direct child logins do not unlock games.
